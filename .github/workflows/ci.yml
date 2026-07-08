@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - main
+  push:
+    branches:
+      - develop
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  # Job named exactly "ci-gate" so GitHub branch rulesets can mark it as required.
+  # Real jobs (lint / test / build for apps/api, apps/web, apps/mobile)
+  # get wired in once the app scaffolds exist (day 3+).
+  ci-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Placeholder check
+        run: echo "ci-gate passed" && exit 0

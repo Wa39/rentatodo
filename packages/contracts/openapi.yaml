@@ -1,0 +1,6 @@
+# OpenAPI specification for RentaTodo
+# Single source of truth for the contract between apps/api, apps/web, and apps/mobile.
+#
+# This file is frozen on day 3. Any change requires an approved PR
+# with sign-off from all consumers (@trucy @silverk @zero @wa).
+# See .github/CODEOWNERS.
