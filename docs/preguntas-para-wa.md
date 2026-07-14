@@ -4,59 +4,121 @@
 > **Por qué a Wa:** maneja CI/CD, el servicio de imágenes (URLs prefirmadas), el
 > servicio de pagos/depósito mock, los ambientes dev/staging, los seeds y las
 > convenciones de ramas/commits/PR.
-> **Fecha:** 2026-07-09
+> **Última actualización:** 2026-07-09 (revisado contra el scaffold del repo)
 
-**Leyenda de prioridad**
-- 🔴 **Bloqueante** — lo necesito para arrancar / antes de mi primer PR.
-- 🟡 **Importante** — semanas 2–3.
-- 🟢 **Puede esperar** — semana 3–4 o nice-to-have.
+**Leyenda:** 🔴 Bloqueante · 🟡 Importante (semanas 2–3) · 🟢 Puede esperar
 
 ---
 
-## A. Ambientes y datos de prueba
+# ✅ Ya resuelto por el scaffold — no hace falta preguntarlo
 
-1. 🔴 ¿Cuál es la **URL base** de la API en `dev` y en `staging`? ¿Cómo la configuro en la app (env var / archivo de config)?
-2. 🔴 ¿Hay **seeds / usuarios de prueba** ya cargados que pueda usar? Idealmente: un usuario dueño + un usuario arrendatario + algunos items con foto. Así pruebo sin depender de que Silverk publique a mano.
-3. 🟡 ¿Cómo levanto el entorno **local** si lo necesito? (¿docker-compose, instrucciones, `.env` de ejemplo?).
-4. 🟢 ¿Los ambientes se resetean seguido? (para saber si mis datos de prueba sobreviven entre días).
+Todo esto ya está documentado en el repo:
 
-## B. Servicio de imágenes / URLs prefirmadas (crítico para mí)
-
-Lo uso en **dos lugares**: la foto del item (aunque la publica Silverk, quiero entender el flujo) y sobre todo las **fotos de check-in/check-out** de mi app.
-
-5. 🔴 ¿Cuál es el endpoint para **pedir una URL prefirmada**? ¿Qué mando (tipo de archivo, tamaño, nombre)? ¿Qué me devuelve — `uploadUrl` + `publicUrl`?
-6. 🔴 ¿Con qué método **subo el archivo** a la `uploadUrl`? ¿`PUT`? ¿`POST` multipart? ¿Qué headers necesito (ej. `Content-Type`)?
-7. 🔴 ¿La `uploadUrl` **expira**? ¿En cuánto tiempo? (para reintentar si el usuario tarda tomando la foto).
-8. 🟡 ¿Restricciones de **formato y tamaño** de imagen? (jpg/png, máximo MB). Así valido/comprimo en el móvil antes de subir.
-9. 🟡 ¿El **mismo servicio** sirve para la foto del artículo y para las fotos de check-in/check-out, o son flujos distintos?
-10. 🟡 ¿Necesito **auth** (token) para pedir la URL prefirmada?
-11. 🔴 **Plan B para el MVP:** si el servicio de imágenes no está listo la primera semana, ¿puedo arrancar mandando una `photo_url` placeholder/manual para no bloquearme?
-
-## C. Servicio de pagos / depósito mock
-
-12. 🔴 ¿Cómo "pago" el depósito desde el móvil? ¿Hay un endpoint del mock (ej. `POST /payments/hold`) o es parte del flujo de crear la reserva (lo maneja Trucy)?
-13. 🟡 ¿Qué respuesta **simula** el mock? ¿Siempre éxito, o puedo forzar un **fallo** para probar el camino de error?
-14. 🟡 ¿En qué momento se **retiene** el depósito (`HOLD`) y en cuál se **libera** (`RELEASE`)? ¿Eso lo disparo yo desde el móvil o pasa solo en el backend?
-15. 🟢 ¿Qué me devuelve el mock para que muestre una **confirmación** de "pago" al usuario (id de transacción, monto, estado)?
-
-## D. Convenciones de equipo (mi insumo requerido según el plan)
-
-16. 🔴 **Convención de nombres de ramas** — ¿`feature/<algo>`? ¿Cómo las nombro exactamente?
-17. 🔴 **Convención de mensajes de commit** — ¿Conventional Commits (`feat:`, `fix:`...)? ¿En español o inglés?
-18. 🔴 **Plantilla de Pull Request** — ¿qué debe incluir mi PR (descripción, checklist, screenshots)?
-19. 🔴 ¿Qué corre el **CI** en cada PR (lint, tests, build)? ¿Qué tengo que tener en **verde** para que me dejen mergear?
-20. 🟡 ¿Hay **linter/formatter** configurado que deba usar en el móvil (ESLint/Prettier)? ¿Me pasás la config para no pelearme con el CI?
-21. 🟡 ¿Cómo se integra mi **app React Native** al pipeline? ¿El CI hace build del móvil? ¿Necesitás algo especial de mi parte (scripts, comandos)?
-
-## E. Tests E2E (semana 2 en adelante)
-
-22. 🟡 El primer test **E2E** (semana 2) atraviesa mi flujo (listar → solicitar → ver aprobada). ¿Qué necesitás de mí para escribirlo? ¿Cómo simulás/manejás la app móvil en el E2E?
-23. 🟢 ¿Tenés autoridad para **bloquear mi merge** si rompo el E2E (según el plan). ¿Cómo me entero rápido si lo rompí y cómo lo reproduzco localmente?
+| Tema | Dónde está | Respuesta |
+|---|---|---|
+| Convención de ramas | `CLAUDE.md`, `README.md` | `feature/*` cortada de `develop` |
+| Convención de commits | `CLAUDE.md` | Conventional Commits — `feat`, `fix`, `chore`, `docs`, `test`, `ci`, `refactor` |
+| Plantilla de PR | `.github/pull_request_template.md` | Existe, con checklist |
+| Flujo de merge | `README.md` | PR contra `develop` → CI verde + 1 aprobación → **squash and merge** |
+| CI | `.github/workflows/ci.yml` | Job `ci-gate`. Hoy es un **placeholder** (`echo && exit 0`); los jobs reales se cablean el día 3+ |
 
 ---
 
-## Resumen: lo mínimo que necesito de Wa para arrancar
+# 🔴 Lo que necesito para arrancar
 
-- **URL base de la API** (dev/staging) y **usuarios/seeds de prueba** (Q1, Q2).
-- **Flujo de URL prefirmada** completo, o el **plan B** con `photo_url` manual (Q5–Q7, Q11).
-- **Convenciones** de ramas, commits, plantilla de PR y qué exige el CI para mergear (Q16–Q19).
+## 1. Ambientes y URL base de la API
+
+`infra/` está vacío todavía.
+
+- ¿Dónde va a correr la API de Trucy en **dev** y en **staging**?
+- ¿Cómo la configuro desde el móvil? ¿Una env var tipo `EXPO_PUBLIC_API_URL`?
+- ¿Cómo levanto el entorno **local** si lo necesito (docker-compose, `.env.example`)?
+
+## 2. Seeds / usuarios de prueba
+
+Necesito probar sin depender de que Silverk publique artículos a mano cada vez. Idealmente los seeds traen:
+
+- Un usuario **dueño** y un usuario **arrendatario**, con credenciales que me pases
+- Varios **items con foto**, de categorías distintas y **precios variados** (para probar los chips de rango de precio)
+- Alguna **reserva ya creada** en distintos estados, para poder probar mis pantallas sin recorrer todo el flujo cada vez
+
+## 3. Servicio de imágenes / URLs prefirmadas ⭐
+
+*Es lo que más me bloquea de tu lado.* Lo uso en el **check-in y check-out** (foto del estado del artículo).
+
+- ¿Qué endpoint pido para obtener la URL prefirmada? ¿Qué le mando y qué me devuelve (`uploadUrl` + `publicUrl`)?
+- ¿Con qué método subo el archivo? ¿`PUT`? ¿`POST` multipart? ¿Qué headers necesito?
+- ¿Cuánto **dura** la URL antes de expirar? (por si el usuario tarda tomando la foto)
+- ¿**Límites** de formato y tamaño? (para comprimir en el celular antes de subir)
+- ¿Necesito **auth** para pedirla?
+- ¿El **mismo servicio** sirve para la foto del artículo (de Silverk) y para mis fotos de check-in/out?
+- **Plan B:** si no llega para la semana 1, ¿puedo mandar una `photo_url` placeholder para no bloquearme?
+
+## 4. Servicio de pagos / depósito mock
+
+- ¿Cómo "pago" el depósito desde el móvil? ¿Tiene **endpoint propio**, o es parte de crear la reserva (y lo maneja Trucy)?
+- ¿Puedo forzar un **fallo** para probar el camino de error, o siempre devuelve éxito?
+- ¿En qué momento se **retiene** (`HOLD`) y se **libera** (`RELEASE`)? ¿Lo disparo yo o pasa solo en el backend?
+
+## 5. El CI del móvil
+
+Cuando cablees los jobs reales (día 3+):
+
+- ¿Qué va a correr sobre `apps/mobile` — lint, test, build?
+- ¿Necesitás algo de mí (scripts en el `package.json`, comandos específicos)?
+- ¿Hay config de **ESLint/Prettier** que deba respetar, o la defino yo? Prefiero saberlo **antes** de escribir código, no cuando el CI me rebote el PR.
+
+## 6. El stack del móvil
+
+El `CLAUDE.md` dice *"Stack TBD — updated on day 3"*.
+
+Propongo **React Native + Expo**: Expo Go permite probar en el celular escaneando un QR, y `expo-camera` / `expo-image-picker` / `expo-secure-store` ya vienen resueltos — los necesito sí o sí para las fotos y para guardar el token de forma segura.
+
+¿Lo dejamos registrado en el `CLAUDE.md`?
+
+---
+
+# ⚠️ Tres cosas que encontré revisando el scaffold
+
+## A. El `CODEOWNERS` tiene usuarios que no existen
+
+Dice `@trucy @silverk @zero @wa` — son **alias, no usuarios de GitHub**. El propio archivo lo marca como TODO.
+
+Los reales son:
+
+| Alias | Usuario de GitHub |
+|---|---|
+| Trucy | `@josepicado95` |
+| Silverk | `@josmedina` |
+| Zero | `@psced10-creator` |
+| Wa | `@Wa39` |
+
+## B. Los rulesets no están activos — y sin eso, las reglas del equipo no existen ⭐
+
+**El `CODEOWNERS` por sí solo no hace nada.** GitHub solo lo aplica si además hay un **ruleset activo** con *"Require review from Code Owners"*.
+
+Prueba concreta: **al abrir el PR #1, GitHub me lo puso contra `main` por defecto, con el botón "Squash and merge" habilitado.** Podría haber mergeado directo a producción, sin revisión de nadie, y nada me lo habría impedido.
+
+O sea que hoy *"nadie pushea a develop"*, *"todo pasa por PR"* y *"los 4 aprueban el contrato"* son **acuerdos de palabra**, no reglas técnicas.
+
+En **Settings → Rules → Rulesets**, sobre `develop` y `main`, haría falta:
+
+- Requerir **Pull Request** (bloquear push directo)
+- Requerir **1 aprobación** mínimo
+- Requerir el check **`ci-gate`** en verde
+- Requerir **review de Code Owners** (para que aplique la regla de `packages/contracts/`)
+
+Esto solo lo puede hacer Wa (dueño del repo) desde la configuración de GitHub — **no se puede por código**. Y como el proceso es el **50% de la nota**, parece lo primero a cerrar.
+
+## C. El `openapi.yaml` está vacío
+
+Son 6 líneas y todas son comentarios — ni un endpoint. Y se congela el día 3.
+
+Mis requisitos del móvil están en [`preguntas-para-trucy.md`](./preguntas-para-trucy.md), para que la sesión del contrato arranque con algo concreto en vez de una hoja en blanco. Si te sirve para el E2E, echale un ojo: ahí están los formatos de error y la máquina de estados que también vas a necesitar.
+
+---
+
+# 🟡 Tests E2E (semana 2 en adelante)
+
+- El primer test E2E atraviesa mi flujo (listar → solicitar → ver aprobada). ¿Qué necesitás de mí para escribirlo? ¿Cómo manejás la app móvil dentro del E2E?
+- Si rompo el E2E, ¿cómo me entero rápido y cómo lo reproduzco localmente?
