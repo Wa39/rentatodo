@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>RentaTodo · Qué falta para continuar — App móvil (Zero)</title>
+<style>
+  @page{size:A4;margin:18mm 16mm}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Segoe UI",-apple-system,Roboto,sans-serif;color:#1F3B57;font-size:10.5pt;line-height:1.5}
+  .doc{max-width:180mm;margin:0 auto}
+  .kicker{font-size:8.5pt;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:#0E7C7B}
+  h1{font-size:19pt;font-weight:800;letter-spacing:-.3px;margin:2mm 0 1mm}
+  .meta{font-size:9pt;color:#7A8791;margin-bottom:6mm}
+  .meta b{color:#1F3B57}
+  h2{font-size:12.5pt;font-weight:800;margin:8mm 0 3mm;padding-bottom:1.5mm;border-bottom:2px solid #0E7C7B}
+  h3{font-size:10.5pt;font-weight:700;margin:5mm 0 2mm;color:#0E7C7B}
+  p{margin-bottom:2.5mm}
+  ul,ol{margin:0 0 3mm 6mm}
+  li{margin-bottom:1.2mm}
+  code{font-family:Consolas,monospace;font-size:9pt;background:#EEF2F4;padding:.5px 4px;border-radius:3px}
+  table{width:100%;border-collapse:collapse;margin:2mm 0 4mm;font-size:9.3pt}
+  th{background:#E4F1F0;color:#0E7C7B;text-align:left;font-weight:700;padding:2mm 2.5mm;border:1px solid #C9DBDA;font-size:8.6pt;text-transform:uppercase;letter-spacing:.4px}
+  td{padding:1.8mm 2.5mm;border:1px solid #DDE4E8;vertical-align:top}
+  tr:nth-child(even) td{background:#F7F9FA}
+  .callout{border-left:3.5px solid #C97A15;background:#FBECD6;padding:3mm 4mm;border-radius:0 6px 6px 0;margin:3mm 0 4mm;font-size:9.5pt}
+  .callout.teal{border-color:#0E7C7B;background:#E4F1F0}
+  .callout b{display:block;margin-bottom:1mm}
+  .tag{display:inline-block;font-size:8pt;font-weight:700;padding:.5mm 2.5mm;border-radius:8px;background:#F7E0DB;color:#B3402E;letter-spacing:.3px}
+  .tag.amber{background:#FBECD6;color:#C97A15}
+  .tag.green{background:#DCEFE2;color:#2E7D4F}
+  .ok{color:#2E7D4F;font-weight:700}
+  .footer{margin-top:8mm;padding-top:3mm;border-top:1px solid #DDE4E8;font-size:8.5pt;color:#7A8791}
+  h2,h3{page-break-after:avoid}
+  table,.callout{page-break-inside:avoid}
+  tr{page-break-inside:avoid}
+</style>
+</head>
+<body>
+<div class="doc">
+
+  <div class="kicker">RentaTodo · Rol Zero (App móvil) · Documento para el equipo</div>
+  <h1>Qué falta para continuar la app móvil</h1>
+  <div class="meta">14 de julio de 2026 · Reemplaza la "Solicitud de datos v2" · <b>Leyenda: 🔴 bloqueante · 🟡 esta semana · 🟢 puede esperar</b></div>
+
+  <h2>1. Dónde estamos</h2>
+  <p>El esqueleto de la app ya existe y funciona: Expo + TypeScript en <code>apps/mobile</code>, 3 pestañas (Inicio · Mis rentas · Perfil), búsqueda por texto, detalle de artículo con calendario de disponibilidad y estados de reserva con sus colores. Todo el código ya usa <b>la forma del contrato del PR #2</b> (snake_case, USD en centavos, enums en inglés, rangos de fechas), así que no habrá que rehacerlo cuando el contrato se apruebe. Los datos hoy son simulados detrás de una interfaz (<code>FuenteDatos</code>): al llegar el contrato congelado se escribe el cliente real y las pantallas no se tocan.</p>
+  <p>La rama <code>feature/mobile-scaffold</code> está lista en local, pendiente de mostrarse al equipo antes de subirla.</p>
+
+  <h2>2. Lo que necesito de TRUCY (Backend · dueña del contrato)</h2>
+
+  <h3>2.1 🔴 Cerrar y congelar el contrato (PR #2)</h3>
+  <p>Es LA dependencia: sin contrato congelado no se puede escribir el cliente real ni el flujo de reserva. Antes de aprobar, propongo resolver estas observaciones que salieron de revisar el borrador:</p>
+  <table>
+    <tr><th>#</th><th>Observación</th><th>Por qué importa</th><th>Propuesta concreta</th></tr>
+    <tr><td>1</td><td>El schema <code>Error</code> es solo un texto (<code>{"error": "mensaje"}</code>), sin códigos estables. El <code>CANNOT_RENT_OWN_ITEM</code> que ya habíamos acordado no aparece.</td><td>Sin códigos, la app tendría que adivinar el error comparando textos: frágil y se rompe con cualquier cambio de redacción.</td><td>Agregar campo <code>code</code>: <code>{"error": {"code": "DATES_UNAVAILABLE", "message": "..."}}</code>. Mínimo: <code>CANNOT_RENT_OWN_ITEM</code>, <code>DATES_UNAVAILABLE</code>, <code>UNAUTHORIZED</code>, <code>TOKEN_EXPIRED</code>, <code>NOT_FOUND</code>.</td></tr>
+    <tr><td>2</td><td><code>LoginResponse</code> trae solo <code>access_token</code>, sin refresh ni duración declarada.</td><td>Cuando el token expire, la persona queda deslogueada a mitad de uso (p. ej. durante un check-in).</td><td>O refresh token, o declarar duración larga para el curso (p. ej. 24 h) y documentarlo en el spec.</td></tr>
+    <tr><td>3</td><td><code>POST /items/{id}/reservations</code> sin idempotencia.</td><td>Doble tap o reintento por mala señal = dos reservas idénticas.</td><td>Header <code>Idempotency-Key</code> (UUID generado por la app), o que el backend rechace duplicado exacto (mismo renter+item+fechas) con 409.</td></tr>
+    <tr><td>4</td><td>La descripción de <code>unavailable_dates</code> menciona estados en español ("solicitada, aprobada...") pero el enum es en inglés.</td><td>Detalle de consistencia; confunde a quien lea el spec.</td><td>Corregir la descripción a <code>requested, approved, delivered, returned</code>.</td></tr>
+  </table>
+
+  <h3>2.2 🔴 Tres respuestas cortas que el contrato aún no da</h3>
+  <ol>
+    <li>¿<code>category</code> acepta una sola o varias (<code>?category=tools,camping</code>)? — define si mis chips son de selección única o múltiple.</li>
+    <li>¿<code>min_price</code>/<code>max_price</code> son inclusivos y se puede mandar solo uno? — lo necesito para los chips <code>&lt; $10</code> y <code>&gt; $30</code>.</li>
+    <li>Para el polling: ¿cada cuánto es razonable consultar <code>GET /reservations/{id}</code> sin castigar al backend? (propongo cada 15 s con la pantalla abierta).</li>
+  </ol>
+
+  <h3>2.3 🟡 API corriendo</h3>
+  <p>¿Cuándo habrá un API contra el cual apuntar la app, aunque sea local (<code>docker compose up</code>) o en un dev compartido? La app se configura con <code>EXPO_PUBLIC_API_URL</code>, solo necesito el valor.</p>
+
+  <h2>3. Lo que necesito de WA (Plataforma / QA)</h2>
+  <table>
+    <tr><th>Prioridad</th><th>Qué</th><th>Detalle exacto de lo que pido</th></tr>
+    <tr><td>🔴</td><td><b>Activar rulesets en GitHub</b></td><td>En Settings → Rules, sobre <code>develop</code> y <code>main</code>: requerir PR (bloquear push directo), 1 aprobación mínima, check <code>ci-gate</code> en verde y review de Code Owners. Hoy las reglas del equipo son de palabra: el PR #1 se pudo haber mergeado a <code>main</code> sin revisión. Con proceso = 50% de la nota, es lo más urgente del proyecto.</td></tr>
+    <tr><td>🔴</td><td><b>Corregir CODEOWNERS</b></td><td>Reemplazar los alias por los usuarios reales: <code>@josepicado95</code> (Trucy), <code>@josmedina</code> (Silverk), <code>@psced10-creator</code> (Zero), <code>@Wa39</code> (Wa). Sin esto, el ruleset de Code Owners no tiene a quién exigir.</td></tr>
+    <tr><td>🔴</td><td><b>Servicio de imágenes (URLs prefirmadas)</b></td><td>Para la foto de check-in/check-out (y la del reporte, que el contrato exige): ¿qué endpoint pido?, ¿qué devuelve (<code>upload_url</code> + <code>public_url</code>)?, ¿subo con PUT o multipart y con qué headers?, ¿cuánto dura la URL?, ¿límites de tamaño/formato?, ¿requiere token? Plan B si no llega esta semana: acordar un <code>photo_url</code> placeholder para no bloquear el flujo.</td></tr>
+    <tr><td>🟡</td><td><b>Depósito mock</b></td><td>Confirmar si el hold/release/freeze lo dispara solo el backend (mi lectura del contrato: sí, en approve/close/report) o si la app debe llamar algo. Si hay endpoint propio de pagos, necesito su spec.</td></tr>
+    <tr><td>🟡</td><td><b>Seeds en <code>infra/</code></b></td><td>Un dueño y un arrendatario con credenciales conocidas; 8-10 items con foto, categorías variadas y precios distintos (para probar los chips de rango); reservas ya creadas en varios estados (para probar Mis rentas sin recorrer el flujo entero cada vez).</td></tr>
+    <tr><td>🟡</td><td><b>CI del móvil</b></td><td>¿Qué correrá <code>ci-gate</code> sobre <code>apps/mobile</code>: lint, tsc, test, build? ¿Config de ESLint/Prettier que deba respetar? Ya dejé <code>npx tsc --noEmit</code> y <code>npx expo export</code> pasando — puedo exponerlos como scripts npm con los nombres que quieras.</td></tr>
+    <tr><td>🟢</td><td><b>Registrar el stack</b></td><td>Actualizar el "Stack TBD" del CLAUDE.md: móvil = React Native + Expo (SDK 57, expo-router, TypeScript), ya materializado en el scaffold.</td></tr>
+    <tr><td>🟢</td><td><b>Revisar/mergear PR #1</b></td><td>Es solo documentación (preguntas y spec de búsqueda); tenerlo en develop evita que las decisiones se pierdan.</td></tr>
+  </table>
+
+  <h2>4. Lo que necesito de SILVERK (Web del dueño)</h2>
+  <ul>
+    <li>🟡 <b>Artículos de prueba publicados desde su dashboard</b> en cuanto su app exista (mientras tanto me sirven los seeds de Wa). La demo final exige el flujo: <b>dueño publica en web → arrendatario renta en móvil</b>.</li>
+    <li>🟡 <b>Acordar la visibilidad cruzada del reporte de problema</b>: cuando el arrendatario reporta desde el móvil, ¿qué ve el dueño en la web (y viceversa, si el dueño reporta en la devolución)? Propuesta mínima: evento en el historial + badge de depósito congelado en ambos lados.</li>
+    <li>🟢 <b>Sincronizar etiquetas en español</b> de estados y categorías para que web y móvil digan lo mismo (mi mapeo está en <code>apps/mobile/src/data/estados.ts</code> — se lo puedo pasar).</li>
+  </ul>
+
+  <h2>5. Decisiones que me tocan a mí (Zero)</h2>
+  <ol>
+    <li>🔴 Revisar y <b>aprobar el PR #2</b> (contrato) en GitHub, idealmente después de que Trucy responda las observaciones de la sección 2.1.</li>
+    <li>🔴 Enseñar el scaffold al equipo y, con su visto bueno, <b>subir la rama y abrir el PR</b> del scaffold hacia <code>develop</code>.</li>
+    <li>🟡 Aprobar el PR #1 (mis propios docs) cuando Wa lo revise.</li>
+  </ol>
+
+  <h2>6. Qué construyo en cuanto llegue cada cosa</h2>
+  <table>
+    <tr><th>En cuanto llegue…</th><th>Construyo…</th></tr>
+    <tr><td>Contrato congelado (Trucy)</td><td>Cliente real de la API implementando la interfaz <code>FuenteDatos</code> + pantallas de login/registro con el token en <code>expo-secure-store</code>.</td></tr>
+    <tr><td>API corriendo (Trucy/Wa)</td><td>Conexión real: listado, detalle y calendario contra datos vivos. Vertical slice de la semana 2: elegir fechas → <code>POST /reservations</code> → ver el cambio de estado por polling.</td></tr>
+    <tr><td>URLs prefirmadas (Wa)</td><td>Check-in/check-out con <code>expo-camera</code>: 1 foto → subir → <code>PATCH /checkin|/checkout</code>.</td></tr>
+    <tr><td>Seeds (Wa)</td><td>Pruebas de Mis rentas con todos los estados y del buscador con catálogo variado.</td></tr>
+    <tr><td>Decisión sobre reporte (equipo)</td><td>Botón "Reportar problema" en el detalle de la reserva: <code>POST /report</code> con foto y motivo → depósito congelado.</td></tr>
+  </table>
+
+  <div class="callout teal">
+    <b>Resumen en una línea por persona</b>
+    <b>Trucy:</b> resolver 4 observaciones + 3 respuestas cortas → congelar contrato. · <b>Wa:</b> rulesets + CODEOWNERS + spec de URLs prefirmadas + seeds. · <b>Silverk:</b> items de prueba + acuerdo de visibilidad del reporte. · <b>Zero:</b> aprobar PRs y subir el scaffold.
+  </div>
+
+  <div class="footer">
+    RentaTodo · Documento del rol Zero (app móvil) · 14-jul-2026. El contrato válido es el spec OpenAPI congelado; todo lo aquí propuesto se discute en los PRs correspondientes. Scaffold de referencia: rama <code>feature/mobile-scaffold</code> · Mockup: <code>apps/mobile/docs/mock_flujo_arrendatario.html</code>.
+  </div>
+
+</div>
+</body>
+</html>

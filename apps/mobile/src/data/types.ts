@@ -69,3 +69,40 @@ export type Reservation = {
 export function formatoUSD(centavos: number): string {
   return `$${(centavos / 100).toFixed(2)}`;
 }
+
+/**
+ * Códigos de error estables — acordados con Trucy el 14-jul-2026
+ * (pendientes de verse reflejados en el spec; ella los pushea al PR #2).
+ * La app decide por el `code`, nunca por el texto del mensaje.
+ *
+ * HTTP → codes: 401 UNAUTHORIZED|TOKEN_EXPIRED · 403 FORBIDDEN|CANNOT_RENT_OWN_ITEM
+ * 404 NOT_FOUND · 409 DATES_UNAVAILABLE|INVALID_TRANSITION|DUPLICATE_RESERVATION|
+ * FREEZE_ACTIVE|REPORT_EXISTS · 422 VALIDATION_ERROR
+ */
+export type ApiErrorCode =
+  | 'CANNOT_RENT_OWN_ITEM'
+  | 'DATES_UNAVAILABLE'
+  | 'UNAUTHORIZED'
+  | 'TOKEN_EXPIRED'
+  | 'FORBIDDEN'
+  | 'NOT_FOUND'
+  | 'INVALID_TRANSITION'
+  | 'DUPLICATE_RESERVATION'
+  | 'REPORT_EXISTS'
+  | 'FREEZE_ACTIVE'
+  | 'VALIDATION_ERROR';
+
+export type ApiError = {
+  error: {
+    code: ApiErrorCode;
+    message: string;
+  };
+};
+
+/**
+ * Otras decisiones cerradas con Trucy (14-jul-2026):
+ * - Token: 24 h sin refresh (expires_in: 86400).
+ * - Doble solicitud: mismo renter+item+fechas en `requested` → 409 DUPLICATE_RESERVATION (sin header extra).
+ * - `category`: selección ÚNICA. `min_price`/`max_price`: inclusivos, se puede mandar solo uno.
+ * - Polling: cada 15 s con la pantalla abierta.
+ */
