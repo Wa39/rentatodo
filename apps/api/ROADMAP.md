@@ -8,22 +8,24 @@
 ## Current status
 
 **Week:** 1 — Contracts and scaffolding
-**Last updated:** 2026-07-08
-**Current focus:** Scaffolding the FastAPI + PostgreSQL + Alembic skeleton
+**Last updated:** 2026-07-09
+**Current focus:** Scaffold done and verified end-to-end. Paused: waiting
+on the team to align on business/product details before starting real
+models and auth.
 
 ## Done
 
-- [ ] Nothing yet — this is day 0
+- [x] Docker Compose with Postgres 16 service
+- [x] Folder structure (models/, schemas/, routers/, services/)
+- [x] Database connection (SQLAlchemy engine + session)
+- [x] Alembic initialized and configured
+- [x] `Ping` test model + migration
+- [x] `GET /health` endpoint
+- [x] First pytest test
 
 ## In progress
 
-- [ ] Docker Compose with Postgres 16 service
-- [ ] Folder structure (models/, schemas/, routers/, services/)
-- [ ] Database connection (SQLAlchemy engine + session)
-- [ ] Alembic initialized and configured
-- [ ] `Ping` test model + migration
-- [ ] `GET /health` endpoint
-- [ ] First pytest test
+- [ ] Nothing right now — scaffold complete, next session starts on real models
 
 ## Next up (not started)
 
@@ -46,6 +48,8 @@
 | 2026-07-08 | Money stored as integer cents, never floats | Avoids rounding errors |
 | 2026-07-08 | `transactions` and `reservations` history is append-only (no UPDATE/DELETE) | Audit trail requirement |
 | 2026-07-08 | Soft delete on items (`is_active` flag) | Preserves reservation history when an item is removed |
+| 2026-07-09 | `DATABASE_URL` is read from `.env` via `pydantic-settings` (`app/database.py`); `alembic.ini`'s static `sqlalchemy.url` is left blank and overridden at runtime in `alembic/env.py` | Avoids duplicating DB credentials in two config files |
+| 2026-07-09 | `GET /health` checks connectivity with a raw `SELECT 1`, not a query against the `ping` table | Health check shouldn't depend on any specific table existing |
 
 ## Open questions / blockers
 
@@ -62,3 +66,4 @@
 > this is a changelog, not a diary.
 
 - **2026-07-08** — Repo cloned, CLAUDE.md and ROADMAP.md created. Next: run Prompt 0 (scaffolding).
+- **2026-07-09** — Scaffolded FastAPI + Postgres + SQLAlchemy + Alembic: docker-compose `db` service, `app/` folder structure, `database.py`, Alembic init wired to `Base.metadata`, `Ping` test model + migration (applied and verified against real Postgres), `GET /health` endpoint, pytest coverage (happy path + DB-unreachable case) — all passing. Paused: team needs to align on the business/product side before starting real models. Next: real models (User, Item, Reservation, Transaction, CheckEvidence, Report).
