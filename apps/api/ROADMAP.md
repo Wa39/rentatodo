@@ -8,10 +8,10 @@
 ## Current status
 
 **Week:** 1 — Contracts and scaffolding
-**Last updated:** 2026-07-09
-**Current focus:** Scaffold done and verified end-to-end. Paused: waiting
-on the team to align on business/product details before starting real
-models and auth.
+**Last updated:** 2026-07-14
+**Current focus:** Scaffold and first OpenAPI draft are both up for team
+review (see PRs below). Paused: waiting on item categories and the
+merged contract before starting real models and auth.
 
 ## Done
 
@@ -25,7 +25,8 @@ models and auth.
 
 ## In progress
 
-- [ ] Nothing right now — scaffold complete, next session starts on real models
+- [ ] PR #3 (`feature/api-scaffolding` → `develop`) — scaffold, awaiting review
+- [ ] PR #2 (`feature/openapi-spec` → `develop`) — first OpenAPI contract draft, awaiting review
 
 ## Next up (not started)
 
@@ -50,15 +51,16 @@ models and auth.
 | 2026-07-08 | Soft delete on items (`is_active` flag) | Preserves reservation history when an item is removed |
 | 2026-07-09 | `DATABASE_URL` is read from `.env` via `pydantic-settings` (`app/database.py`); `alembic.ini`'s static `sqlalchemy.url` is left blank and overridden at runtime in `alembic/env.py` | Avoids duplicating DB credentials in two config files |
 | 2026-07-09 | `GET /health` checks connectivity with a raw `SELECT 1`, not a query against the `ping` table | Health check shouldn't depend on any specific table existing |
+| 2026-07-14 | Stack confirmed with the team: FastAPI + PostgreSQL + SQLAlchemy | Closes the day-3 stack question |
+| 2026-07-14 | `owner_id` stays derived via `item_id` — not denormalized onto `reservations` | Matches existing table design; no need for a redundant column |
 
 ## Open questions / blockers
 
 > Things I don't have an answer for yet — Claude Code should flag if
 > it needs one of these resolved before proceeding, rather than guessing.
 
-- [ ] Final stack confirmation with the team (day 3 deadline)
-- [ ] Exact list of valid item categories
-- [ ] Whether `owner_id` gets denormalized onto `reservations` or stays derived via `item_id`
+- [ ] Exact list of valid item categories — not yet decided by the team;
+      blocks the `Item` model's `category` field
 
 ## Session log
 
@@ -67,3 +69,4 @@ models and auth.
 
 - **2026-07-08** — Repo cloned, CLAUDE.md and ROADMAP.md created. Next: run Prompt 0 (scaffolding).
 - **2026-07-09** — Scaffolded FastAPI + Postgres + SQLAlchemy + Alembic: docker-compose `db` service, `app/` folder structure, `database.py`, Alembic init wired to `Base.metadata`, `Ping` test model + migration (applied and verified against real Postgres), `GET /health` endpoint, pytest coverage (happy path + DB-unreachable case) — all passing. Paused: team needs to align on the business/product side before starting real models. Next: real models (User, Item, Reservation, Transaction, CheckEvidence, Report).
+- **2026-07-14** — Confirmed stack and `owner_id` design with the team. Opened `feature/api-scaffolding` (PR #3) to get last session's scaffold reviewed, and `feature/openapi-spec` (PR #2) with the first OpenAPI contract draft for team review. Installed and authenticated the GitHub CLI (`gh`) on this machine. Next: wait on PR reviews and item-categories decision before starting real models.
