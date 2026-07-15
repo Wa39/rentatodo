@@ -7,8 +7,14 @@ from datetime import datetime, timedelta, timezone
 
 import bcrypt
 import jwt
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
 from app.config import settings
+from app.exceptions import AppError
+from app.models.user import User
+from app.schemas.auth import LoginRequest, RegisterRequest
 
 
 def hash_password(plain: str) -> str:
@@ -76,3 +82,55 @@ def decode_access_token(token: str) -> uuid.UUID:
     """
     payload = jwt.decode(token, settings.jwt_secret, algorithms=["HS256"])
     return uuid.UUID(payload["sub"])
+
+
+def register_user(db: Session, data: RegisterRequest) -> User:
+    """Create a new user account.
+
+    Args:
+        db: Database session.
+        data: The validated registration payload.
+
+    Returns:
+        The newly created User.
+
+    Raises:
+        AppError: 422 VALIDATION_ERROR if the email is already registered.
+    """
+    existing = db.scalar(select(User).where(User.email == data.email))
+    if existing is not None:
+        raise AppError(422, "VALIDATION_ERROR", "Email is already registered")
+
+    user = User(name=data.name, email=data.email, password_hash=hash_password(data.password))
+    db.add(user)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise AppError(422, "VALIDATION_ERROR", "Email is already registered")
+    db.refresh(user)
+    return user
+
+
+def authenticate_user(db: Session, data: LoginRequest) -> tuple[User, str]:
+    """Verify credentials and issue an access token.
+
+    Args:
+        db: Database session.
+        data: The validated login payload.
+
+    Returns:
+        A tuple of the authenticated User and a freshly created access
+        token.
+
+    Raises:
+        AppError: 401 UNAUTHORIZED if the email doesn't exist or the
+            password doesn't match. Deliberately doesn't distinguish
+            which of the two failed.
+    """
+    user = db.scalar(select(User).where(User.email == data.email))
+    if user is None or not verify_password(data.password, user.password_hash):
+        raise AppError(401, "UNAUTHORIZED", "Invalid email or password")
+
+    token = create_access_token(user.id)
+    return user, token
