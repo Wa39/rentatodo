@@ -1,0 +1,29 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: rentatodo
+      POSTGRES_PASSWORD: rentatodo
+      POSTGRES_DB: rentatodo
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rentatodo -d rentatodo"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
+
+# Usage:
+#   docker compose -f infra/docker-compose.yml up -d
+#
+# Corresponding DATABASE_URL for apps/api/.env:
+#   DATABASE_URL=postgresql+psycopg://rentatodo:rentatodo@localhost:5432/rentatodo
+#
+# Then from apps/api/ (with virtualenv active):
+#   alembic upgrade head
+#   uvicorn app.main:app --reload
