@@ -26,7 +26,7 @@ merged contract before starting real models and auth.
 ## In progress
 
 - [ ] PR #3 (`feature/api-scaffolding` → `develop`) — scaffold, awaiting review
-- [ ] PR #2 (`feature/openapi-spec` → `develop`) — first OpenAPI contract draft, awaiting review
+- [ ] PR #2 (`feature/openapi-spec` → `develop`) — OpenAPI contract, team review feedback applied (error schema, `expires_in`, duplicate-reservation 409, English translation fix), awaiting merge
 
 ## Next up (not started)
 
@@ -53,6 +53,8 @@ merged contract before starting real models and auth.
 | 2026-07-09 | `GET /health` checks connectivity with a raw `SELECT 1`, not a query against the `ping` table | Health check shouldn't depend on any specific table existing |
 | 2026-07-14 | Stack confirmed with the team: FastAPI + PostgreSQL + SQLAlchemy | Closes the day-3 stack question |
 | 2026-07-14 | `owner_id` stays derived via `item_id` — not denormalized onto `reservations` | Matches existing table design; no need for a redundant column |
+| 2026-07-14 | Error responses are `{ error: { code, message } }`, not a plain string | Lets clients (web, mobile) branch on `error.code` instead of parsing free text |
+| 2026-07-14 | `POST /items/{item_id}/reservations` returns `409 DUPLICATE_RESERVATION` for an exact repeat request (same renter+item+dates, still "requested"), distinct from `409 DATES_UNAVAILABLE` | Avoids silently creating duplicate rows on renter double-submit; distinguishable via `error.code` |
 
 ## Open questions / blockers
 
@@ -70,3 +72,4 @@ merged contract before starting real models and auth.
 - **2026-07-08** — Repo cloned, CLAUDE.md and ROADMAP.md created. Next: run Prompt 0 (scaffolding).
 - **2026-07-09** — Scaffolded FastAPI + Postgres + SQLAlchemy + Alembic: docker-compose `db` service, `app/` folder structure, `database.py`, Alembic init wired to `Base.metadata`, `Ping` test model + migration (applied and verified against real Postgres), `GET /health` endpoint, pytest coverage (happy path + DB-unreachable case) — all passing. Paused: team needs to align on the business/product side before starting real models. Next: real models (User, Item, Reservation, Transaction, CheckEvidence, Report).
 - **2026-07-14** — Confirmed stack and `owner_id` design with the team. Opened `feature/api-scaffolding` (PR #3) to get last session's scaffold reviewed, and `feature/openapi-spec` (PR #2) with the first OpenAPI contract draft for team review. Installed and authenticated the GitHub CLI (`gh`) on this machine. Next: wait on PR reviews and item-categories decision before starting real models.
+- **2026-07-14** — Applied 4 team review changes to `packages/contracts/openapi.yaml` on PR #2: structured `Error` schema (`code` + `message`), added required `LoginResponse.expires_in`, documented `409 DUPLICATE_RESERVATION` on the create-reservation endpoint, translated `unavailable_dates` status list to English. Committed, pushed, and posted a summary comment on PR #2 for reviewers. Next: wait on PR #2/#3 reviews and item-categories decision before starting real models.
