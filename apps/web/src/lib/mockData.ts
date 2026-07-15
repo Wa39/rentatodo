@@ -1,0 +1,127 @@
+import type {
+  Earnings,
+  Item,
+  ItemDetail,
+  Reservation,
+  Transaction,
+  User,
+} from './types'
+
+export const mockUser: User = {
+  id: '11111111-1111-4111-8111-111111111111',
+  name: 'María Vargas',
+  email: 'maria@example.com',
+  created_at: '2026-06-01T10:00:00Z',
+}
+
+export const mockItems: Item[] = [
+  {
+    id: '22222222-2222-4222-8222-222222222222',
+    name: 'Taladro Bosch Professional',
+    description: 'Taladro inalámbrico 18V con maletín y 3 brocas',
+    category: 'tools',
+    price_per_day: 1000,
+    photo_url: 'https://storage.example.com/photos/taladro.jpg',
+    is_active: true,
+    owner_id: mockUser.id,
+    owner_name: mockUser.name,
+    created_at: '2026-06-05T09:00:00Z',
+  },
+  {
+    id: '33333333-3333-4333-8333-333333333333',
+    name: 'Carpa Camping 4 personas',
+    description: 'Carpa impermeable, fácil armado, incluye estacas',
+    category: 'camping',
+    price_per_day: 1500,
+    photo_url: 'https://storage.example.com/photos/carpa.jpg',
+    is_active: true,
+    owner_id: mockUser.id,
+    owner_name: mockUser.name,
+    created_at: '2026-06-10T09:00:00Z',
+  },
+  {
+    id: '44444444-4444-4444-8444-444444444444',
+    name: 'Cámara Canon EOS antigua',
+    description: 'Cámara réflex, dada de baja de la lista pública',
+    category: 'photography',
+    price_per_day: 2000,
+    photo_url: 'https://storage.example.com/photos/canon.jpg',
+    is_active: false,
+    owner_id: mockUser.id,
+    owner_name: mockUser.name,
+    created_at: '2026-05-20T09:00:00Z',
+  },
+]
+
+export function mockItemDetail(itemId: string): ItemDetail | undefined {
+  const item = mockItems.find((candidate) => candidate.id === itemId)
+  if (!item) return undefined
+  return {
+    ...item,
+    unavailable_dates: [
+      { start_date: '2026-07-18', end_date: '2026-07-20' },
+      { start_date: '2026-07-25', end_date: '2026-07-27' },
+    ],
+  }
+}
+
+export const mockRequests: Reservation[] = [
+  {
+    id: '55555555-5555-4555-8555-555555555555',
+    item_id: mockItems[0].id,
+    item_name: mockItems[0].name,
+    item_photo_url: mockItems[0].photo_url,
+    renter_id: '66666666-6666-4666-8666-666666666666',
+    renter_name: 'Jorge Salas',
+    start_date: '2026-07-18',
+    end_date: '2026-07-20',
+    status: 'requested',
+    deposit_amount: 2000,
+    deposit_status: 'none',
+    created_at: '2026-07-14T12:00:00Z',
+    updated_at: '2026-07-14T12:00:00Z',
+  },
+  {
+    id: '77777777-7777-4777-8777-777777777777',
+    item_id: mockItems[1].id,
+    item_name: mockItems[1].name,
+    item_photo_url: mockItems[1].photo_url,
+    renter_id: '88888888-8888-4888-8888-888888888888',
+    renter_name: 'Camila Ríos',
+    start_date: '2026-07-10',
+    end_date: '2026-07-12',
+    status: 'delivered',
+    deposit_amount: 4500,
+    deposit_status: 'held',
+    created_at: '2026-07-08T09:00:00Z',
+    updated_at: '2026-07-10T08:00:00Z',
+  },
+]
+
+export const mockTransactions: Transaction[] = [
+  {
+    id: '99999999-9999-4999-8999-999999999999',
+    reservation_id: mockRequests[1].id,
+    type: 'hold',
+    amount: 4500,
+    created_at: '2026-07-10T08:00:00Z',
+  },
+]
+
+export const mockEarnings: Earnings = {
+  total_earnings: 7000,
+  by_item: [
+    {
+      item_id: mockItems[0].id,
+      item_name: mockItems[0].name,
+      total: 3000,
+      rentals: [{ start_date: '2026-06-01', end_date: '2026-06-03', amount: 3000 }],
+    },
+    {
+      item_id: mockItems[1].id,
+      item_name: mockItems[1].name,
+      total: 4000,
+      rentals: [{ start_date: '2026-06-10', end_date: '2026-06-12', amount: 4000 }],
+    },
+  ],
+}
