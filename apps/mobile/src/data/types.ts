@@ -1,8 +1,7 @@
 /**
- * Types aligned to the contract DRAFT: packages/contracts/openapi.yaml
- * (feature/openapi-spec branch, PR #2 — not yet approved by all consumers).
- * If the contract changes during review, this file gets adjusted.
- * Once the contract is frozen, these should ideally be generated from the spec.
+ * Types aligned to the frozen contract: packages/contracts/openapi.yaml
+ * (merged to develop via PR #2). Any contract change requires an approved
+ * PR from all consumers, so these types only change alongside the spec.
  */
 
 export type Category =
@@ -71,9 +70,8 @@ export function formatUSD(cents: number): string {
 }
 
 /**
- * Stable error codes — agreed with Trucy on 2026-07-14
- * (pending reflection in the spec; she pushes them to PR #2).
- * The app decides by `code`, never by the message text.
+ * Stable error codes — agreed with Trucy on 2026-07-14 and part of the
+ * frozen contract. The app decides by `code`, never by the message text.
  *
  * HTTP → codes: 401 UNAUTHORIZED|TOKEN_EXPIRED · 403 FORBIDDEN|CANNOT_RENT_OWN_ITEM
  * 404 NOT_FOUND · 409 DATES_UNAVAILABLE|INVALID_TRANSITION|DUPLICATE_RESERVATION|

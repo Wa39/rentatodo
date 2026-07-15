@@ -1,13 +1,12 @@
 import type { Item, ItemDetail, Reservation } from '@/data/types';
 
 /**
- * App data layer, shaped like the contract DRAFT (PR #2):
+ * App data layer, shaped like the frozen contract (packages/contracts/openapi.yaml):
  * GET /items?sort=popular|recent&q=...&category=...  ·  GET /items/{id}
  * GET /users/me/reservations
  *
- * Today the implementation is a local MOCK. Once the contract is frozen,
- * a real implementation (API client) fulfills this same interface and the
- * screens stay untouched.
+ * Today the implementation is a local MOCK. The real implementation
+ * (API client) fulfills this same interface and the screens stay untouched.
  */
 export interface DataSource {
   listItems(sort: 'popular' | 'recent'): Promise<Item[]>;

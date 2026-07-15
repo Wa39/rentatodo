@@ -1,7 +1,7 @@
 import type { Category, ReservationStatus } from '@/data/types';
 
 /**
- * Single place where contract enums (English, per the PR #2 draft) are
+ * Single place where the frozen contract's enums (English) are
  * mapped to Spanish UI labels and interface colors.
  */
 export const STATUS_META: Record<
