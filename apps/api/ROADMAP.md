@@ -8,10 +8,10 @@
 ## Current status
 
 **Week:** 1 — Contracts and scaffolding
-**Last updated:** 2026-07-14
-**Current focus:** Scaffold and first OpenAPI draft are both up for team
-review (see PRs below). Item categories are now decided. Paused: waiting
-on the merged contract before starting real models and auth.
+**Last updated:** 2026-07-15
+**Current focus:** Contract and scaffold are both merged to `develop`.
+No open blockers. Next: start real models, beginning with `User` and
+Auth (register, login, JWT), per the Days 1-3 plan in `openapi.yaml`.
 
 ## Done
 
@@ -22,11 +22,13 @@ on the merged contract before starting real models and auth.
 - [x] `Ping` test model + migration
 - [x] `GET /health` endpoint
 - [x] First pytest test
+- [x] PR #3 (`feature/api-scaffolding` → `develop`) — scaffold, merged 2026-07-15
+- [x] PR #2 (`feature/openapi-spec` → `develop`) — OpenAPI contract v1 with team review feedback (structured error schema, `expires_in`, duplicate-reservation 409, English translation fix), merged 2026-07-15
+- [x] Item categories decided: closed enum, matches placeholder `CategoryEnum`
 
 ## In progress
 
-- [ ] PR #3 (`feature/api-scaffolding` → `develop`) — scaffold, awaiting review
-- [ ] PR #2 (`feature/openapi-spec` → `develop`) — OpenAPI contract, team review feedback applied (error schema, `expires_in`, duplicate-reservation 409, English translation fix), awaiting merge
+_Nothing in progress right now — about to start real models._
 
 ## Next up (not started)
 
@@ -73,3 +75,4 @@ _None open right now._
 - **2026-07-09** — Scaffolded FastAPI + Postgres + SQLAlchemy + Alembic: docker-compose `db` service, `app/` folder structure, `database.py`, Alembic init wired to `Base.metadata`, `Ping` test model + migration (applied and verified against real Postgres), `GET /health` endpoint, pytest coverage (happy path + DB-unreachable case) — all passing. Paused: team needs to align on the business/product side before starting real models. Next: real models (User, Item, Reservation, Transaction, CheckEvidence, Report).
 - **2026-07-14** — Confirmed stack and `owner_id` design with the team. Opened `feature/api-scaffolding` (PR #3) to get last session's scaffold reviewed, and `feature/openapi-spec` (PR #2) with the first OpenAPI contract draft for team review. Installed and authenticated the GitHub CLI (`gh`) on this machine. Next: wait on PR reviews and item-categories decision before starting real models.
 - **2026-07-14** — Applied 4 team review changes to `packages/contracts/openapi.yaml` on PR #2: structured `Error` schema (`code` + `message`), added required `LoginResponse.expires_in`, documented `409 DUPLICATE_RESERVATION` on the create-reservation endpoint, translated `unavailable_dates` status list to English. Committed, pushed, and posted a summary comment on PR #2 for reviewers. Team also agreed on item categories: closed enum, matching the placeholder already in `CategoryEnum` — no contract change needed, no dynamic category table. Next: wait on PR #2/#3 reviews before starting real models.
+- **2026-07-15** — PR #2 and PR #3 both merged to `develop`. No open blockers left. Next: start real models, beginning with `User` and Auth (register, login, JWT middleware) per the Days 1-3 plan.
