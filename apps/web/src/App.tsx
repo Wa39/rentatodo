@@ -1,8 +1,12 @@
+import { RouterProvider } from 'react-router-dom'
+import { AuthProvider } from '@/lib/AuthContext'
+import { router } from '@/routes'
+
 function App() {
   return (
-    <div data-testid="app-root" className="p-four">
-      RentaTodo dashboard
-    </div>
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
   )
 }
 

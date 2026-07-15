@@ -1,11 +1,12 @@
+// apps/web/src/App.test.tsx
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import App from './App'
 
 describe('App', () => {
-  it('renders with the spacing-four token class applied', () => {
+  it('redirects an unauthenticated visitor from / to the login page', async () => {
+    window.history.pushState({}, '', '/')
     render(<App />)
-    const root = screen.getByTestId('app-root')
-    expect(root).toHaveClass('p-four')
+    expect(await screen.findByRole('button', { name: 'Log in' })).toBeInTheDocument()
   })
 })
