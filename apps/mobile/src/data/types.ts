@@ -64,6 +64,22 @@ export type Reservation = {
   updated_at: string;
 };
 
+/** Public user profile (contract UserResponse — no zone, no password). */
+export type User = {
+  id: string;
+  name: string;
+  email: string;
+  created_at: string;
+};
+
+/** Response of POST /auth/login. */
+export type LoginResponse = {
+  access_token: string;
+  token_type: string;
+  /** Seconds. Contract value: 86400 (24h, no refresh). */
+  expires_in: number;
+};
+
 /** Formats USD cents as "$50.00". */
 export function formatUSD(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;

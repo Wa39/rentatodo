@@ -1,3 +1,4 @@
+import { ApiRequestError } from '@/data/api/http';
 import type { Category, ReservationStatus } from '@/data/types';
 
 /**
@@ -25,3 +26,20 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   electronics: 'Electrónica',
   home: 'Hogar',
 };
+
+/** Spanish UI messages for the contract's stable error codes. */
+export const ERROR_MESSAGES: Record<string, string> = {
+  UNAUTHORIZED: 'Correo o contraseña incorrectos.',
+  TOKEN_EXPIRED: 'La sesión expiró. Inicie sesión de nuevo.',
+  VALIDATION_ERROR: 'Revise los datos ingresados.',
+  NOT_FOUND: 'No se encontró el recurso solicitado.',
+  NETWORK_ERROR: 'No se pudo conectar con el servidor.',
+};
+
+/** Human-readable Spanish message for any error thrown by the data layer. */
+export function errorMessage(e: unknown): string {
+  if (e instanceof ApiRequestError) {
+    return ERROR_MESSAGES[e.code] ?? e.message;
+  }
+  return 'Algo salió mal. Intente de nuevo.';
+}
