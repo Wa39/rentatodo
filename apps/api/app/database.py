@@ -4,25 +4,10 @@ FastAPI dependency used to inject a session scoped to each request.
 
 from collections.abc import Generator
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
-
-class Settings(BaseSettings):
-    """Application settings loaded from environment variables.
-
-    Attributes:
-        database_url: SQLAlchemy connection string for PostgreSQL, read
-            from the ``DATABASE_URL`` environment variable (or ``.env``).
-    """
-
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
-
-    database_url: str
-
-
-settings = Settings()
+from app.config import settings
 
 engine = create_engine(settings.database_url)
 
