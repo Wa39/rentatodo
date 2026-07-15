@@ -48,8 +48,9 @@ export default function TabLayout() {
           ),
         }}
       />
-      {/* Item detail: internal route, hidden from the tab bar */}
+      {/* Internal routes, hidden from the tab bar */}
       <Tabs.Screen name="item/[id]" options={{ href: null }} />
+      <Tabs.Screen name="reservation/[id]" options={{ href: null }} />
     </Tabs>
   );
 }

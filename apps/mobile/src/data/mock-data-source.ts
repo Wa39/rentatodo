@@ -1,11 +1,16 @@
+import { ApiRequestError } from '@/data/api/http';
 import type { DataSource } from '@/data/data-source';
 import type { Item, ItemDetail, Reservation } from '@/data/types';
+import { countDaysInclusive, expandRanges, rangeHasUnavailable } from '@/utils/dates';
 
 /**
  * Local mock shaped exactly like the frozen contract. Keeps the app fully
  * usable in demo mode (EXPO_PUBLIC_API_URL not set): screens, navigation
  * and states work without a backend.
  */
+
+/** The signed-in demo renter (owner of no items, per the mock catalog). */
+const MOCK_RENTER_ID = 'u1';
 
 const base = { is_active: true, created_at: '2026-07-01T12:00:00Z' };
 
@@ -111,5 +116,83 @@ export class MockDataSource implements DataSource {
 
   async listReservations(): Promise<Reservation[]> {
     return [...RESERVATIONS];
+  }
+
+  /**
+   * Mirrors the contract's POST /items/{item_id}/reservations, including
+   * its error codes, so the whole flow is demonstrable without a backend.
+   */
+  async createReservation(itemId: string, startDate: string, endDate: string): Promise<Reservation> {
+    const item = ITEMS.find((a) => a.id === itemId);
+    if (!item) {
+      throw new ApiRequestError(404, 'NOT_FOUND', 'Item not found or inactive');
+    }
+    if (item.owner_id === MOCK_RENTER_ID) {
+      throw new ApiRequestError(403, 'CANNOT_RENT_OWN_ITEM', 'You cannot rent your own item');
+    }
+    const duplicate = RESERVATIONS.some(
+      (r) =>
+        r.item_id === itemId &&
+        r.start_date === startDate &&
+        r.end_date === endDate &&
+        r.status === 'requested',
+    );
+    if (duplicate) {
+      throw new ApiRequestError(409, 'DUPLICATE_RESERVATION', 'Identical reservation already requested');
+    }
+    if (rangeHasUnavailable(startDate, endDate, expandRanges(item.unavailable_dates))) {
+      throw new ApiRequestError(409, 'DATES_UNAVAILABLE', 'Dates overlap an active reservation');
+    }
+
+    const now = new Date().toISOString();
+    const reservation: Reservation = {
+      id: `r-${Date.now()}`,
+      item_id: item.id,
+      item_name: item.name,
+      item_photo_url: item.photo_url,
+      renter_id: MOCK_RENTER_ID,
+      renter_name: 'Zero',
+      start_date: startDate,
+      end_date: endDate,
+      status: 'requested',
+      // Contract: deposit_amount = price_per_day × number of days (backend-calculated).
+      deposit_amount: item.price_per_day * countDaysInclusive(startDate, endDate),
+      deposit_status: 'none',
+      created_at: now,
+      updated_at: now,
+    };
+    RESERVATIONS.unshift(reservation);
+    // Requested reservations already block the dates (contract behavior).
+    item.unavailable_dates.push({ start_date: startDate, end_date: endDate });
+    return { ...reservation };
+  }
+
+  /**
+   * Mirrors PATCH /reservations/{id}/cancel: renter only, transitions
+   * requested|approved → cancelled, releases the deposit if it was held.
+   */
+  async cancelReservation(reservationId: string): Promise<Reservation> {
+    const reservation = RESERVATIONS.find((r) => r.id === reservationId);
+    if (!reservation) {
+      throw new ApiRequestError(404, 'NOT_FOUND', 'Reservation not found');
+    }
+    if (reservation.status !== 'requested' && reservation.status !== 'approved') {
+      throw new ApiRequestError(
+        409,
+        'INVALID_TRANSITION',
+        `Cannot cancel a reservation in status ${reservation.status}`,
+      );
+    }
+    reservation.status = 'cancelled';
+    if (reservation.deposit_status === 'held') reservation.deposit_status = 'released';
+    reservation.updated_at = new Date().toISOString();
+    // Cancelled reservations no longer block the item's dates.
+    const item = ITEMS.find((a) => a.id === reservation.item_id);
+    if (item) {
+      item.unavailable_dates = item.unavailable_dates.filter(
+        (r) => !(r.start_date === reservation.start_date && r.end_date === reservation.end_date),
+      );
+    }
+    return { ...reservation };
   }
 }

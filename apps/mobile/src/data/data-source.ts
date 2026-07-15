@@ -17,6 +17,10 @@ export interface DataSource {
   searchItems(q: string, category?: string): Promise<Item[]>;
   getItem(id: string): Promise<ItemDetail | undefined>;
   listReservations(): Promise<Reservation[]>;
+  /** POST /items/{item_id}/reservations — dates inclusive, today or future. */
+  createReservation(itemId: string, startDate: string, endDate: string): Promise<Reservation>;
+  /** PATCH /reservations/{id}/cancel — renter only; requested|approved → cancelled. */
+  cancelReservation(reservationId: string): Promise<Reservation>;
 }
 
 export const dataSource: DataSource = getApiUrl() ? new ApiDataSource() : new MockDataSource();
