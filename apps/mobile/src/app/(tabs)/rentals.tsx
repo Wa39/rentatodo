@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -7,21 +7,25 @@ import { Brand } from '@/constants/brand';
 import { dataSource } from '@/data/data-source';
 import { STATUS_META } from '@/data/labels';
 import type { Reservation } from '@/data/types';
+import { usePolling } from '@/hooks/use-polling';
 
 type Tab = 'active' | 'past';
 
 /**
  * My rentals — NOT a shopping cart: each reservation is independent, with
  * its own owner, dates and status. History lives in the "Pasadas" tab
- * (design decision: no separate history button).
+ * (design decision: no separate history button). Status changes arrive
+ * via 15s polling while the screen is focused (no push, by design).
  */
 export default function MyRentalsScreen() {
   const [tab, setTab] = useState<Tab>('active');
   const [reservations, setReservations] = useState<Reservation[]>([]);
 
-  useEffect(() => {
-    dataSource.listReservations().then(setReservations);
-  }, []);
+  usePolling(
+    useCallback(() => {
+      dataSource.listReservations().then(setReservations);
+    }, []),
+  );
 
   const visible = reservations.filter((r) => STATUS_META[r.status].active === (tab === 'active'));
 

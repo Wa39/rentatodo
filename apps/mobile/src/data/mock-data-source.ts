@@ -166,4 +166,33 @@ export class MockDataSource implements DataSource {
     item.unavailable_dates.push({ start_date: startDate, end_date: endDate });
     return { ...reservation };
   }
+
+  /**
+   * Mirrors PATCH /reservations/{id}/cancel: renter only, transitions
+   * requested|approved → cancelled, releases the deposit if it was held.
+   */
+  async cancelReservation(reservationId: string): Promise<Reservation> {
+    const reservation = RESERVATIONS.find((r) => r.id === reservationId);
+    if (!reservation) {
+      throw new ApiRequestError(404, 'NOT_FOUND', 'Reservation not found');
+    }
+    if (reservation.status !== 'requested' && reservation.status !== 'approved') {
+      throw new ApiRequestError(
+        409,
+        'INVALID_TRANSITION',
+        `Cannot cancel a reservation in status ${reservation.status}`,
+      );
+    }
+    reservation.status = 'cancelled';
+    if (reservation.deposit_status === 'held') reservation.deposit_status = 'released';
+    reservation.updated_at = new Date().toISOString();
+    // Cancelled reservations no longer block the item's dates.
+    const item = ITEMS.find((a) => a.id === reservation.item_id);
+    if (item) {
+      item.unavailable_dates = item.unavailable_dates.filter(
+        (r) => !(r.start_date === reservation.start_date && r.end_date === reservation.end_date),
+      );
+    }
+    return { ...reservation };
+  }
 }

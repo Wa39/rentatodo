@@ -1,5 +1,5 @@
 import { ApiRequestError } from '@/data/api/http';
-import type { Category, ReservationStatus } from '@/data/types';
+import type { Category, DepositStatus, ReservationStatus } from '@/data/types';
 
 /**
  * Single place where the frozen contract's enums (English) are
@@ -37,6 +37,15 @@ export const ERROR_MESSAGES: Record<string, string> = {
   DATES_UNAVAILABLE: 'Las fechas seleccionadas ya no están disponibles.',
   DUPLICATE_RESERVATION: 'Ya existe una solicitud idéntica pendiente.',
   CANNOT_RENT_OWN_ITEM: 'No se puede alquilar un artículo propio.',
+  INVALID_TRANSITION: 'La reserva ya no permite esta acción.',
+};
+
+/** Spanish labels for the contract's deposit_status. */
+export const DEPOSIT_LABELS: Record<DepositStatus, string> = {
+  none: 'Sin retención',
+  held: 'Retenido',
+  released: 'Liberado',
+  frozen: 'Congelado (en disputa)',
 };
 
 /** Human-readable Spanish message for any error thrown by the data layer. */

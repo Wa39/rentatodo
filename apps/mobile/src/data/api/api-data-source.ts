@@ -60,4 +60,8 @@ export class ApiDataSource implements DataSource {
       body: JSON.stringify({ start_date: startDate, end_date: endDate }),
     });
   }
+
+  cancelReservation(reservationId: string): Promise<Reservation> {
+    return apiFetch<Reservation>(`/reservations/${reservationId}/cancel`, { method: 'PATCH' });
+  }
 }
