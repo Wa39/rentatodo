@@ -11,6 +11,8 @@ from sqlalchemy.orm import Session
 
 from app.database import engine, get_db
 from app.main import app
+from app.models.user import User
+from app.services.auth import hash_password
 
 
 @pytest.fixture()
@@ -55,3 +57,26 @@ def client(db_session: Session) -> Iterator[TestClient]:
     app.dependency_overrides[get_db] = override_get_db
     yield TestClient(app)
     app.dependency_overrides.clear()
+
+
+@pytest.fixture()
+def make_user(db_session: Session):
+    """Factory fixture: persists a User with a real bcrypt password hash.
+
+    Returns:
+        A callable ``make_user(email=..., password=..., name=...) -> User``
+        that inserts and returns a fully persisted User.
+    """
+
+    def _make_user(
+        email: str = "test@example.com",
+        password: str = "correct horse battery staple",
+        name: str = "Test User",
+    ) -> User:
+        user = User(name=name, email=email, password_hash=hash_password(password))
+        db_session.add(user)
+        db_session.commit()
+        db_session.refresh(user)
+        return user
+
+    return _make_user
