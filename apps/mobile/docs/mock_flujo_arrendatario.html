@@ -1,0 +1,658 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RentaTodo · Flujo del arrendatario</title>
+<style>
+  :root{
+    /* Chrome de la página (fuera de los teléfonos) */
+    --page-bg:#C9D2D8;
+    --page-ink:#1F3B57;
+    --page-muted:#3a4b57;
+    --panel:#FFFFFF;
+    --panel-line:#d5dde2;
+    --accent:#0E7C7B;
+
+    /* App (dentro de los teléfonos — fijo, es el diseño mockeado) */
+    --ink:#1F3B57;
+    --teal:#0E7C7B;
+    --teal-soft:#E4F1F0;
+    --paper:#F5F6F7;
+    --card:#FFFFFF;
+    --line:#E2E6E9;
+    --muted:#7A8791;
+
+    /* Estados de reserva (semánticos, no decorativos) */
+    --amber:#C97A15;  --amber-soft:#FBECD6;
+    --green:#2E7D4F;  --green-soft:#DCEFE2;
+    --blue:#2166A8;   --blue-soft:#DCEAF7;
+    --teal-b:#0E7C7B; --tealb-soft:#DDEEED;
+    --grey:#5E6B75;   --grey-soft:#E7EBEE;
+    --red:#B3402E;    --red-soft:#F7E0DB;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --page-bg:#1b2530;
+      --page-ink:#E8EEF2;
+      --page-muted:#AAB8C2;
+      --panel:#243140;
+      --panel-line:#35455666;
+      --accent:#4FB3B0;
+    }
+  }
+  :root[data-theme="dark"]{
+    --page-bg:#1b2530; --page-ink:#E8EEF2; --page-muted:#AAB8C2;
+    --panel:#243140; --panel-line:#35455666; --accent:#4FB3B0;
+  }
+  :root[data-theme="light"]{
+    --page-bg:#C9D2D8; --page-ink:#1F3B57; --page-muted:#3a4b57;
+    --panel:#FFFFFF; --panel-line:#d5dde2; --accent:#0E7C7B;
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:var(--page-bg);color:var(--page-ink);
+    padding:32px 16px 48px;
+  }
+
+  /* ===== Encabezado ===== */
+  header{max-width:1180px;margin:0 auto 8px;display:flex;flex-direction:column;gap:10px}
+  header h1{font-size:22px;font-weight:800;letter-spacing:-.2px;text-wrap:balance}
+  header p{font-size:14px;color:var(--page-muted);max-width:62ch;line-height:1.55}
+  .rules{display:flex;flex-wrap:wrap;gap:8px;margin-top:2px}
+  .rule{
+    font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;
+    padding:5px 11px;border-radius:20px;background:var(--panel);
+    border:1px solid var(--panel-line);color:var(--accent);
+  }
+
+  /* ===== Retícula de pantallas ===== */
+  .gallery{
+    max-width:1180px;margin:20px auto 0;
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));
+    gap:36px 24px;justify-items:center;
+  }
+  .shot{display:flex;flex-direction:column;align-items:center;gap:12px;max-width:360px}
+  .eyebrow{
+    font-size:11px;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;
+    color:var(--accent);
+  }
+  .caption{font-size:12.5px;color:var(--page-muted);line-height:1.55;text-align:center;max-width:330px}
+  .caption b{color:var(--page-ink)}
+
+  /* ===== Marco del teléfono ===== */
+  .phone{
+    width:340px;height:720px;background:#0d0f11;border-radius:38px;
+    padding:10px;box-shadow:0 18px 50px rgba(0,0,0,.35);flex-shrink:0;
+  }
+  .screen{
+    width:100%;height:100%;background:var(--paper);border-radius:30px;
+    overflow:hidden;display:flex;flex-direction:column;position:relative;color:var(--ink);
+  }
+  .status{
+    height:34px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 20px;font-size:12px;font-weight:600;color:var(--ink);flex-shrink:0;
+  }
+
+  /* Barra superior */
+  .topbar{padding:4px 16px 10px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+  .icon-btn{
+    width:38px;height:38px;border-radius:12px;background:var(--card);
+    border:1px solid var(--line);display:flex;align-items:center;justify-content:center;
+    color:var(--ink);flex-shrink:0;
+  }
+  .icon-btn svg{width:20px;height:20px}
+  .search{
+    flex:1;height:38px;background:var(--card);border:1px solid var(--line);
+    border-radius:12px;display:flex;align-items:center;gap:8px;padding:0 12px;
+    color:var(--muted);font-size:14px;min-width:0;
+  }
+  .search svg{width:17px;height:17px;flex-shrink:0}
+  .search .typed{color:var(--ink);font-weight:600;white-space:nowrap;overflow:hidden}
+  .back-title{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
+  .back-title h1{font-size:16px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  .body{flex:1;overflow-y:auto;padding:4px 16px 12px}
+  .body::-webkit-scrollbar{display:none}
+
+  .section-head{display:flex;align-items:baseline;justify-content:space-between;margin:16px 2px 10px}
+  .section-head h2{font-size:15px;font-weight:700}
+  .section-head span{font-size:12px;color:var(--teal);font-weight:600}
+
+  /* Interruptor y chips */
+  .seg{display:inline-flex;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:3px;gap:2px;margin:4px 2px 0}
+  .seg span{font-size:12px;font-weight:600;padding:6px 12px;border-radius:8px;color:var(--muted)}
+  .seg span.on{background:var(--teal);color:#fff}
+  .chips{display:flex;gap:8px;padding:10px 2px 0;flex-wrap:wrap}
+  .chip{
+    font-size:12px;font-weight:600;padding:6px 12px;border-radius:20px;
+    background:var(--card);border:1px solid var(--line);color:var(--ink);
+  }
+  .chip.active{background:var(--teal-soft);border-color:var(--teal);color:var(--teal)}
+
+  /* Tarjetas de artículo */
+  .rail{display:flex;gap:12px;overflow-x:auto;padding:12px 2px 4px}
+  .rail::-webkit-scrollbar{display:none}
+  .card{width:132px;flex-shrink:0;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .thumb{height:88px;background:linear-gradient(135deg,#D7E3E2,#C3D6D5);display:flex;align-items:center;justify-content:center;color:#9fb3b2}
+  .thumb svg{width:30px;height:30px;opacity:.7}
+  .card .info{padding:8px 10px 10px}
+  .card .name{font-size:13px;font-weight:600;line-height:1.25}
+  .card .price{font-size:12px;color:var(--teal);font-weight:700;margin-top:3px;font-variant-numeric:tabular-nums}
+  .card .meta{font-size:11px;color:var(--muted);margin-top:2px}
+
+  .vlist{display:flex;flex-direction:column;gap:10px;padding-top:12px}
+  .vcard{background:var(--card);border:1px solid var(--line);border-radius:14px;display:flex;gap:12px;padding:10px;align-items:center}
+  .vcard .vthumb{width:64px;height:64px;border-radius:10px;background:linear-gradient(135deg,#D7E3E2,#C3D6D5);display:flex;align-items:center;justify-content:center;color:#9fb3b2;flex-shrink:0}
+  .vcard .vthumb svg{width:26px;height:26px}
+  .vcard .name{font-size:13.5px;font-weight:600}
+  .vcard .price{font-size:12px;color:var(--teal);font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums}
+  .vcard .meta{font-size:11px;color:var(--muted);margin-top:2px}
+
+  /* Solicitudes / reservas */
+  .req{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;align-items:center;gap:12px;margin-bottom:10px}
+  .req .rthumb{width:44px;height:44px;border-radius:10px;background:#E5ECEC;display:flex;align-items:center;justify-content:center;color:#9fb3b2;flex-shrink:0}
+  .req .rthumb svg{width:22px;height:22px}
+  .req .rinfo{flex:1;min-width:0}
+  .req .rname{font-size:13px;font-weight:600}
+  .req .rdate{font-size:11px;color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums}
+  .badge{font-size:10px;font-weight:700;padding:4px 9px;border-radius:20px;white-space:nowrap}
+  .b-sol{background:var(--amber-soft);color:var(--amber)}
+  .b-apr{background:var(--green-soft);color:var(--green)}
+  .b-ent{background:var(--blue-soft);color:var(--blue)}
+  .b-dev{background:var(--tealb-soft);color:var(--teal-b)}
+  .b-cer{background:var(--grey-soft);color:var(--grey)}
+  .b-rec{background:var(--red-soft);color:var(--red)}
+  .b-can{background:var(--grey-soft);color:var(--grey)}
+
+  /* Pestañas Mis rentas */
+  .tabs{display:flex;gap:18px;padding:8px 2px 0;border-bottom:1px solid var(--line);margin-bottom:4px}
+  .tab{font-size:13.5px;font-weight:700;color:var(--muted);padding:8px 2px}
+  .tab.on{color:var(--teal);border-bottom:2.5px solid var(--teal)}
+
+  /* Detalle de artículo */
+  .hero-img{height:170px;border-radius:16px;background:linear-gradient(135deg,#D7E3E2,#B9CFCD);display:flex;align-items:center;justify-content:center;color:#8FA8A6;margin-top:8px}
+  .hero-img svg{width:52px;height:52px;opacity:.75}
+  .d-title{font-size:18px;font-weight:800;margin:14px 2px 2px}
+  .d-price{font-size:15px;color:var(--teal);font-weight:800;margin:0 2px;font-variant-numeric:tabular-nums}
+  .d-price small{font-size:11.5px;color:var(--muted);font-weight:600}
+  .d-meta{display:flex;gap:8px;margin:10px 2px 0;flex-wrap:wrap}
+  .tagchip{font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;background:var(--teal-soft);color:var(--teal)}
+  .tagchip.n{background:var(--grey-soft);color:var(--grey)}
+  .owner{display:flex;align-items:center;gap:10px;margin:14px 2px 0;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+  .owner .avatar{width:32px;height:32px;border-radius:50%;background:var(--teal-soft);color:var(--teal);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0}
+  .owner .oname{font-size:12.5px;font-weight:700}
+  .owner .osub{font-size:11px;color:var(--muted)}
+
+  /* Calendario */
+  .cal{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:12px}
+  .cal .cal-head{display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:700;padding:0 2px 8px}
+  .cal .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;font-size:11px;text-align:center}
+  .cal .dow{color:var(--muted);font-weight:700;padding:2px 0}
+  .cal .d{padding:6px 0;border-radius:8px;font-weight:600;font-variant-numeric:tabular-nums}
+  .cal .off{color:#C3CCD2;text-decoration:line-through}
+  .cal .sel{background:var(--teal);color:#fff}
+  .cal .rng{background:var(--teal-soft);color:var(--teal)}
+  .cal-leg{display:flex;gap:14px;font-size:10.5px;color:var(--muted);padding:10px 2px 0}
+  .cal-leg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+
+  /* Botones de la app */
+  .cta{display:block;background:var(--teal);color:#fff;text-align:center;font-size:14px;font-weight:800;border-radius:14px;padding:14px;margin:14px 0 4px}
+  .cta.ghost{background:var(--card);color:var(--teal);border:1.5px solid var(--teal)}
+  .cta.danger{background:var(--card);color:var(--red);border:1.5px solid var(--red)}
+
+  /* Resumen de solicitud */
+  .sumrow{display:flex;justify-content:space-between;font-size:13px;padding:9px 2px;font-variant-numeric:tabular-nums}
+  .sumrow span:first-child{color:var(--muted)}
+  .sumrow b{font-weight:700}
+  .sumcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:8px 12px;margin-top:12px}
+  .sumcard .total{border-top:1px dashed var(--line);font-size:14px}
+  .mock{
+    display:flex;gap:8px;align-items:flex-start;background:var(--amber-soft);
+    border-radius:12px;padding:10px 12px;margin-top:12px;font-size:11.5px;color:var(--amber);
+    font-weight:600;line-height:1.45;
+  }
+  .mock b{text-transform:uppercase;letter-spacing:.5px}
+
+  /* Línea de estados */
+  .timeline{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:12px}
+  .t-step{display:flex;gap:12px}
+  .t-rail{display:flex;flex-direction:column;align-items:center}
+  .t-dot{width:14px;height:14px;border-radius:50%;border:3px solid var(--green);background:var(--green);flex-shrink:0}
+  .t-dot.now{background:#fff;border-color:var(--blue)}
+  .t-dot.next{background:#fff;border-color:var(--line)}
+  .t-line{width:2.5px;flex:1;background:var(--green);min-height:22px}
+  .t-line.mut{background:var(--line)}
+  .t-info{padding:0 0 12px;font-size:12.5px}
+  .t-info .tname{font-weight:700}
+  .t-info .tsub{color:var(--muted);font-size:11px;margin-top:1px}
+
+  /* Actualizaciones (polling) */
+  .updates{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:4px 14px;margin-top:12px}
+  .upd{display:flex;gap:10px;padding:11px 0;border-bottom:1px solid var(--line);font-size:12px}
+  .upd:last-child{border-bottom:none}
+  .upd .when{color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+  .poll{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--muted);padding:8px 2px 0;justify-content:flex-end}
+  .poll svg{width:12px;height:12px}
+
+  /* Check-in cámara */
+  .camera{flex:1;background:#141a1e;border-radius:16px;margin-top:8px;position:relative;display:flex;align-items:center;justify-content:center;min-height:300px}
+  .corner{position:absolute;width:26px;height:26px;border:3px solid #E4F1F0;opacity:.9}
+  .c-tl{top:16px;left:16px;border-right:none;border-bottom:none;border-radius:6px 0 0 0}
+  .c-tr{top:16px;right:16px;border-left:none;border-bottom:none;border-radius:0 6px 0 0}
+  .c-bl{bottom:16px;left:16px;border-right:none;border-top:none;border-radius:0 0 0 6px}
+  .c-br{bottom:16px;right:16px;border-left:none;border-top:none;border-radius:0 0 6px 0}
+  .camera .hint{color:#B9CFCD;font-size:12px;text-align:center;max-width:200px;line-height:1.5}
+  .shutter{width:62px;height:62px;border-radius:50%;border:4px solid var(--teal);background:#fff;margin:16px auto 4px;display:block}
+  .photo-count{font-size:11px;color:var(--muted);text-align:center;padding-bottom:6px;font-weight:700}
+
+  /* Perfil */
+  .p-head{display:flex;flex-direction:column;align-items:center;gap:8px;padding:18px 0 6px}
+  .p-avatar{width:64px;height:64px;border-radius:50%;background:var(--teal-soft);color:var(--teal);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800}
+  .p-name{font-size:16px;font-weight:800}
+  .p-mail{font-size:12px;color:var(--muted)}
+  .p-item{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px 14px;display:flex;align-items:center;gap:12px;margin-top:10px;font-size:13px;font-weight:600}
+  .p-item svg{width:19px;height:19px;color:var(--teal);flex-shrink:0}
+  .p-item .sub{font-size:11px;color:var(--muted);font-weight:500;margin-top:1px}
+  .p-item .grow{flex:1}
+
+  /* Barra inferior */
+  .nav{height:64px;background:var(--card);border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-around;padding-bottom:4px;flex-shrink:0}
+  .nav a{display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--muted);text-decoration:none;font-size:10px;font-weight:600}
+  .nav a svg{width:23px;height:23px}
+  .nav a.on{color:var(--teal)}
+
+  /* Leyenda de estados + notas */
+  .panel{
+    max-width:1180px;margin:36px auto 0;background:var(--panel);
+    border:1px solid var(--panel-line);border-radius:16px;padding:20px 24px;
+  }
+  .panel h2{font-size:15px;font-weight:800;margin-bottom:12px}
+  .legend{display:flex;flex-wrap:wrap;gap:10px}
+  .leg-item{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--page-muted)}
+  .panel ul{margin:4px 0 0;padding-left:20px;font-size:13px;color:var(--page-muted);line-height:1.7}
+  .panel li b{color:var(--page-ink)}
+  .pending{font-size:12px;color:var(--page-muted);margin-top:12px;font-style:italic}
+
+  @media (prefers-reduced-motion: reduce){*{scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+
+
+<header>
+  <h1>RentaTodo · Flujo completo del arrendatario</h1>
+  <p>Wireframe de referencia de las 8 pantallas de la app móvil (rol Zero) — es una guía visual, no código de React Native. Esta versión <b>elimina la sección "Cerca de mí" y toda búsqueda por zona</b>; con eso queda cerrado el punto abierto de geolocalización: fuera del alcance.</p>
+  <div class="rules">
+    <span class="rule">Sin geolocalización</span>
+    <span class="rule">Solo rentar · nunca publicar</span>
+    <span class="rule">Depósito simulado</span>
+    <span class="rule">Polling · sin push</span>
+    <span class="rule">1 foto por check-in/out</span>
+  </div>
+</header>
+
+<div class="gallery">
+
+  <!-- ============ 01 INICIO ============ -->
+  <div class="shot">
+    <div class="eyebrow">01 · Inicio</div>
+    <div class="phone"><div class="screen">
+      <div class="status"><span>9:41</span><span>RentaTodo</span><span>&#9679;&#9679;&#9679;</span></div>
+      <div class="topbar">
+        <span class="icon-btn" title="Filtros"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="10" y1="18" x2="14" y2="18"/></svg></span>
+        <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg><span>Buscar artículos…</span></div>
+        <span class="icon-btn" title="Configuración"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.1l2-1.6-2-3.4-2.4 1a7 7 0 0 0-1.9-1.1L16.2 3h-4l-.4 2.7a7 7 0 0 0-1.9 1.1l-2.4-1-2 3.4 2 1.6A7 7 0 0 0 5 12a7 7 0 0 0 .1 1.1l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 1.9 1.1l.4 2.7h4l.4-2.7a7 7 0 0 0 1.9-1.1l2.4 1 2-3.4-2-1.6A7 7 0 0 0 19 12z"/></svg></span>
+      </div>
+      <div class="body">
+        <div class="seg"><span class="on">Populares</span><span>Publicados recientemente</span></div>
+        <div class="rail">
+          <div class="card">
+            <div class="thumb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 4l6 6-8 8H6v-6z"/></svg></div>
+            <div class="info"><div class="name">Taladro inalámbrico</div><div class="price">₡3.000 / día</div><div class="meta">Herramientas · Heredia centro</div></div>
+          </div>
+          <div class="card">
+            <div class="thumb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="7" width="18" height="12" rx="2"/><circle cx="12" cy="13" r="3.2"/><path d="M8 7l1.5-2h5L16 7"/></svg></div>
+            <div class="info"><div class="name">Cámara réflex</div><div class="price">₡8.500 / día</div><div class="meta">Cámaras · San José</div></div>
+          </div>
+          <div class="card">
+            <div class="thumb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 18l4-9 4 9M12 18l4-9 4 9"/><line x1="2" y1="18" x2="22" y2="18"/></svg></div>
+            <div class="info"><div class="name">Carpa camping 4p</div><div class="price">₡5.000 / día</div><div class="meta">Camping · Alajuela</div></div>
+          </div>
+        </div>
+        <div class="section-head"><h2>Mis solicitudes</h2><span>Ver todas</span></div>
+        <div class="req">
+          <div class="rthumb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 4l6 6-8 8H6v-6z"/></svg></div>
+          <div class="rinfo"><div class="rname">Taladro inalámbrico</div><div class="rdate">12–14 jul · 3 días</div></div>
+          <span class="badge b-sol">Solicitada</span>
+        </div>
+        <div class="req">
+          <div class="rthumb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="7" width="18" height="12" rx="2"/><circle cx="12" cy="13" r="3.2"/></svg></div>
+          <div class="rinfo"><div class="rname">Cámara réflex</div><div class="rdate">15–16 jul · 2 días</div></div>
+          <span class="badge b-apr">Aprobada</span>
+        </div>
+        <div class="req">
+          <div class="rthumb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 18l4-9 4 9M12 18l4-9 4 9"/><line x1="2" y1="18" x2="22" y2="18"/></svg></div>
+          <div class="rinfo"><div class="rname">Carpa camping 4p</div><div class="rdate">8–10 jul · en curso</div></div>
+          <span class="badge b-ent">Entregada</span>
+        </div>
+      </div>
+      <div class="nav">
+        <a href="#" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg>Inicio</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16v13H4z"/><path d="M8 7V5a4 4 0 0 1 8 0v2"/></svg>Mis rentas</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>Perfil</a>
+      </div>
+    </div></div>
+    <div class="caption">La sección <b>"Cerca de mí" desapareció por completo</b> (ni chips de zona ni distancias). Las tarjetas muestran <b>categoría y nombre de zona como texto</b> — el campo <code>zona</code> del contrato — sin cálculo de cercanía. Populares/Recientes sigue siendo un interruptor sobre la misma lista.</div>
+  </div>
+
+  <!-- ============ 02 BÚSQUEDA ============ -->
+  <div class="shot">
+    <div class="eyebrow">02 · Búsqueda y filtros</div>
+    <div class="phone"><div class="screen">
+      <div class="status"><span>9:41</span><span>RentaTodo</span><span>&#9679;&#9679;&#9679;</span></div>
+      <div class="topbar">
+        <span class="icon-btn" title="Volver"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 5l-7 7 7 7"/></svg></span>
+        <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg><span class="typed">cámara</span></div>
+      </div>
+      <div class="body">
+        <div class="chips">
+          <div class="chip active">Todas</div>
+          <div class="chip">Herramientas</div>
+          <div class="chip">Cámaras</div>
+          <div class="chip">Camping</div>
+          <div class="chip">Audio</div>
+        </div>
+        <div class="section-head"><h2>4 resultados</h2><span>Precio ↑</span></div>
+        <div class="vlist">
+          <div class="vcard">
+            <div class="vthumb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="7" width="18" height="12" rx="2"/><circle cx="12" cy="13" r="3.2"/><path d="M8 7l1.5-2h5L16 7"/></svg></div>
+            <div><div class="name">Cámara réflex + lente 50 mm</div><div class="price">₡8.500 / día</div><div class="meta">Cámaras · San José</div></div>
+          </div>
+          <div class="vcard">
+            <div class="vthumb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="7" width="18" height="12" rx="2"/><circle cx="12" cy="13" r="3.2"/></svg></div>
+            <div><div class="name">Cámara de acción 4K</div><div class="price">₡6.000 / día</div><div class="meta">Cámaras · Heredia centro</div></div>
+          </div>
+          <div class="vcard">
+            <div class="vthumb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v3M5 7l2 2M19 7l-2 2"/><rect x="6" y="10" width="12" height="9" rx="2"/></svg></div>
+            <div><div class="name">Cámara instantánea</div><div class="price">₡4.500 / día</div><div class="meta">Cámaras · Cartago</div></div>
+          </div>
+          <div class="vcard">
+            <div class="vthumb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="6" width="16" height="12" rx="2"/><path d="M4 10h16"/></svg></div>
+            <div><div class="name">Trípode + estabilizador</div><div class="price">₡2.500 / día</div><div class="meta">Cámaras · San José</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="nav">
+        <a href="#" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg>Inicio</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16v13H4z"/><path d="M8 7V5a4 4 0 0 1 8 0v2"/></svg>Mis rentas</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>Perfil</a>
+      </div>
+    </div></div>
+    <div class="caption">Búsqueda <b>solo por texto y categoría</b>, como fija el alcance. La lista de categorías y el posible rango de precio son <b>placeholders pendientes del contrato de Trucy</b> — no asumir que existen hasta que el spec lo confirme.</div>
+  </div>
+
+  <!-- ============ 03 DETALLE ============ -->
+  <div class="shot">
+    <div class="eyebrow">03 · Detalle del artículo</div>
+    <div class="phone"><div class="screen">
+      <div class="status"><span>9:41</span><span>RentaTodo</span><span>&#9679;&#9679;&#9679;</span></div>
+      <div class="topbar">
+        <span class="icon-btn" title="Volver"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 5l-7 7 7 7"/></svg></span>
+        <div class="back-title"><h1>Detalle</h1></div>
+      </div>
+      <div class="body">
+        <div class="hero-img"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="7" width="18" height="12" rx="2"/><circle cx="12" cy="13" r="3.2"/><path d="M8 7l1.5-2h5L16 7"/></svg></div>
+        <div class="d-title">Cámara réflex + lente 50 mm</div>
+        <div class="d-price">₡8.500 <small>/ día</small></div>
+        <div class="d-meta"><span class="tagchip">Cámaras</span><span class="tagchip n">San José</span></div>
+        <div class="owner">
+          <div class="avatar">MV</div>
+          <div><div class="oname">Publicado por María V.</div><div class="osub">Responde en ~2 h · 14 rentas completadas</div></div>
+        </div>
+        <div class="cal">
+          <div class="cal-head"><span>‹</span><span>Julio 2026</span><span>›</span></div>
+          <div class="grid">
+            <span class="dow">L</span><span class="dow">K</span><span class="dow">M</span><span class="dow">J</span><span class="dow">V</span><span class="dow">S</span><span class="dow">D</span>
+            <span class="d off">29</span><span class="d off">30</span><span class="d">1</span><span class="d">2</span><span class="d">3</span><span class="d off">4</span><span class="d off">5</span>
+            <span class="d">6</span><span class="d">7</span><span class="d">8</span><span class="d">9</span><span class="d">10</span><span class="d">11</span><span class="d">12</span>
+            <span class="d">13</span><span class="d">14</span><span class="d sel">15</span><span class="d rng">16</span><span class="d sel">17</span><span class="d">18</span><span class="d">19</span>
+            <span class="d off">20</span><span class="d off">21</span><span class="d off">22</span><span class="d">23</span><span class="d">24</span><span class="d">25</span><span class="d">26</span>
+            <span class="d">27</span><span class="d">28</span><span class="d">29</span><span class="d">30</span><span class="d">31</span><span class="d off">1</span><span class="d off">2</span>
+          </div>
+          <div class="cal-leg">
+            <span><i style="background:var(--teal)"></i>Elegidas</span>
+            <span><i style="background:#E9EDEF;outline:1px solid #C3CCD2"></i>Ocupadas</span>
+          </div>
+        </div>
+        <span class="cta">Solicitar alquiler · 15–17 jul</span>
+      </div>
+    </div></div>
+    <div class="caption">El calendario marca <b>fechas ocupadas</b> (tachadas, vienen del motor de disponibilidad de Trucy) y el <b>rango elegido</b>. El botón lleva al resumen de la solicitud. Aquí no hay nada de editar ni gestionar el artículo: eso vive solo en la web de Silverk.</div>
+  </div>
+
+  <!-- ============ 04 SOLICITUD ============ -->
+  <div class="shot">
+    <div class="eyebrow">04 · Solicitud y depósito</div>
+    <div class="phone"><div class="screen">
+      <div class="status"><span>9:41</span><span>RentaTodo</span><span>&#9679;&#9679;&#9679;</span></div>
+      <div class="topbar">
+        <span class="icon-btn" title="Volver"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 5l-7 7 7 7"/></svg></span>
+        <div class="back-title"><h1>Confirmar solicitud</h1></div>
+      </div>
+      <div class="body">
+        <div class="req" style="margin-top:8px">
+          <div class="rthumb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="7" width="18" height="12" rx="2"/><circle cx="12" cy="13" r="3.2"/></svg></div>
+          <div class="rinfo"><div class="rname">Cámara réflex + lente 50 mm</div><div class="rdate">Mié 15 jul → Vie 17 jul · 3 días</div></div>
+        </div>
+        <div class="sumcard">
+          <div class="sumrow"><span>₡8.500 × 3 días</span><b>₡25.500</b></div>
+          <div class="sumrow"><span>Depósito reembolsable</span><b>₡20.000</b></div>
+          <div class="sumrow total"><span>Total a retener</span><b>₡45.500</b></div>
+        </div>
+        <div class="mock">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 15.5v.5"/></svg>
+          <span><b>Pago simulado (mock).</b> No se cobra dinero real: el depósito se "retiene" al aprobarse y se "libera" al cerrar la reserva. Si reportás un problema, se congela.</span>
+        </div>
+        <span class="cta">Enviar solicitud</span>
+        <span class="cta ghost">Cancelar</span>
+      </div>
+    </div></div>
+    <div class="caption">Desglose transparente: precio por días + <b>depósito claramente marcado como simulado</b>, según el alcance (nada de pagos reales). Al enviar, la reserva nace en estado <b>solicitada</b> y el dueño la aprueba o rechaza desde su dashboard web.</div>
+  </div>
+
+  <!-- ============ 05 MIS RENTAS ============ -->
+  <div class="shot">
+    <div class="eyebrow">05 · Mis rentas</div>
+    <div class="phone"><div class="screen">
+      <div class="status"><span>9:41</span><span>RentaTodo</span><span>&#9679;&#9679;&#9679;</span></div>
+      <div class="topbar"><div class="back-title"><h1>Mis rentas</h1></div></div>
+      <div class="body">
+        <div class="tabs"><span class="tab on">Activas</span><span class="tab">Pasadas</span></div>
+        <div class="vlist">
+          <div class="req">
+            <div class="rthumb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 4l6 6-8 8H6v-6z"/></svg></div>
+            <div class="rinfo"><div class="rname">Taladro inalámbrico</div><div class="rdate">12–14 jul</div></div>
+            <span class="badge b-sol">Solicitada</span>
+          </div>
+          <div class="req">
+            <div class="rthumb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="7" width="18" height="12" rx="2"/><circle cx="12" cy="13" r="3.2"/></svg></div>
+            <div class="rinfo"><div class="rname">Cámara réflex</div><div class="rdate">15–17 jul</div></div>
+            <span class="badge b-apr">Aprobada</span>
+          </div>
+          <div class="req">
+            <div class="rthumb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 18l4-9 4 9M12 18l4-9 4 9"/><line x1="2" y1="18" x2="22" y2="18"/></svg></div>
+            <div class="rinfo"><div class="rname">Carpa camping 4p</div><div class="rdate">8–10 jul</div></div>
+            <span class="badge b-ent">Entregada</span>
+          </div>
+          <div class="req">
+            <div class="rthumb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="8" width="16" height="10" rx="2"/><path d="M8 8V6a4 4 0 0 1 8 0v2"/></svg></div>
+            <div class="rinfo"><div class="rname">Parlante Bluetooth</div><div class="rdate">5–6 jul</div></div>
+            <span class="badge b-dev">Devuelta</span>
+          </div>
+          <div class="req" style="opacity:.55">
+            <div class="rthumb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8"/></svg></div>
+            <div class="rinfo"><div class="rname">Bicicleta urbana</div><div class="rdate">28–30 jun</div></div>
+            <span class="badge b-cer">Cerrada</span>
+          </div>
+          <div class="req" style="opacity:.55">
+            <div class="rthumb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v3M5 7l2 2M19 7l-2 2"/><rect x="6" y="10" width="12" height="9" rx="2"/></svg></div>
+            <div class="rinfo"><div class="rname">Proyector portátil</div><div class="rdate">25 jun</div></div>
+            <span class="badge b-rec">Rechazada</span>
+          </div>
+        </div>
+      </div>
+      <div class="nav">
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg>Inicio</a>
+        <a href="#" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16v13H4z"/><path d="M8 7V5a4 4 0 0 1 8 0v2"/></svg>Mis rentas</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>Perfil</a>
+      </div>
+    </div></div>
+    <div class="caption"><b>No es un carrito</b>: cada reserva es independiente, con su dueño, fechas y estado propios. El historial vive en la pestaña <b>Pasadas</b> (no hay botón aparte). Cada estado tiene etiqueta y color; los nombres exactos del enum <b>los define Trucy</b>.</div>
+  </div>
+
+  <!-- ============ 06 DETALLE DE RESERVA ============ -->
+  <div class="shot">
+    <div class="eyebrow">06 · Detalle de la reserva</div>
+    <div class="phone"><div class="screen">
+      <div class="status"><span>9:41</span><span>RentaTodo</span><span>&#9679;&#9679;&#9679;</span></div>
+      <div class="topbar">
+        <span class="icon-btn" title="Volver"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 5l-7 7 7 7"/></svg></span>
+        <div class="back-title"><h1>Carpa camping 4p</h1></div>
+      </div>
+      <div class="body">
+        <div class="timeline">
+          <div class="t-step">
+            <div class="t-rail"><div class="t-dot"></div><div class="t-line"></div></div>
+            <div class="t-info"><div class="tname">Solicitada</div><div class="tsub">7 jul, 9:14</div></div>
+          </div>
+          <div class="t-step">
+            <div class="t-rail"><div class="t-dot"></div><div class="t-line"></div></div>
+            <div class="t-info"><div class="tname">Aprobada</div><div class="tsub">7 jul, 15:02 · depósito retenido (mock)</div></div>
+          </div>
+          <div class="t-step">
+            <div class="t-rail"><div class="t-dot now"></div><div class="t-line mut"></div></div>
+            <div class="t-info"><div class="tname">Entregada — en curso</div><div class="tsub">8 jul, 10:30 · check-in con foto</div></div>
+          </div>
+          <div class="t-step">
+            <div class="t-rail"><div class="t-dot next"></div><div class="t-line mut"></div></div>
+            <div class="t-info"><div class="tname">Devuelta</div><div class="tsub">pendiente · check-out con foto</div></div>
+          </div>
+          <div class="t-step">
+            <div class="t-rail"><div class="t-dot next"></div></div>
+            <div class="t-info" style="padding-bottom:0"><div class="tname">Cerrada</div><div class="tsub">al liberar el depósito</div></div>
+          </div>
+        </div>
+        <div class="section-head"><h2>Actualizaciones</h2></div>
+        <div class="updates">
+          <div class="upd"><span class="when">10:30</span><span>Check-in registrado con 1 foto.</span></div>
+          <div class="upd"><span class="when">15:02</span><span>El dueño aprobó tu solicitud.</span></div>
+          <div class="upd"><span class="when">09:14</span><span>Solicitud enviada a María V.</span></div>
+        </div>
+        <div class="poll">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>
+          Actualizado hace 30 s
+        </div>
+        <span class="cta">Hacer check-out · 1 foto</span>
+        <span class="cta danger">Reportar problema</span>
+      </div>
+    </div></div>
+    <div class="caption">La línea de tiempo sigue la <b>máquina de estados</b> (solicitada → aprobada → entregada → devuelta → cerrada). Las actualizaciones llegan por <b>polling</b> — el sello "actualizado hace 30 s" lo hace explícito, sin push. <b>Reportar problema</b> congela el depósito.</div>
+  </div>
+
+  <!-- ============ 07 CHECK-IN / OUT ============ -->
+  <div class="shot">
+    <div class="eyebrow">07 · Check-in / check-out</div>
+    <div class="phone"><div class="screen">
+      <div class="status"><span>9:41</span><span>RentaTodo</span><span>&#9679;&#9679;&#9679;</span></div>
+      <div class="topbar">
+        <span class="icon-btn" title="Volver"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 5l-7 7 7 7"/></svg></span>
+        <div class="back-title"><h1>Check-out · Carpa camping</h1></div>
+      </div>
+      <div class="body" style="display:flex;flex-direction:column">
+        <div class="camera">
+          <span class="corner c-tl"></span><span class="corner c-tr"></span>
+          <span class="corner c-bl"></span><span class="corner c-br"></span>
+          <div class="hint">Encuadrá el artículo completo.<br>Esta foto queda como evidencia del estado al devolverlo.</div>
+        </div>
+        <span class="shutter"></span>
+        <div class="photo-count">1 foto única · sin galería, sin multi-foto</div>
+      </div>
+    </div></div>
+    <div class="caption">La cámara <b>solo existe dentro de este flujo</b> — no está en la navegación general. <b>Una sola foto</b> por check-in y por check-out, tal como fija el alcance (sin multi-foto, sin redimensionado). La foto sube directa con URL prefirmada de Wa.</div>
+  </div>
+
+  <!-- ============ 08 PERFIL ============ -->
+  <div class="shot">
+    <div class="eyebrow">08 · Perfil</div>
+    <div class="phone"><div class="screen">
+      <div class="status"><span>9:41</span><span>RentaTodo</span><span>&#9679;&#9679;&#9679;</span></div>
+      <div class="topbar"><div class="back-title"><h1>Perfil</h1></div></div>
+      <div class="body">
+        <div class="p-head">
+          <div class="p-avatar">PS</div>
+          <div class="p-name">Pablo S.</div>
+          <div class="p-mail">psced10@gmail.com</div>
+        </div>
+        <div class="p-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s7-6.3 7-11a7 7 0 1 0-14 0c0 4.7 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+          <div class="grow"><div>Zona registrada</div><div class="sub">Heredia centro · dato de la cuenta, ya no alimenta ninguna búsqueda</div></div>
+        </div>
+        <div class="p-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9h18"/></svg>
+          <div class="grow"><div>Método de pago</div><div class="sub">Simulado (mock) · sin cargos reales</div></div>
+        </div>
+        <div class="p-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.1l2-1.6-2-3.4-2.4 1a7 7 0 0 0-1.9-1.1L16.2 3h-4l-.4 2.7a7 7 0 0 0-1.9 1.1l-2.4-1-2 3.4 2 1.6A7 7 0 0 0 5 12a7 7 0 0 0 .1 1.1l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 1.9 1.1l.4 2.7h4l.4-2.7a7 7 0 0 0 1.9-1.1l2.4 1 2-3.4-2-1.6A7 7 0 0 0 19 12z"/></svg>
+          <div class="grow"><div>Configuración</div><div class="sub">Notificaciones dentro de la app (lista de actualizaciones)</div></div>
+        </div>
+        <div class="p-item" style="color:var(--red)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--red)"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          <div class="grow">Cerrar sesión</div>
+        </div>
+      </div>
+      <div class="nav">
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg>Inicio</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16v13H4z"/><path d="M8 7V5a4 4 0 0 1 8 0v2"/></svg>Mis rentas</a>
+        <a href="#" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>Perfil</a>
+      </div>
+    </div></div>
+    <div class="caption">La <b>zona registrada se conserva como dato de la cuenta</b> (existe en el contrato), pero ya no alimenta ninguna sección de búsqueda. Fijate que en toda la app <b>no hay ningún botón de publicar artículo</b>: la app es solo para rentar.</div>
+  </div>
+
+</div>
+
+<!-- ===== Leyenda de estados ===== -->
+<div class="panel">
+  <h2>Estados de la reserva → etiqueta y color propuestos</h2>
+  <div class="legend">
+    <span class="leg-item"><span class="badge b-sol">Solicitada</span></span>
+    <span class="leg-item"><span class="badge b-apr">Aprobada</span></span>
+    <span class="leg-item"><span class="badge b-ent">Entregada</span></span>
+    <span class="leg-item"><span class="badge b-dev">Devuelta</span></span>
+    <span class="leg-item"><span class="badge b-cer">Cerrada</span></span>
+    <span class="leg-item"><span class="badge b-rec">Rechazada</span></span>
+    <span class="leg-item"><span class="badge b-can">Cancelada</span></span>
+  </div>
+  <p class="pending">⚠ Los nombres exactos del enum (¿mayúsculas?, ¿inglés o español?) están pendientes de confirmación con Trucy — este mapeo es la propuesta visual, no el contrato.</p>
+</div>
+
+<!-- ===== Notas de alcance ===== -->
+<div class="panel">
+  <h2>Qué cambió respecto al mockup anterior y qué protege este diseño</h2>
+  <ul>
+    <li><b>Se eliminó "Cerca de mí" completa</b>: sin chips de "Mi zona registrada / Cambiar zona", sin distancias en km (el mockup anterior mostraba "1.2 km", que era geolocalización encubierta). El punto abierto de la sección 4 del contexto queda resuelto por la vía segura: fuera.</li>
+    <li><b>El campo <code>zona</code> no se desperdicia</b>: aparece como texto informativo en tarjetas y detalle ("San José", "Heredia centro"), que es lo único que el contrato garantiza.</li>
+    <li><b>Ningún botón de publicar</b> en ninguna pantalla — regla de alcance crítica: móvil = solo rentar.</li>
+    <li><b>Depósito siempre marcado "simulado"</b> en solicitud, perfil y línea de tiempo, para que en la demo nadie crea que hay pagos reales.</li>
+    <li><b>Polling visible</b> ("actualizado hace 30 s") en lugar de push notifications.</li>
+    <li><b>Una sola foto</b> por check-in/check-out, y la cámara solo dentro de ese flujo.</li>
+    <li>Barra inferior de <b>3 elementos</b> (Inicio · Mis rentas · Perfil); el historial es pestaña "Pasadas" dentro de Mis rentas.</li>
+    <li>Recordatorio de proceso: cuando esto pase a código RN, va en una rama <code>feature/*</code> desde <code>develop</code>, nunca directo.</li>
+  </ul>
+</div>
+
+</body>
+</html>
