@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { mockRequests } from '@/lib/mockData'
 import type { Reservation } from '@/lib/types'
 import { Button } from '@/components/ui/button'
@@ -26,7 +27,11 @@ export function RequestsPage() {
         <TableBody>
           {requests.map((reservation) => (
             <TableRow key={reservation.id}>
-              <TableCell>{reservation.renter_name}</TableCell>
+              <TableCell>
+                <Link to={`/reservations/${reservation.id}`} className="hover:text-primary hover:underline">
+                  {reservation.renter_name}
+                </Link>
+              </TableCell>
               <TableCell>
                 {reservation.start_date} → {reservation.end_date}
               </TableCell>

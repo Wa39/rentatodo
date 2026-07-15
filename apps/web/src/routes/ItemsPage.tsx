@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { mockItems } from '@/lib/mockData'
+import { mockItems, mockUser } from '@/lib/mockData'
 import type { Category, Item } from '@/lib/types'
 import { formatCentavos } from '@/lib/format'
 import { Button } from '@/components/ui/button'
@@ -57,7 +57,7 @@ export function ItemsPage() {
         price_per_day: priceCentavos,
         photo_url: form.photoUrl,
         is_active: true,
-        owner_id: 'local-owner',
+        owner_id: mockUser.id,
         owner_name: 'You',
         created_at: new Date().toISOString(),
       }

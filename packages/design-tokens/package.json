@@ -2,6 +2,7 @@
   "name": "@rentatodo/design-tokens",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "main": "tokens.ts",
   "types": "tokens.ts"
 }

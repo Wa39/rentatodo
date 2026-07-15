@@ -96,6 +96,21 @@ export const mockRequests: Reservation[] = [
     created_at: '2026-07-08T09:00:00Z',
     updated_at: '2026-07-10T08:00:00Z',
   },
+  {
+    id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    item_id: mockItems[0].id,
+    item_name: mockItems[0].name,
+    item_photo_url: mockItems[0].photo_url,
+    renter_id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+    renter_name: 'Luz Fernández',
+    start_date: '2026-06-20',
+    end_date: '2026-06-22',
+    status: 'returned',
+    deposit_amount: 2000,
+    deposit_status: 'held',
+    created_at: '2026-06-18T12:00:00Z',
+    updated_at: '2026-06-22T10:00:00Z',
+  },
 ]
 
 export const mockTransactions: Transaction[] = [
