@@ -1,8 +1,9 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Brand } from '@/constants/brand';
+import { useSession } from '@/context/session-context';
 
 /**
  * Profile — per the contract (UserResponse): id, name, email, created_at.
@@ -10,15 +11,17 @@ import { Brand } from '@/constants/brand';
  * Payment method is simulated (mock): there are no real payments in this project.
  */
 export default function ProfileScreen() {
+  const { user, logout } = useSession();
+
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
       <View style={styles.content}>
         <View style={styles.header}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>Z</Text>
+            <Text style={styles.avatarText}>{(user?.name ?? 'Z').charAt(0).toUpperCase()}</Text>
           </View>
-          <Text style={styles.name}>Persona arrendataria</Text>
-          <Text style={styles.email}>cuenta de prueba · datos mock</Text>
+          <Text style={styles.name}>{user?.name ?? 'Persona arrendataria'}</Text>
+          <Text style={styles.email}>{user?.email ?? ''}</Text>
         </View>
 
         <View style={styles.item}>
@@ -37,13 +40,13 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        <View style={styles.item}>
+        <Pressable style={styles.item} onPress={logout}>
           <Ionicons name="log-out-outline" size={19} color={Brand.red} />
           <View style={styles.itemInfo}>
             <Text style={[styles.itemTitle, { color: Brand.red }]}>Cerrar sesión</Text>
-            <Text style={styles.itemSub}>La autenticación llega con el contrato congelado</Text>
+            <Text style={styles.itemSub}>Borra el token del dispositivo</Text>
           </View>
-        </View>
+        </Pressable>
       </View>
     </SafeAreaView>
   );

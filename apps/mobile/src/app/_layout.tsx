@@ -1,53 +1,25 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { Tabs } from 'expo-router';
+import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import { Brand } from '@/constants/brand';
+import { SessionProvider } from '@/context/session-context';
 
 SplashScreen.preventAutoHideAsync();
 
 /**
- * Main navigation: ONLY 3 tabs (team design decision).
- * The camera does NOT live here: it only appears inside the check-in/out flow.
- * The mobile app has no publish screens whatsoever (scope rule).
+ * Root navigation: a Stack with the tab group plus the auth screens.
+ * The session guard lives in (tabs)/_layout.tsx — while signed out the
+ * app redirects to /login.
  */
-export default function TabLayout() {
+export default function RootLayout() {
   return (
-    <>
+    <SessionProvider>
       <AnimatedSplashOverlay />
-      <Tabs
-        screenOptions={{
-          headerShown: false,
-          tabBarActiveTintColor: Brand.teal,
-          tabBarInactiveTintColor: Brand.muted,
-        }}>
-        <Tabs.Screen
-          name="index"
-          options={{
-            title: 'Inicio',
-            tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" color={color} size={size} />,
-          }}
-        />
-        <Tabs.Screen
-          name="rentals"
-          options={{
-            title: 'Mis rentas',
-            tabBarIcon: ({ color, size }) => <Ionicons name="cube-outline" color={color} size={size} />,
-          }}
-        />
-        <Tabs.Screen
-          name="profile"
-          options={{
-            title: 'Perfil',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="person-circle-outline" color={color} size={size} />
-            ),
-          }}
-        />
-        {/* Item detail: internal route, hidden from the tab bar */}
-        <Tabs.Screen name="item/[id]" options={{ href: null }} />
-      </Tabs>
-    </>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="login" />
+        <Stack.Screen name="register" />
+      </Stack>
+    </SessionProvider>
   );
 }
