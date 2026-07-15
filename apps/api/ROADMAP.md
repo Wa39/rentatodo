@@ -9,9 +9,9 @@
 
 **Week:** 1 — Contracts and scaffolding
 **Last updated:** 2026-07-15
-**Current focus:** `User` model + Auth (register, login, JWT) are designed
-and planned (branch `feature/auth-user-model`), implementation not started
-yet. No open blockers.
+**Current focus:** `User` model + Auth (register, login, `GET /users/me`)
+are fully implemented on `feature/auth-user-model`, 25/25 tests passing.
+Not yet pushed / no PR opened. No open blockers.
 
 ## Done
 
@@ -25,13 +25,15 @@ yet. No open blockers.
 - [x] PR #3 (`feature/api-scaffolding` → `develop`) — scaffold, merged 2026-07-15
 - [x] PR #2 (`feature/openapi-spec` → `develop`) — OpenAPI contract v1 with team review feedback (structured error schema, `expires_in`, duplicate-reservation 409, English translation fix), merged 2026-07-15
 - [x] Item categories decided: closed enum, matches placeholder `CategoryEnum`
+- [x] `User` model + Auth (`register`, `login`, `GET /users/me`) — all 9 tasks of `docs/superpowers/plans/2026-07-15-user-auth.md` implemented on `feature/auth-user-model`, TDD throughout, one commit per task. 25/25 tests passing (`app/config.py`, `AppError`, `db_session`/`client`/`make_user` fixtures, `User` model + migration, password hashing + JWT primitives, `get_current_user`, Auth schemas, `register_user`/`authenticate_user`, the 3 live endpoints).
 
 ## In progress
 
-- [ ] `User` model + Auth (`register`, `login`, `GET /users/me`) — spec (`docs/superpowers/specs/2026-07-15-user-auth-design.md`) and implementation plan (`docs/superpowers/plans/2026-07-15-user-auth.md`) both written and committed on `feature/auth-user-model`. Implementation (9 planned tasks) not started.
+_Nothing in progress right now — implementation done, awaiting push + PR._
 
 ## Next up (not started)
 
+- [ ] Push `feature/auth-user-model` and open a PR against `develop` (per gitflow — nobody pushes directly to `develop`)
 - [ ] Remaining real models: Item, Reservation, Transaction, CheckEvidence, Report
 - [ ] Items CRUD (create, list with filters, detail, edit, soft delete)
 - [ ] Reservation engine: request, approve, reject, cancel + double-booking prevention
@@ -81,3 +83,4 @@ yet. No open blockers.
 - **2026-07-14** — Applied 4 team review changes to `packages/contracts/openapi.yaml` on PR #2: structured `Error` schema (`code` + `message`), added required `LoginResponse.expires_in`, documented `409 DUPLICATE_RESERVATION` on the create-reservation endpoint, translated `unavailable_dates` status list to English. Committed, pushed, and posted a summary comment on PR #2 for reviewers. Team also agreed on item categories: closed enum, matching the placeholder already in `CategoryEnum` — no contract change needed, no dynamic category table. Next: wait on PR #2/#3 reviews before starting real models.
 - **2026-07-15** — PR #2 and PR #3 both merged to `develop`. No open blockers left. Next: start real models, beginning with `User` and Auth (register, login, JWT middleware) per the Days 1-3 plan.
 - **2026-07-15** — Reviewed and approved PR #5 (Silverk's web scaffold design update). Brainstormed the `User` model + Auth design; mid-session Jose supplied `CLAUDE_BACKEND.md`, an external reference doc with the full 6-table schema, error codes, and file layout, which reconciled several ad-hoc decisions (DB-generated UUIDs, bare `bcrypt`, `password_hash` naming, `config.py` split, `dependencies/` package). Wrote and committed the design spec and a 9-task TDD implementation plan on `feature/auth-user-model`. Two discrepancies flagged for later (see Open questions). Next: execute the implementation plan (subagent-driven or inline, not yet decided) — nothing coded yet.
+- **2026-07-15** — Executed all 9 tasks of the User/Auth implementation plan inline, TDD (failing test → implement → passing test → commit) per task, one commit each. Found and fixed one bug in the plan's own test (`UserResponse` schema test constructed a `User` without persisting it, so the Postgres server-default `id`/`created_at` were `None`; fixed by persisting via `db_session` before validating — matches how the real endpoints call it). Final regression: 25/25 tests passing. Next: push `feature/auth-user-model`, open PR against `develop`.
