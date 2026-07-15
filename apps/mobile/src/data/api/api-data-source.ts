@@ -53,4 +53,11 @@ export class ApiDataSource implements DataSource {
     const data = await apiFetch<ReservationListResponse>('/users/me/reservations');
     return data.reservations;
   }
+
+  createReservation(itemId: string, startDate: string, endDate: string): Promise<Reservation> {
+    return apiFetch<Reservation>(`/items/${itemId}/reservations`, {
+      method: 'POST',
+      body: JSON.stringify({ start_date: startDate, end_date: endDate }),
+    });
+  }
 }

@@ -34,6 +34,9 @@ export const ERROR_MESSAGES: Record<string, string> = {
   VALIDATION_ERROR: 'Revise los datos ingresados.',
   NOT_FOUND: 'No se encontró el recurso solicitado.',
   NETWORK_ERROR: 'No se pudo conectar con el servidor.',
+  DATES_UNAVAILABLE: 'Las fechas seleccionadas ya no están disponibles.',
+  DUPLICATE_RESERVATION: 'Ya existe una solicitud idéntica pendiente.',
+  CANNOT_RENT_OWN_ITEM: 'No se puede alquilar un artículo propio.',
 };
 
 /** Human-readable Spanish message for any error thrown by the data layer. */
