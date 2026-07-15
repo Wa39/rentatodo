@@ -34,8 +34,15 @@ components:
       required: [error]
       properties:
         error:
-          type: string
-          example: "The dates July 18-20 are already reserved for this item"
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              example: "DATES_UNAVAILABLE"
+            message:
+              type: string
+              example: "The dates July 18-20 are already reserved for this item"
 
     # ── AUTH ──
     RegisterRequest:
@@ -67,6 +74,7 @@ components:
 
     LoginResponse:
       type: object
+      required: [expires_in]
       properties:
         access_token:
           type: string
@@ -74,6 +82,10 @@ components:
         token_type:
           type: string
           example: "bearer"
+        expires_in:
+          type: integer
+          description: "Token lifetime in seconds"
+          example: 86400
 
     UserResponse:
       type: object
@@ -179,7 +191,7 @@ components:
           properties:
             unavailable_dates:
               type: array
-              description: "Ranges of dates already reserved (status in solicitada, aprobada, entregada, devuelta)"
+              description: "Ranges of dates already reserved (status in requested, approved, delivered, returned)"
               items:
                 type: object
                 properties:
@@ -750,6 +762,9 @@ paths:
         - User is not the item owner (cannot rent own item)
         - No overlapping active reservations (double booking prevention)
         - Item is active
+        - If a reservation from the same renter for the same item and same
+          dates already exists in "requested" status, returns 409 with code
+          DUPLICATE_RESERVATION instead of creating a duplicate.
         Deposit is calculated as price_per_day × number of days.
         Uses database transaction with lock to prevent race conditions.
       operationId: createReservation
@@ -788,7 +803,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
         "409":
-          description: Dates overlap with existing reservation
+          description: |
+            Conflict creating the reservation. Two possible causes,
+            distinguished by error.code:
+            - DATES_UNAVAILABLE: dates overlap with an existing active reservation
+            - DUPLICATE_RESERVATION: identical reservation (same renter, item,
+              and dates) already exists in "requested" status
           content:
             application/json:
               schema:
