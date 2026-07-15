@@ -2,67 +2,67 @@ import { useEffect, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ArticuloCard } from '@/components/articulo-card';
-import { ReservaItem } from '@/components/reserva-item';
+import { ItemCard } from '@/components/item-card';
+import { ReservationRow } from '@/components/reservation-row';
 import { Brand } from '@/constants/brand';
-import { fuenteDatos } from '@/data/fuente-datos';
+import { dataSource } from '@/data/data-source';
 import type { Item, Reservation } from '@/data/types';
 
-type Orden = 'popular' | 'recent';
+type Sort = 'popular' | 'recent';
 
 /**
- * Pantalla de Inicio — según el mockup aprobado (docs/mock_flujo_arrendatario.html):
- * búsqueda, interruptor Populares/Recientes y "Mis solicitudes".
- * NO existe sección "Cerca de mí" ni búsqueda por zona (fuera de alcance).
+ * Home screen — per the approved mockup (docs/mock_flujo_arrendatario.html):
+ * search, Popular/Recent toggle and "Mis solicitudes".
+ * There is NO "near me" section nor zone search (out of scope).
  */
-export default function Inicio() {
-  const [orden, setOrden] = useState<Orden>('popular');
-  const [texto, setTexto] = useState('');
-  const [articulos, setArticulos] = useState<Item[]>([]);
-  const [reservas, setReservas] = useState<Reservation[]>([]);
+export default function HomeScreen() {
+  const [sort, setSort] = useState<Sort>('popular');
+  const [query, setQuery] = useState('');
+  const [items, setItems] = useState<Item[]>([]);
+  const [reservations, setReservations] = useState<Reservation[]>([]);
 
   useEffect(() => {
-    if (texto.trim() === '') {
-      fuenteDatos.listarArticulos(orden).then(setArticulos);
+    if (query.trim() === '') {
+      dataSource.listItems(sort).then(setItems);
     } else {
-      fuenteDatos.buscarArticulos(texto).then(setArticulos);
+      dataSource.searchItems(query).then(setItems);
     }
-  }, [orden, texto]);
+  }, [sort, query]);
 
   useEffect(() => {
-    fuenteDatos.listarReservas().then((r) => setReservas(r.slice(0, 3)));
+    dataSource.listReservations().then((r) => setReservations(r.slice(0, 3)));
   }, []);
 
   return (
-    <SafeAreaView style={styles.pantalla} edges={['top']}>
+    <SafeAreaView style={styles.screen} edges={['top']}>
       <FlatList
-        data={reservas}
+        data={reservations}
         keyExtractor={(r) => r.id}
         renderItem={({ item }) => (
-          <View style={styles.lateral}>
-            <ReservaItem reserva={item} />
+          <View style={styles.side}>
+            <ReservationRow reservation={item} />
           </View>
         )}
         ListHeaderComponent={
-          <View style={styles.contenido}>
-            <Text style={styles.titulo}>RentaTodo</Text>
+          <View style={styles.content}>
+            <Text style={styles.title}>RentaTodo</Text>
 
             <TextInput
-              style={styles.buscador}
+              style={styles.search}
               placeholder="Buscar artículos…"
               placeholderTextColor={Brand.muted}
-              value={texto}
-              onChangeText={setTexto}
+              value={query}
+              onChangeText={setQuery}
             />
 
             <View style={styles.seg}>
-              {(['popular', 'recent'] as const).map((o) => (
+              {(['popular', 'recent'] as const).map((s) => (
                 <Pressable
-                  key={o}
-                  onPress={() => setOrden(o)}
-                  style={[styles.segBoton, orden === o && styles.segActivo]}>
-                  <Text style={[styles.segTexto, orden === o && styles.segTextoActivo]}>
-                    {o === 'popular' ? 'Populares' : 'Publicados recientemente'}
+                  key={s}
+                  onPress={() => setSort(s)}
+                  style={[styles.segButton, sort === s && styles.segActive]}>
+                  <Text style={[styles.segText, sort === s && styles.segTextActive]}>
+                    {s === 'popular' ? 'Populares' : 'Publicados recientemente'}
                   </Text>
                 </Pressable>
               ))}
@@ -70,17 +70,17 @@ export default function Inicio() {
 
             <FlatList
               horizontal
-              data={articulos}
-              keyExtractor={(a) => a.id}
-              renderItem={({ item }) => <ArticuloCard articulo={item} />}
+              data={items}
+              keyExtractor={(i) => i.id}
+              renderItem={({ item }) => <ItemCard item={item} />}
               showsHorizontalScrollIndicator={false}
-              style={styles.carrusel}
-              ListEmptyComponent={<Text style={styles.vacio}>Sin resultados para “{texto}”.</Text>}
+              style={styles.rail}
+              ListEmptyComponent={<Text style={styles.empty}>Sin resultados para “{query}”.</Text>}
             />
 
-            <View style={styles.seccion}>
-              <Text style={styles.seccionTitulo}>Mis solicitudes</Text>
-              <Text style={styles.seccionLink}>Ver todas</Text>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Mis solicitudes</Text>
+              <Text style={styles.sectionLink}>Ver todas</Text>
             </View>
           </View>
         }
@@ -90,11 +90,11 @@ export default function Inicio() {
 }
 
 const styles = StyleSheet.create({
-  pantalla: { flex: 1, backgroundColor: Brand.paper },
-  contenido: { padding: 16, paddingBottom: 0 },
-  lateral: { paddingHorizontal: 16 },
-  titulo: { fontSize: 20, fontWeight: '800', color: Brand.ink, marginBottom: 12 },
-  buscador: {
+  screen: { flex: 1, backgroundColor: Brand.paper },
+  content: { padding: 16, paddingBottom: 0 },
+  side: { paddingHorizontal: 16 },
+  title: { fontSize: 20, fontWeight: '800', color: Brand.ink, marginBottom: 12 },
+  search: {
     height: 42,
     backgroundColor: Brand.card,
     borderWidth: 1,
@@ -115,19 +115,19 @@ const styles = StyleSheet.create({
     marginTop: 12,
     gap: 2,
   },
-  segBoton: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
-  segActivo: { backgroundColor: Brand.teal },
-  segTexto: { fontSize: 12, fontWeight: '600', color: Brand.muted },
-  segTextoActivo: { color: '#fff' },
-  carrusel: { marginTop: 12 },
-  vacio: { fontSize: 13, color: Brand.muted, paddingVertical: 20 },
-  seccion: {
+  segButton: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+  segActive: { backgroundColor: Brand.teal },
+  segText: { fontSize: 12, fontWeight: '600', color: Brand.muted },
+  segTextActive: { color: '#fff' },
+  rail: { marginTop: 12 },
+  empty: { fontSize: 13, color: Brand.muted, paddingVertical: 20 },
+  section: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'baseline',
     marginTop: 20,
     marginBottom: 10,
   },
-  seccionTitulo: { fontSize: 15, fontWeight: '700', color: Brand.ink },
-  seccionLink: { fontSize: 12, fontWeight: '600', color: Brand.teal },
+  sectionTitle: { fontSize: 15, fontWeight: '700', color: Brand.ink },
+  sectionLink: { fontSize: 12, fontWeight: '600', color: Brand.teal },
 });

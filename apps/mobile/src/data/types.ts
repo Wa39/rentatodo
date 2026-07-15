@@ -1,8 +1,8 @@
 /**
- * Tipos alineados al BORRADOR del contrato: packages/contracts/openapi.yaml
- * (rama feature/openapi-spec, PR #2 — aún NO aprobado por los consumidores).
- * Si el contrato cambia en revisión, este archivo se ajusta.
- * Cuando el contrato quede congelado, lo ideal es generar estos tipos desde el spec.
+ * Types aligned to the contract DRAFT: packages/contracts/openapi.yaml
+ * (feature/openapi-spec branch, PR #2 — not yet approved by all consumers).
+ * If the contract changes during review, this file gets adjusted.
+ * Once the contract is frozen, these should ideally be generated from the spec.
  */
 
 export type Category =
@@ -18,7 +18,7 @@ export type Item = {
   name: string;
   description: string;
   category: Category;
-  /** USD en centavos: 5000 = $50.00. El frontend divide entre 100. */
+  /** USD cents: 5000 = $50.00. The frontend divides by 100. */
   price_per_day: number;
   photo_url: string;
   is_active: boolean;
@@ -27,7 +27,7 @@ export type Item = {
   created_at: string;
 };
 
-/** Rango de fechas ya reservadas (formato del contrato: rangos, no fechas sueltas). */
+/** Range of already-reserved dates (contract format: ranges, not single dates). */
 export type UnavailableRange = {
   start_date: string; // date yyyy-mm-dd
   end_date: string;
@@ -58,22 +58,22 @@ export type Reservation = {
   start_date: string;
   end_date: string;
   status: ReservationStatus;
-  /** USD en centavos. Calculado por el backend: price_per_day × días. */
+  /** USD cents. Backend-calculated: price_per_day × number of days. */
   deposit_amount: number;
   deposit_status: DepositStatus;
   created_at: string;
   updated_at: string;
 };
 
-/** Formatea centavos USD como "$50.00". */
-export function formatoUSD(centavos: number): string {
-  return `$${(centavos / 100).toFixed(2)}`;
+/** Formats USD cents as "$50.00". */
+export function formatUSD(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`;
 }
 
 /**
- * Códigos de error estables — acordados con Trucy el 14-jul-2026
- * (pendientes de verse reflejados en el spec; ella los pushea al PR #2).
- * La app decide por el `code`, nunca por el texto del mensaje.
+ * Stable error codes — agreed with Trucy on 2026-07-14
+ * (pending reflection in the spec; she pushes them to PR #2).
+ * The app decides by `code`, never by the message text.
  *
  * HTTP → codes: 401 UNAUTHORIZED|TOKEN_EXPIRED · 403 FORBIDDEN|CANNOT_RENT_OWN_ITEM
  * 404 NOT_FOUND · 409 DATES_UNAVAILABLE|INVALID_TRANSITION|DUPLICATE_RESERVATION|
@@ -100,9 +100,9 @@ export type ApiError = {
 };
 
 /**
- * Otras decisiones cerradas con Trucy (14-jul-2026):
- * - Token: 24 h sin refresh (expires_in: 86400).
- * - Doble solicitud: mismo renter+item+fechas en `requested` → 409 DUPLICATE_RESERVATION (sin header extra).
- * - `category`: selección ÚNICA. `min_price`/`max_price`: inclusivos, se puede mandar solo uno.
- * - Polling: cada 15 s con la pantalla abierta.
+ * Other decisions closed with Trucy (2026-07-14):
+ * - Token: 24h, no refresh (expires_in: 86400).
+ * - Duplicate request: same renter+item+dates in `requested` → 409 DUPLICATE_RESERVATION (no extra header).
+ * - `category`: SINGLE selection. `min_price`/`max_price`: inclusive, either can be sent alone.
+ * - Polling: every 15s while the screen is open.
  */

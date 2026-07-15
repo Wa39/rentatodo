@@ -8,9 +8,9 @@ import { Brand } from '@/constants/brand';
 SplashScreen.preventAutoHideAsync();
 
 /**
- * Navegación principal: SOLO 3 pestañas (decisión de diseño del equipo).
- * La cámara NO va aquí: solo existe dentro del flujo de check-in/check-out.
- * En la app móvil no hay ninguna pantalla de publicar artículos (regla de alcance).
+ * Main navigation: ONLY 3 tabs (team design decision).
+ * The camera does NOT live here: it only appears inside the check-in/out flow.
+ * The mobile app has no publish screens whatsoever (scope rule).
  */
 export default function TabLayout() {
   return (
@@ -30,14 +30,14 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
-          name="rentas"
+          name="rentals"
           options={{
             title: 'Mis rentas',
             tabBarIcon: ({ color, size }) => <Ionicons name="cube-outline" color={color} size={size} />,
           }}
         />
         <Tabs.Screen
-          name="perfil"
+          name="profile"
           options={{
             title: 'Perfil',
             tabBarIcon: ({ color, size }) => (
@@ -45,8 +45,8 @@ export default function TabLayout() {
             ),
           }}
         />
-        {/* Detalle de artículo: ruta interna, no aparece en la barra de pestañas */}
-        <Tabs.Screen name="articulo/[id]" options={{ href: null }} />
+        {/* Item detail: internal route, hidden from the tab bar */}
+        <Tabs.Screen name="item/[id]" options={{ href: null }} />
       </Tabs>
     </>
   );

@@ -2,28 +2,28 @@ import { Link } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Brand } from '@/constants/brand';
-import { CATEGORIAS } from '@/data/estados';
-import { formatoUSD, type Item } from '@/data/types';
+import { CATEGORY_LABELS } from '@/data/labels';
+import { formatUSD, type Item } from '@/data/types';
 
 /**
- * Tarjeta de artículo para los listados.
- * La foto real llega como photo_url del servicio de imágenes de Wa;
- * mientras no haya seeds con fotos se muestra un marcador con la inicial.
+ * Item card for the listings.
+ * The real photo arrives as photo_url from Wa's image service;
+ * until seeds with photos exist, a placeholder with the initial is shown.
  */
-export function ArticuloCard({ articulo }: { articulo: Item }) {
+export function ItemCard({ item }: { item: Item }) {
   return (
-    <Link href={{ pathname: '/articulo/[id]', params: { id: articulo.id } }} asChild>
+    <Link href={{ pathname: '/item/[id]', params: { id: item.id } }} asChild>
       <Pressable style={styles.card}>
         <View style={styles.thumb}>
-          <Text style={styles.inicial}>{articulo.name.charAt(0)}</Text>
+          <Text style={styles.initial}>{item.name.charAt(0)}</Text>
         </View>
         <View style={styles.info}>
-          <Text style={styles.nombre} numberOfLines={2}>
-            {articulo.name}
+          <Text style={styles.name} numberOfLines={2}>
+            {item.name}
           </Text>
-          <Text style={styles.precio}>{formatoUSD(articulo.price_per_day)} / día</Text>
+          <Text style={styles.price}>{formatUSD(item.price_per_day)} / día</Text>
           <Text style={styles.meta} numberOfLines={1}>
-            {CATEGORIAS[articulo.category]}
+            {CATEGORY_LABELS[item.category]}
           </Text>
         </View>
       </Pressable>
@@ -47,7 +47,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  inicial: {
+  initial: {
     fontSize: 30,
     fontWeight: '800',
     color: Brand.teal,
@@ -56,13 +56,13 @@ const styles = StyleSheet.create({
   info: {
     padding: 10,
   },
-  nombre: {
+  name: {
     fontSize: 13,
     fontWeight: '600',
     color: Brand.ink,
     lineHeight: 17,
   },
-  precio: {
+  price: {
     fontSize: 12,
     fontWeight: '700',
     color: Brand.teal,

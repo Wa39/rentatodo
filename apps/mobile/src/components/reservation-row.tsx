@@ -1,35 +1,35 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { EstadoBadge } from '@/components/estado-badge';
+import { StatusBadge } from '@/components/status-badge';
 import { Brand } from '@/constants/brand';
 import type { Reservation } from '@/data/types';
 
-function formatearRango(r: Reservation): string {
-  const opciones: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' };
-  const inicio = new Date(r.start_date + 'T00:00:00').toLocaleDateString('es-CR', opciones);
-  const fin = new Date(r.end_date + 'T00:00:00').toLocaleDateString('es-CR', opciones);
-  return inicio === fin ? inicio : `${inicio} – ${fin}`;
+function formatDateRange(r: Reservation): string {
+  const options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' };
+  const start = new Date(r.start_date + 'T00:00:00').toLocaleDateString('es-CR', options);
+  const end = new Date(r.end_date + 'T00:00:00').toLocaleDateString('es-CR', options);
+  return start === end ? start : `${start} – ${end}`;
 }
 
-export function ReservaItem({ reserva }: { reserva: Reservation }) {
+export function ReservationRow({ reservation }: { reservation: Reservation }) {
   return (
-    <View style={styles.fila}>
+    <View style={styles.row}>
       <View style={styles.thumb}>
-        <Text style={styles.inicial}>{reserva.item_name.charAt(0)}</Text>
+        <Text style={styles.initial}>{reservation.item_name.charAt(0)}</Text>
       </View>
       <View style={styles.info}>
-        <Text style={styles.nombre} numberOfLines={1}>
-          {reserva.item_name}
+        <Text style={styles.name} numberOfLines={1}>
+          {reservation.item_name}
         </Text>
-        <Text style={styles.fechas}>{formatearRango(reserva)}</Text>
+        <Text style={styles.dates}>{formatDateRange(reservation)}</Text>
       </View>
-      <EstadoBadge estado={reserva.status} />
+      <StatusBadge status={reservation.status} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  fila: {
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
@@ -48,7 +48,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  inicial: {
+  initial: {
     fontSize: 18,
     fontWeight: '800',
     color: Brand.teal,
@@ -58,12 +58,12 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
-  nombre: {
+  name: {
     fontSize: 13,
     fontWeight: '600',
     color: Brand.ink,
   },
-  fechas: {
+  dates: {
     fontSize: 11,
     color: Brand.muted,
     marginTop: 2,

@@ -1,13 +1,13 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { ESTADOS } from '@/data/estados';
+import { STATUS_META } from '@/data/labels';
 import type { ReservationStatus } from '@/data/types';
 
-export function EstadoBadge({ estado }: { estado: ReservationStatus }) {
-  const e = ESTADOS[estado];
+export function StatusBadge({ status }: { status: ReservationStatus }) {
+  const meta = STATUS_META[status];
   return (
-    <View style={[styles.badge, { backgroundColor: e.fondo }]}>
-      <Text style={[styles.texto, { color: e.color }]}>{e.etiqueta}</Text>
+    <View style={[styles.badge, { backgroundColor: meta.bg }]}>
+      <Text style={[styles.text, { color: meta.color }]}>{meta.label}</Text>
     </View>
   );
 }
@@ -19,7 +19,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignSelf: 'flex-start',
   },
-  texto: {
+  text: {
     fontSize: 10,
     fontWeight: '700',
   },

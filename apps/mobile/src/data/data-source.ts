@@ -1,19 +1,19 @@
 import type { Item, ItemDetail, Reservation } from '@/data/types';
 
 /**
- * Capa de datos de la app, con la forma del BORRADOR del contrato (PR #2):
+ * App data layer, shaped like the contract DRAFT (PR #2):
  * GET /items?sort=popular|recent&q=...&category=...  ·  GET /items/{id}
  * GET /users/me/reservations
  *
- * Hoy la implementación es un MOCK local. Cuando el contrato quede congelado
- * se escribe la implementación real (fetch al API) cumpliendo esta interfaz,
- * y las pantallas no se tocan.
+ * Today the implementation is a local MOCK. Once the contract is frozen,
+ * a real implementation (API client) fulfills this same interface and the
+ * screens stay untouched.
  */
-export interface FuenteDatos {
-  listarArticulos(sort: 'popular' | 'recent'): Promise<Item[]>;
-  buscarArticulos(q: string, category?: string): Promise<Item[]>;
-  obtenerArticulo(id: string): Promise<ItemDetail | undefined>;
-  listarReservas(): Promise<Reservation[]>;
+export interface DataSource {
+  listItems(sort: 'popular' | 'recent'): Promise<Item[]>;
+  searchItems(q: string, category?: string): Promise<Item[]>;
+  getItem(id: string): Promise<ItemDetail | undefined>;
+  listReservations(): Promise<Reservation[]>;
 }
 
 const base = { is_active: true, created_at: '2026-07-01T12:00:00Z' };
@@ -51,7 +51,7 @@ const ITEMS: ItemDetail[] = [
   },
 ];
 
-const RESERVAS: Reservation[] = [
+const RESERVATIONS: Reservation[] = [
   {
     id: 'r1', item_id: 'a1', item_name: 'Taladro inalámbrico', item_photo_url: '',
     renter_id: 'u1', renter_name: 'Zero', start_date: '2026-07-12', end_date: '2026-07-14',
@@ -90,37 +90,37 @@ const RESERVAS: Reservation[] = [
   },
 ];
 
-/** Normaliza para búsqueda: sin mayúsculas ni acentos (comportamiento del contrato). */
-function norm(s: string): string {
+/** Normalizes for search: lowercase, no accents (contract behavior). */
+function normalize(s: string): string {
   return s
     .toLowerCase()
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '');
 }
 
-class FuenteMock implements FuenteDatos {
-  async listarArticulos(sort: 'popular' | 'recent'): Promise<Item[]> {
-    // El contrato define ?sort=popular|recent (default recent): el orden lo da la API.
+class MockDataSource implements DataSource {
+  async listItems(sort: 'popular' | 'recent'): Promise<Item[]> {
+    // The contract defines ?sort=popular|recent (default recent): ordering is API-side.
     return sort === 'popular' ? [...ITEMS] : [...ITEMS].reverse();
   }
 
-  async buscarArticulos(q: string, category?: string): Promise<Item[]> {
-    // El contrato busca en name Y description, combinando filtros con AND.
-    const t = norm(q.trim());
+  async searchItems(q: string, category?: string): Promise<Item[]> {
+    // The contract searches name AND description, combining filters with AND.
+    const t = normalize(q.trim());
     return ITEMS.filter(
       (a) =>
-        (t === '' || norm(a.name).includes(t) || norm(a.description).includes(t)) &&
+        (t === '' || normalize(a.name).includes(t) || normalize(a.description).includes(t)) &&
         (!category || a.category === category),
     );
   }
 
-  async obtenerArticulo(id: string): Promise<ItemDetail | undefined> {
+  async getItem(id: string): Promise<ItemDetail | undefined> {
     return ITEMS.find((a) => a.id === id);
   }
 
-  async listarReservas(): Promise<Reservation[]> {
-    return [...RESERVAS];
+  async listReservations(): Promise<Reservation[]> {
+    return [...RESERVATIONS];
   }
 }
 
-export const fuenteDatos: FuenteDatos = new FuenteMock();
+export const dataSource: DataSource = new MockDataSource();
