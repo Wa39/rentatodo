@@ -4,7 +4,7 @@
 
 `apps/web` (the owner dashboard) has no scaffold yet — only a `.gitkeep`, on every branch. `apps/api` already has a FastAPI scaffold on `main`. Per `CLAUDE.md`, the stack was "TBD — updated on day 3 once app scaffolds exist"; this document makes that decision for the web app.
 
-The contract, `packages/contracts/openapi.yaml`, is still a stub on `develop`/`main` — the full v1.0.0 spec (auth, items, reservations, checkin/checkout, reports, transactions, earnings) exists only on the unmerged branch `feature/openapi-spec`. This scaffold is scoped to not depend on that spec being merged.
+**Update (2026-07-15):** the contract, `packages/contracts/openapi.yaml`, has since merged into `develop` (PR #2, plus team-review feedback: structured `{code, message}` error shape, required `expires_in` on login, `DUPLICATE_RESERVATION` handling on reservation creation). It is no longer a stub — the full v1.0.0 spec (auth, items, reservations, checkin/checkout, reports, transactions, earnings) is now available on `develop`. Phase 2 below is therefore unblocked; it was written while the spec was still pending and is left in place as the plan for a follow-up piece of work, not because the spec is still missing.
 
 Scope constraint: this work only touches `apps/web` and (for shared design tokens) a new `packages/design-tokens`. It does not touch `apps/api`, `apps/mobile`, `.github/`, `e2e/`, or `infra/`.
 
@@ -25,7 +25,7 @@ This work creates the package and wires only `apps/web`'s `tailwind.config.ts` t
 
 ## Phasing
 
-The OpenAPI spec isn't finalized/merged yet, so this scaffold is split into two phases. **Only Phase 1 is in scope for the resulting implementation plan/PR.**
+This scaffold is still split into two phases, but the reason has changed: the OpenAPI spec is now finalized on `develop`, so Phase 2 is no longer *blocked* — it's simply sequenced after Phase 1 so the shell (routing, layout, styling) lands first and real API wiring follows as a focused second pass. **Only Phase 1 is in scope for the resulting implementation plan/PR; Phase 2 is planned separately once Phase 1 ships.**
 
 **Phase 1 (this work):**
 - App shell: Vite + React + TypeScript project, React Router routes, dashboard layout with nav
@@ -40,7 +40,7 @@ The OpenAPI spec isn't finalized/merged yet, so this scaffold is split into two 
 - Route-protection *pattern* stubbed (e.g. a `RequireAuth` wrapper reading from a placeholder auth context) — not wired to a real login call yet
 - Vitest + React Testing Library configured with at least one smoke test per page shell
 
-**Phase 2 (future work, blocked on `feature/openapi-spec` merging to `develop`):**
+**Phase 2 (future work, now unblocked — spec is final on `develop`):**
 - `openapi-typescript` codegen script generating types/client from `packages/contracts/openapi.yaml`
 - Real TanStack Query hooks replacing placeholder data on each page
 - Real login/register flow and token storage wired to `POST /auth/login` / `/auth/register`
@@ -76,5 +76,5 @@ packages/design-tokens/
 - Wiring `apps/web`'s lint/test/build into `.github/workflows/ci.yml` — left for Wa (`.github/` is their CODEOWNERS territory) to add.
 - Any change to `apps/mobile` (including NativeWind token wiring).
 - Any change to `apps/api`.
-- Real API integration (Phase 2, blocked on the OpenAPI spec merge).
+- Real API integration (Phase 2 — spec is available, but this work is Phase 1 only; Phase 2 is planned separately).
 - Deployment/hosting configuration.
