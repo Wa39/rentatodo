@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 import { AuthProvider, useAuth } from '@/lib/AuthContext'
 import { LoginPage } from './LoginPage'
@@ -11,13 +11,16 @@ function StatusProbe() {
 }
 
 describe('LoginPage', () => {
-  it('renders email/password fields and authenticates on submit', async () => {
+  it('renders email/password fields, authenticates, and navigates to /dashboard on submit', async () => {
     const user = userEvent.setup()
     render(
       <AuthProvider>
-        <MemoryRouter>
-          <LoginPage />
+        <MemoryRouter initialEntries={['/login']}>
           <StatusProbe />
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/dashboard" element={<div>Dashboard page</div>} />
+          </Routes>
         </MemoryRouter>
       </AuthProvider>,
     )
@@ -27,5 +30,6 @@ describe('LoginPage', () => {
     await user.click(screen.getByRole('button', { name: 'Log in' }))
 
     expect(screen.getByTestId('status')).toHaveTextContent('in')
+    expect(screen.getByText('Dashboard page')).toBeInTheDocument()
   })
 })

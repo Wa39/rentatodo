@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/lib/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -6,6 +7,7 @@ import { Label } from '@/components/ui/label'
 
 export function LoginPage() {
   const { login } = useAuth()
+  const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
 
@@ -13,6 +15,7 @@ export function LoginPage() {
     event.preventDefault()
     // Phase 1: no real POST /auth/login call yet — just flips local auth state.
     login()
+    navigate('/dashboard')
   }
 
   return (
