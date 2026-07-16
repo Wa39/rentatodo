@@ -25,4 +25,5 @@ P2P item rental platform. Owners list items; renters discover and book them.
 
 ## Install & run
 
-TBD — see day 3 once app scaffolds exist.
+See [CLAUDE.md](CLAUDE.md) — stack and commands are documented there.
+
