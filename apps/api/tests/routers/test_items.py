@@ -1,0 +1,143 @@
+"""Integration tests for the Items endpoints."""
+
+from fastapi.testclient import TestClient
+
+
+def test_create_item_requires_authentication(client: TestClient) -> None:
+    """Failure path: no Authorization header returns 401 UNAUTHORIZED."""
+    response = client.post(
+        "/items",
+        json={
+            "name": "Taladro",
+            "description": "Percutor",
+            "category": "tools",
+            "price_per_day": 5000,
+            "photo_url": "https://example.com/photo.jpg",
+        },
+    )
+
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "UNAUTHORIZED"
+
+
+def _register_and_login(client: TestClient, email: str) -> str:
+    client.post(
+        "/auth/register",
+        json={"name": "Owner", "email": email, "password": "securepass123"},
+    )
+    login = client.post("/auth/login", json={"email": email, "password": "securepass123"})
+    return login.json()["access_token"]
+
+
+def test_create_item_happy_path_owner_id_from_token_not_body(client: TestClient) -> None:
+    """Happy path + security check: owner_id in the response is the
+    authenticated user's id, even if a caller tries to spoof it in the body.
+    """
+    token = _register_and_login(client, "owner-create@example.com")
+
+    response = client.post(
+        "/items",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "name": "Taladro Bosch",
+            "description": "Percutor profesional",
+            "category": "tools",
+            "price_per_day": 5000,
+            "photo_url": "https://example.com/photo.jpg",
+            "owner_id": "00000000-0000-0000-0000-000000000000",
+        },
+    )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["owner_id"] != "00000000-0000-0000-0000-000000000000"
+    assert body["owner_name"] == "Owner"
+
+
+def test_create_item_rejects_non_positive_price(client: TestClient) -> None:
+    """Failure path: price_per_day <= 0 returns 422 VALIDATION_ERROR."""
+    token = _register_and_login(client, "owner-create2@example.com")
+
+    response = client.post(
+        "/items",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "name": "Taladro",
+            "description": "Percutor",
+            "category": "tools",
+            "price_per_day": 0,
+            "photo_url": "https://example.com/photo.jpg",
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_list_items_happy_path_returns_created_item(client: TestClient) -> None:
+    """Happy path: an item created via POST /items shows up in GET /items."""
+    token = _register_and_login(client, "owner-list@example.com")
+    client.post(
+        "/items",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "name": "Camara Canon",
+            "description": "Buen estado",
+            "category": "photography",
+            "price_per_day": 8000,
+            "photo_url": "https://example.com/photo.jpg",
+        },
+    )
+
+    response = client.get("/items", params={"category": "photography"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] >= 1
+    assert any(item["name"] == "Camara Canon" for item in body["items"])
+
+
+def test_list_items_returns_empty_when_filter_matches_nothing(client: TestClient) -> None:
+    """Failure/edge path: a filter combination matching nothing returns
+    an empty list and total=0, not an error.
+    """
+    response = client.get("/items", params={"min_price": 999999999})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["items"] == []
+    assert body["total"] == 0
+
+
+def test_get_item_happy_path_returns_detail_with_empty_unavailable_dates(
+    client: TestClient,
+) -> None:
+    """Happy path: item detail includes unavailable_dates as an empty list."""
+    token = _register_and_login(client, "owner-detail@example.com")
+    create_response = client.post(
+        "/items",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "name": "Carpa Camping",
+            "description": "4 personas",
+            "category": "camping",
+            "price_per_day": 3000,
+            "photo_url": "https://example.com/photo.jpg",
+        },
+    )
+    item_id = create_response.json()["id"]
+
+    response = client.get(f"/items/{item_id}")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["name"] == "Carpa Camping"
+    assert body["unavailable_dates"] == []
+
+
+def test_get_item_returns_404_for_missing_id(client: TestClient) -> None:
+    """Failure path: a well-formed but nonexistent id returns 404 NOT_FOUND."""
+    response = client.get("/items/00000000-0000-0000-0000-000000000000")
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "NOT_FOUND"

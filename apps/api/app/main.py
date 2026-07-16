@@ -4,12 +4,13 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from app.exceptions import AppError
-from app.routers import auth, health
+from app.routers import auth, health, items
 
 app = FastAPI(title="RentaTodo API")
 
 app.include_router(health.router)
 app.include_router(auth.router)
+app.include_router(items.router)
 
 
 @app.exception_handler(AppError)
