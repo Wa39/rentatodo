@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import type { Item } from '@/lib/types'
 import { formatCentavos } from '@/lib/format'
 import { getAvailabilityStrip } from '@/lib/availability'
-import { CATEGORY_LABELS } from '@/lib/categoryLabels'
+import { useTranslation } from '@/lib/i18n'
 import { mockItemDetail } from '@/lib/mockData'
 import { Button } from '@/components/ui/button'
 
@@ -14,6 +14,7 @@ interface ItemCardProps {
 }
 
 export function ItemCard({ item, onEdit, onDelete, readOnly = false }: ItemCardProps) {
+  const t = useTranslation()
   const detail = mockItemDetail(item.id)
   const strip = getAvailabilityStrip(detail?.unavailable_dates ?? [])
 
@@ -21,7 +22,7 @@ export function ItemCard({ item, onEdit, onDelete, readOnly = false }: ItemCardP
     <div data-testid={`item-card-${item.id}`} className="overflow-hidden rounded-lg border border-border bg-card">
       <div className="relative flex h-32 items-center justify-center bg-gradient-to-br from-secondary to-card">
         <span className="absolute left-two top-two rounded-full bg-foreground/75 px-two py-half text-xs font-semibold capitalize text-card">
-          {CATEGORY_LABELS[item.category]}
+          {t.categories[item.category]}
         </span>
       </div>
       <div className="space-y-two p-three">
@@ -31,13 +32,13 @@ export function ItemCard({ item, onEdit, onDelete, readOnly = false }: ItemCardP
           </Link>
           <span className="whitespace-nowrap font-mono text-sm font-semibold text-secondary-foreground">
             {formatCentavos(item.price_per_day)}
-            <span className="text-xs font-normal text-muted-foreground">/día</span>
+            <span className="text-xs font-normal text-muted-foreground">{t.itemCard.perDay}</span>
           </span>
         </div>
         <p className="line-clamp-2 text-sm text-muted-foreground">{item.description}</p>
         {item.is_active ? (
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Próximos 14 días</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t.itemCard.next14Days}</p>
             <div className="mt-one flex gap-half">
               {strip.map((day, index) => (
                 <div key={index} className={`h-4 flex-1 rounded-sm ${day === 'booked' ? 'bg-destructive/65' : 'bg-muted'}`} />
@@ -45,18 +46,18 @@ export function ItemCard({ item, onEdit, onDelete, readOnly = false }: ItemCardP
             </div>
           </div>
         ) : (
-          <p className="text-xs font-semibold text-muted-foreground">Inactivo · no visible en búsquedas</p>
+          <p className="text-xs font-semibold text-muted-foreground">{t.itemCard.inactive}</p>
         )}
         {!readOnly && (
           <div className="flex gap-two pt-one">
             <Button size="sm" variant="outline" className="flex-1" onClick={() => onEdit?.(item)}>
-              Editar
+              {t.itemCard.edit}
             </Button>
             <Button size="sm" variant="outline" className="flex-1" asChild>
-              <Link to={`/items/${item.id}`}>Calendario</Link>
+              <Link to={`/items/${item.id}`}>{t.itemCard.calendar}</Link>
             </Button>
             <Button size="sm" variant="destructive" className="flex-1" onClick={() => onDelete?.(item)}>
-              Eliminar
+              {t.itemCard.delete}
             </Button>
           </div>
         )}

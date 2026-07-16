@@ -14,8 +14,8 @@ describe('ItemCard', () => {
       </MemoryRouter>,
     )
     expect(screen.getByText(item.name)).toBeInTheDocument()
-    expect(screen.getByText('Herramientas')).toBeInTheDocument()
-    expect(screen.getByText('Próximos 14 días')).toBeInTheDocument()
+    expect(screen.getByText('Tools')).toBeInTheDocument()
+    expect(screen.getByText('Next 14 days')).toBeInTheDocument()
   })
 
   it('shows the inactive message instead of the strip for an inactive item', () => {
@@ -25,7 +25,7 @@ describe('ItemCard', () => {
         <ItemCard item={item} onEdit={vi.fn()} onDelete={vi.fn()} />
       </MemoryRouter>,
     )
-    expect(screen.getByText('Inactivo · no visible en búsquedas')).toBeInTheDocument()
+    expect(screen.getByText('Inactive · not visible in search')).toBeInTheDocument()
   })
 
   it('calls onEdit and onDelete when their buttons are clicked', async () => {
@@ -38,9 +38,9 @@ describe('ItemCard', () => {
         <ItemCard item={item} onEdit={onEdit} onDelete={onDelete} />
       </MemoryRouter>,
     )
-    await user.click(screen.getByRole('button', { name: 'Editar' }))
+    await user.click(screen.getByRole('button', { name: 'Edit' }))
     expect(onEdit).toHaveBeenCalledWith(item)
-    await user.click(screen.getByRole('button', { name: 'Eliminar' }))
+    await user.click(screen.getByRole('button', { name: 'Delete' }))
     expect(onDelete).toHaveBeenCalledWith(item)
   })
 
@@ -50,7 +50,7 @@ describe('ItemCard', () => {
         <ItemCard item={mockItems[0]} readOnly />
       </MemoryRouter>,
     )
-    expect(screen.queryByRole('button', { name: 'Editar' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Calendario' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Calendar' })).not.toBeInTheDocument()
   })
 })
