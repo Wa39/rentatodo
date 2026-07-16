@@ -12,9 +12,9 @@ export default {
     extend: {
       spacing: pxSpacing,
       fontFamily: {
-        display: ['"Space Grotesk"', 'sans-serif'],
-        sans: ['Inter', 'sans-serif'],
-        mono: ['"JetBrains Mono"', 'monospace'],
+        display: ['"Bricolage Grotesque"', 'sans-serif'],
+        sans: ['"Instrument Sans"', 'sans-serif'],
+        mono: ['"IBM Plex Mono"', 'monospace'],
       },
       borderRadius: {
         lg: 'var(--radius)',
@@ -59,6 +59,7 @@ export default {
         'warning-foreground': 'hsl(var(--warning-foreground))',
         info: 'hsl(var(--info))',
         'info-tint': 'hsl(var(--info-tint))',
+        'on-dark-accent': 'hsl(var(--on-dark-accent))',
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
