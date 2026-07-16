@@ -13,6 +13,10 @@ class Settings(BaseSettings):
             ``JWT_SECRET`` environment variable (or ``.env``).
         jwt_expiration_hours: How many hours an issued access token stays
             valid, read from ``JWT_EXPIRATION_HOURS`` (or ``.env``).
+        cors_origins: Comma-separated list of origins allowed to make
+            cross-origin requests, read from ``CORS_ORIGINS`` (or ``.env``).
+            Kept as a raw string (not a list) so a plain comma-separated
+            value in ``.env`` works without pydantic-settings' JSON parsing.
     """
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
@@ -20,6 +24,12 @@ class Settings(BaseSettings):
     database_url: str
     jwt_secret: str
     jwt_expiration_hours: int = 24
+    cors_origins: str = "http://localhost:8081"
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        """``cors_origins`` split into individual origin strings."""
+        return [origin.strip() for origin in self.cors_origins.split(",")]
 
 
 settings = Settings()
