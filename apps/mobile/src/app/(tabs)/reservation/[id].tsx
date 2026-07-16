@@ -121,6 +121,28 @@ export default function ReservationDetailScreen() {
 
         {error && <Text style={styles.error}>{error}</Text>}
 
+        {reservation.status === 'approved' && (
+          <Pressable
+            style={styles.primaryButton}
+            onPress={() =>
+              router.push({ pathname: '/check/[id]', params: { id: reservation.id, mode: 'in' } })
+            }>
+            <Ionicons name="camera-outline" size={18} color="#fff" />
+            <Text style={styles.primaryButtonText}>Recibí el artículo (check-in)</Text>
+          </Pressable>
+        )}
+
+        {reservation.status === 'delivered' && (
+          <Pressable
+            style={styles.primaryButton}
+            onPress={() =>
+              router.push({ pathname: '/check/[id]', params: { id: reservation.id, mode: 'out' } })
+            }>
+            <Ionicons name="camera-outline" size={18} color="#fff" />
+            <Text style={styles.primaryButtonText}>Devolver el artículo (check-out)</Text>
+          </Pressable>
+        )}
+
         {cancellable && !confirming && (
           <Pressable style={styles.cancelButton} onPress={() => setConfirming(true)}>
             <Text style={styles.cancelText}>Cancelar reserva</Text>
@@ -235,6 +257,17 @@ const styles = StyleSheet.create({
   },
   linkText: { flex: 1, fontSize: 13, fontWeight: '700', color: Brand.ink },
   error: { color: Brand.red, fontSize: 12, marginTop: 12, textAlign: 'center' },
+  primaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: Brand.teal,
+    borderRadius: 14,
+    padding: 14,
+    marginTop: 14,
+  },
+  primaryButtonText: { color: '#fff', fontSize: 13.5, fontWeight: '800' },
   cancelButton: {
     borderWidth: 1.5,
     borderColor: Brand.red,
