@@ -112,6 +112,7 @@ components:
         - sports
         - electronics
         - home
+        - other
 
     CreateItemRequest:
       type: object
