@@ -22,6 +22,30 @@ describe('getMonthGridDays', () => {
     const day14 = days.find((d) => d.inCurrentMonth && d.date.getDate() === 14)
     expect(day14?.isToday).toBe(true)
   })
+
+  it('rolls trailing days from December into January of the next year', () => {
+    const december2026 = new Date(2026, 11, 1)
+    const days = getMonthGridDays(december2026)
+    const trailingDays = days.filter((d) => !d.inCurrentMonth && d.date.getMonth() !== 10)
+
+    expect(trailingDays.length).toBeGreaterThan(0)
+    for (const day of trailingDays) {
+      expect(day.date.getFullYear()).toBe(2027)
+      expect(day.date.getMonth()).toBe(0)
+    }
+  })
+
+  it('rolls leading days from January into December of the previous year', () => {
+    const january2027 = new Date(2027, 0, 1)
+    const days = getMonthGridDays(january2027)
+    const leadingDays = days.filter((d) => !d.inCurrentMonth && d.date.getMonth() !== 1)
+
+    expect(leadingDays.length).toBeGreaterThan(0)
+    for (const day of leadingDays) {
+      expect(day.date.getFullYear()).toBe(2026)
+      expect(day.date.getMonth()).toBe(11)
+    }
+  })
 })
 
 describe('toDateOnlyString', () => {

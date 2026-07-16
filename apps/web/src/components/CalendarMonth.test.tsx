@@ -23,5 +23,7 @@ describe('CalendarMonth', () => {
     expect(screen.getByText('Julio 2026')).toBeInTheDocument()
     expect(screen.getByText('18')).toHaveClass('bg-destructive')
     expect(screen.getByText('17')).not.toHaveClass('bg-destructive')
+    expect(screen.getByText('14')).toHaveClass('ring-primary')
+    expect(screen.getByText('13')).not.toHaveClass('ring-primary')
   })
 })
