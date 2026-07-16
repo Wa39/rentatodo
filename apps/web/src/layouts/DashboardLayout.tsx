@@ -1,20 +1,8 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '@/lib/AuthContext'
+import { useTranslation } from '@/lib/i18n'
 import { mockRequests, mockUser } from '@/lib/mockData'
 import { Button } from '@/components/ui/button'
-
-const NAV_GROUPS = [
-  { label: 'Panel', items: [{ to: '/dashboard', label: 'Resumen' }] },
-  {
-    label: 'Inventario',
-    items: [
-      { to: '/items', label: 'Mis artículos' },
-      { to: '/items/publish', label: 'Publicar artículo' },
-    ],
-  },
-  { label: 'Actividad', items: [{ to: '/requests', label: 'Solicitudes' }] },
-  { label: 'Finanzas', items: [{ to: '/earnings', label: 'Ganancias' }] },
-]
 
 function getInitials(name: string): string {
   return name
@@ -28,7 +16,21 @@ function getInitials(name: string): string {
 export function DashboardLayout() {
   const { logout } = useAuth()
   const location = useLocation()
+  const t = useTranslation()
   const pendingCount = mockRequests.filter((r) => r.status === 'requested').length
+
+  const navGroups = [
+    { label: t.nav.groupPanel, items: [{ to: '/dashboard', label: t.nav.overview }] },
+    {
+      label: t.nav.groupInventory,
+      items: [
+        { to: '/items', label: t.nav.myItems },
+        { to: '/items/publish', label: t.nav.publishItem },
+      ],
+    },
+    { label: t.nav.groupActivity, items: [{ to: '/requests', label: t.nav.requests }] },
+    { label: t.nav.groupFinance, items: [{ to: '/earnings', label: t.nav.earnings }] },
+  ]
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
@@ -41,7 +43,7 @@ export function DashboardLayout() {
         </div>
 
         <nav className="flex-1 space-y-four">
-          {NAV_GROUPS.map((group) => (
+          {navGroups.map((group) => (
             <div key={group.label}>
               <div className="px-two pb-one text-[10.5px] font-semibold uppercase tracking-wide text-sidebar-foreground/50">
                 {group.label}
@@ -79,11 +81,11 @@ export function DashboardLayout() {
           </div>
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-semibold text-white">{mockUser.name}</div>
-            <div className="text-xs text-sidebar-foreground/60">Dueña</div>
+            <div className="text-xs text-sidebar-foreground/60">{t.nav.ownerRole}</div>
           </div>
         </div>
         <Button variant="outline" className="mt-three" onClick={logout}>
-          Cerrar sesión
+          {t.nav.logOut}
         </Button>
       </aside>
       <main className="flex-1 overflow-y-auto p-four">

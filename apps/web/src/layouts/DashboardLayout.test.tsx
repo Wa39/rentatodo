@@ -18,15 +18,15 @@ describe('DashboardLayout', () => {
       </AuthProvider>,
     )
 
-    expect(screen.getByRole('link', { name: 'Resumen' })).toHaveAttribute('href', '/dashboard')
-    expect(screen.getByRole('link', { name: 'Mis artículos' })).toHaveAttribute('href', '/items')
-    expect(screen.getByRole('link', { name: 'Publicar artículo' })).toHaveAttribute('href', '/items/publish')
-    expect(screen.getByRole('link', { name: /^Solicitudes/ })).toHaveAttribute('href', '/requests')
-    expect(screen.getByRole('link', { name: 'Ganancias' })).toHaveAttribute('href', '/earnings')
+    expect(screen.getByRole('link', { name: 'Overview' })).toHaveAttribute('href', '/dashboard')
+    expect(screen.getByRole('link', { name: 'My items' })).toHaveAttribute('href', '/items')
+    expect(screen.getByRole('link', { name: 'Publish item' })).toHaveAttribute('href', '/items/publish')
+    expect(screen.getByRole('link', { name: /^Requests/ })).toHaveAttribute('href', '/requests')
+    expect(screen.getByRole('link', { name: 'Earnings' })).toHaveAttribute('href', '/earnings')
     expect(screen.getByText('Home content')).toBeInTheDocument()
   })
 
-  it('shows a pending-request count badge on the Solicitudes link', () => {
+  it('shows a pending-request count badge on the Requests link', () => {
     render(
       <AuthProvider>
         <MemoryRouter initialEntries={['/dashboard']}>
@@ -38,7 +38,7 @@ describe('DashboardLayout', () => {
         </MemoryRouter>
       </AuthProvider>,
     )
-    const requestsLink = screen.getByRole('link', { name: /^Solicitudes/ })
+    const requestsLink = screen.getByRole('link', { name: /^Requests/ })
     expect(requestsLink).toHaveTextContent(/\d+/)
   })
 })
