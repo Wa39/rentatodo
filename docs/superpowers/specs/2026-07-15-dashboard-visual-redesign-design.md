@@ -17,6 +17,76 @@ Phase 1 rules still apply: no real network calls. All data continues to come fro
 
 **Explicit decision, made with the human: all user-facing UI text moves to Spanish**, matching the mockup exactly (nav labels, buttons, form labels, headings, status badge text) rather than leaving the current English text in place. This is a full translation pass across all 8 existing pages, not just the sidebar nav. Code identifiers (variable/function/component names, CSS classes, comments) stay in English, unchanged — only user-facing strings translate. The full label mapping (including reservation statuses the mockup's static demo doesn't show, like `approved`/`returned`/`cancelled`) is specified per-page below.
 
+## Addendum (2026-07-15, revision 2): updated mockup, English-first i18n, `other` category
+
+Silverk's mockup was updated after this spec's original palette/font decisions were made and 10 of the original plan's 17 tasks were already committed. This addendum supersedes the affected sections below; it does not restate parts of the original spec that are still accurate (page structure, KPI/availability-strip/calendar logic, mock-data shape).
+
+**Source**: `c:\Users\josma\Downloads\RentaTodo Dashboard.html` — a newer export of the same 6-screen mockup (same pages: Resumen/Dashboard, Mis artículos/Items, Publicar/Publish, Solicitudes/Requests, Calendario, Ganancias/Earnings), with a changed palette, changed fonts, and a few structural refinements not present in the original `dashboard.html`.
+
+**Explicit decision, made with the human, superseding the original "all text to Spanish" decision**: the app ships **English-first**, built through a lightweight i18n scaffold so Spanish (and other languages) can be added later without touching call sites. New module `apps/web/src/lib/i18n/`:
+- `en.ts` — a nested string dictionary, one top-level key per feature area (`nav`, `login`, `register`, `statusBadge`, `itemCard`, `calendar`, `dashboard`, `items`, `requests`, `earnings`, `reservationDetail`, `categories`), only locale populated today.
+- `index.ts` — exports `type Translations = typeof en` and `useTranslation(locale: 'en' = 'en'): Translations` (returns the dictionary directly; no Context/Provider yet since there is nothing to switch between). Components call `const t = useTranslation()` and read e.g. `t.nav.overview`. Adding a second locale later means dropping in `es.ts` satisfying `Translations` and wiring real locale selection into `useTranslation`'s default arg — no call-site changes.
+- `apps/web/src/lib/categoryLabels.ts` (already committed, Task 6) folds into the dictionary as `t.categories` and is deleted as a standalone module.
+- `apps/web/index.html`'s `lang="es"` (set by the already-committed Task 2) reverts to `lang="en"`.
+
+**Migration scope for already-committed work**: the six components/pages committed under the original Spanish-first plan — `DashboardLayout`, `LoginPage`, `RegisterPage`, `StatusBadge`, `CalendarMonth`, `ItemCard` (plus their test files, plus `App.test.tsx`'s login-button-name assertion) — get their hardcoded Spanish string literals replaced with `t.*` lookups sourced from `en.ts`, with English content. This is a redo of *how strings are sourced and what language they're in*, not a redo of the component logic/markup structure itself (which stays as already built). Tasks 11-17 (not yet started) are built directly against the dictionary from the start.
+
+**Palette**: `packages/design-tokens/tokens.ts`'s `colors` values (populated by the already-committed Task 1) are superseded by these new hex values — token names unchanged except five new additions:
+
+| Token | Superseded old hex | New hex |
+|---|---|---|
+| `sidebar` | `#16231d` | `#141F19` |
+| `sidebarHover` | `#1f3129` | `#1E2E26` |
+| `sidebarBorder` | `#263a30` | `#263A30` (unchanged) |
+| `sidebarForeground` | `#cfd9d2` | `#AEBBB3` |
+| `bg` | `#f4f6f4` | `#EFEDE6` |
+| `card` | `#ffffff` | `#FFFFFF` (unchanged) |
+| `border` | `#e2e7e3` | `#E4E2D8` |
+| `ink` | `#16221d` | `#17201B` |
+| `inkSoft` | `#5c6b64` | `#5B655E` |
+| `inkFaint` | `#94a39c` | `#9AA39C` |
+| `forest` | `#2f6f4e` | `#1E7A4F` |
+| `forestDark` | `#234f39` | `#155C3B` |
+| `forestTint` | `#e7f1ea` | `#E2F0E7` |
+| `amber` | `#d98c2b` | `#D9862A` |
+| `amberInk` | `#241505` | `#241505` (unchanged) |
+| `amberTint` | `#fbeed9` | `#F9ECD6` |
+| `amberForeground` | `#9c6114` | `#8F550F` |
+| `red` | `#c0442e` | `#C24A32` |
+| `redTint` | `#f8e4df` | `#F7E1DA` |
+| `blue` | `#3563a8` | `#33608F` |
+| `blueTint` | `#e4ebf6` | `#E3EAF3` |
+| `line` *(new)* | — | `#EFEEE7` — fine internal dividers (e.g. Earnings breakdown rows), distinct from `border` |
+| `redBorder` *(new)* | — | `#ECCFC5` — destructive outline-button border, distinct from `redTint` (reserved for hover-fill) |
+| `sidebarCard` *(new)* | — | `#1B2A22` — nested widget bg inside the sidebar (the "Ganado este mes" preview box) |
+| `onDarkAccent` *(new)* | — | `#6FB88E` — green accent text/icon on dark surfaces (sidebar widget delta, dashboard's inverted KPI card) |
+| `closedTint` *(new)* | — | `#ECEEEA` — closed-status badge background, distinct from `muted` |
+
+The corresponding `apps/web/src/index.css` `:root` HSL values (populated by the already-committed Task 3) are recomputed from these new hex values, same variable names, no new CSS variables beyond the five new tokens above (added as new `--x` entries + matching `tailwind.config.ts` `theme.extend.colors` keys, same `hsl(var(--x))` pattern as `warning`/`info`).
+
+**Fonts**: Space Grotesk → **Bricolage Grotesque** (weights 600/700/800, display/headings/KPI numbers), Inter → **Instrument Sans** (weights 400/500/600/700, body/UI), JetBrains Mono → **IBM Plex Mono** (weights 500/600, prices/dates) — same three-role `font-display`/`font-sans`/`font-mono` structure as the already-committed Task 2, new Google Fonts URL:
+```
+https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700;800&family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap
+```
+
+**Radius**: the new mockup uses a graduated per-component radius scale (16/14/11/10/9/7px, plus pill/circle) instead of a single token. Decision: shadcn primitives (`Button`, `Input`, `Dialog`, etc.) keep `--radius` (10px) untouched; bespoke dashboard components (KPI cards, `ItemCard`, `StatusBadge`) use Tailwind's built-in `rounded-lg`/`rounded-xl`/`rounded-2xl`/`rounded-full` utilities to visually approximate the mockup's tiers. No new radius design-token infrastructure — YAGNI.
+
+**`StatusBadge` gains a colored dot** before the label (a small `rounded-full` swatch matching the badge's accent color), and its status→style mapping (superseding the original spec's table) is:
+
+| `ReservationStatus` | English label | Badge bg / text / dot |
+|---|---|---|
+| `requested` | Pending | `amber-tint` bg / `amber-foreground` text / `amber` dot |
+| `approved` | Approved | `forest-tint` (`secondary`) bg / `forest-dark` (`secondary-foreground`) text / `forest` dot |
+| `delivered` | Active | `blue-tint` (`info-tint`) bg / `blue` (`info`) text / `blue` dot |
+| `returned` | Active | same as `delivered` — both map to the mockup's single "active" visual state |
+| `closed` | Closed | `closedTint` bg / `ink-soft` text / `ink-faint` dot |
+| `rejected` | Rejected | `red-tint` bg / `red` text / `red` dot |
+| `cancelled` | Rejected | same treatment as `rejected` — both terminal "did not happen" states |
+
+**Dashboard KPI row**: the 4th stat card ("Earned this month") is dark-inverted (`sidebar` bg, `sidebarHover`/`sidebarCard` for its icon chip, `onDarkAccent` for the value/icon color) instead of the light-card treatment the other 3 KPI cards use. `EarningsPage`'s first stat card ("Total earned") gets the same dark-inverted background but with plain white text, no `onDarkAccent` — this asymmetry is intentional per the mockup, not a copy-paste of the same treatment.
+
+**Category `other`**: origin/develop's `packages/contracts/openapi.yaml` (PR #13, not yet in this branch) added `'other'` to `CategoryEnum`. Decision: sync only this value manually (not a full merge of develop into this branch) — add `'other'` to `apps/web/src/lib/types.ts`'s `Category` union and to the i18n dictionary's `categories` map (`t.categories.other = 'Other'`), independent of the i18n migration task.
+
 ## Global Constraints
 
 - Scope: `apps/web` + `packages/design-tokens` only.
