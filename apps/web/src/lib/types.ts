@@ -5,6 +5,7 @@ export type Category =
   | 'sports'
   | 'electronics'
   | 'home'
+  | 'other'
 
 export interface User {
   id: string
