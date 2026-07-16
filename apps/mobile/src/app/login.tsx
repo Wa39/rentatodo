@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 18,
-    backgroundColor: Brand.teal,
+    backgroundColor: Brand.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
   },
   error: { color: Brand.red, fontSize: 12, marginTop: 12 },
   button: {
-    backgroundColor: Brand.teal,
+    backgroundColor: Brand.primary,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
@@ -145,5 +145,5 @@ const styles = StyleSheet.create({
   buttonText: { color: '#fff', fontSize: 15, fontWeight: '700' },
   footer: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 18 },
   footerText: { fontSize: 13, color: Brand.muted },
-  footerLink: { fontSize: 13, fontWeight: '700', color: Brand.teal },
+  footerLink: { fontSize: 13, fontWeight: '700', color: Brand.primary },
 });

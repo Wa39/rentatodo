@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   segButton: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
-  segActive: { backgroundColor: Brand.teal },
+  segActive: { backgroundColor: Brand.primary },
   segText: { fontSize: 12, fontWeight: '600', color: Brand.muted },
   segTextActive: { color: '#fff' },
   rail: { marginTop: 12 },
@@ -129,5 +129,5 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   sectionTitle: { fontSize: 15, fontWeight: '700', color: Brand.ink },
-  sectionLink: { fontSize: 12, fontWeight: '600', color: Brand.teal },
+  sectionLink: { fontSize: 12, fontWeight: '600', color: Brand.primary },
 });

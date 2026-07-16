@@ -43,14 +43,14 @@ const styles = StyleSheet.create({
   },
   thumb: {
     height: 90,
-    backgroundColor: Brand.tealSoft,
+    backgroundColor: Brand.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
   initial: {
     fontSize: 30,
     fontWeight: '800',
-    color: Brand.teal,
+    color: Brand.primary,
     opacity: 0.55,
   },
   info: {
@@ -65,7 +65,7 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 12,
     fontWeight: '700',
-    color: Brand.teal,
+    color: Brand.primary,
     marginTop: 3,
   },
   meta: {
