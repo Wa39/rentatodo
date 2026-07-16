@@ -1,12 +1,9 @@
-# TODO: Replace placeholders with actual GitHub usernames before enabling
-# branch rulesets. Current values are team aliases only.
-
 # Contract changes require approval from all four team members.
 # Team rule: any change to packages/contracts/ is a breaking-surface change
 # and must be reviewed by every consumer (api, web, mobile, qa).
-packages/contracts/  @trucy @silverk @zero @wa
+packages/contracts/  @Josepicado95 @j0sMedina @psced10-creator @Wa39
 
 # CI/CD pipeline, E2E tests, and infrastructure belong to Platform/QA (Wa).
-.github/             @wa
-e2e/                 @wa
-infra/               @wa
+.github/             @Wa39
+e2e/                 @Wa39
+infra/               @Wa39

@@ -3,7 +3,7 @@
 ## Project
 
 P2P item rental platform. Owners list items; renters discover and book them.
-Four-person, four-week project. Stack TBD — updated on day 3 once app scaffolds exist.
+Four-person, four-week project.
 
 ## Repo structure
 
@@ -44,7 +44,44 @@ Types: `feat`, `fix`, `chore`, `docs`, `test`, `ci`, `refactor`
 
 ## Stack & commands
 
-TBD — updated on day 3 once app scaffolds exist.
+| App | Stack |
+|-----|-------|
+| `apps/api/` | Python 3.12 · FastAPI · PostgreSQL 16 · SQLAlchemy · Alembic · pytest |
+| `apps/web/` | Vite · React · Tailwind CSS (scaffold pending — Silverk) |
+| `apps/mobile/` | Expo 57 · React Native 0.86 · TypeScript |
+
+### Run locally
+
+**Start the database (run once, from repo root):**
+```bash
+docker compose -f infra/docker-compose.yml up -d
+```
+
+**API:**
+```bash
+cd apps/api
+python -m venv .venv && source .venv/bin/activate  # first time only
+pip install -r requirements.txt                     # first time only
+cp .env.example .env                                # first time only — fill in values
+alembic upgrade head
+uvicorn app.main:app --reload
+```
+
+**Seed test users (optional, from repo root with API venv active):**
+```bash
+DATABASE_URL=postgresql+psycopg://rentatodo:rentatodo@localhost:5432/rentatodo \
+JWT_SECRET=dev-secret \
+python infra/seed.py
+```
+
+**Mobile:**
+```bash
+cd apps/mobile
+npm ci        # first time only
+npx expo start
+```
+
+**Web:** TBD — Silverk's scaffold pending.
 
 ## What an agent MUST NOT do in this repo
 

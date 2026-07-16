@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>RentaTodo · Solicitud de datos — App móvil (Zero)</title>
+<style>
+  @page{size:A4;margin:18mm 16mm}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:"Segoe UI",-apple-system,Roboto,sans-serif;
+    color:#1F3B57;font-size:10.5pt;line-height:1.5;
+  }
+  .doc{max-width:180mm;margin:0 auto}
+
+  .kicker{font-size:8.5pt;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:#0E7C7B}
+  h1{font-size:19pt;font-weight:800;letter-spacing:-.3px;margin:2mm 0 1mm}
+  .meta{font-size:9pt;color:#7A8791;margin-bottom:6mm}
+  .meta b{color:#1F3B57}
+
+  h2{
+    font-size:12.5pt;font-weight:800;margin:8mm 0 3mm;
+    padding-bottom:1.5mm;border-bottom:2px solid #0E7C7B;
+  }
+  h3{font-size:10.5pt;font-weight:700;margin:5mm 0 2mm;color:#0E7C7B}
+  p{margin-bottom:2.5mm}
+  ul,ol{margin:0 0 3mm 6mm}
+  li{margin-bottom:1.2mm}
+  b{font-weight:700}
+  code{font-family:Consolas,monospace;font-size:9pt;background:#EEF2F4;padding:.5px 4px;border-radius:3px}
+
+  table{width:100%;border-collapse:collapse;margin:2mm 0 4mm;font-size:9.3pt}
+  th{
+    background:#E4F1F0;color:#0E7C7B;text-align:left;font-weight:700;
+    padding:2mm 2.5mm;border:1px solid #C9DBDA;font-size:8.6pt;
+    text-transform:uppercase;letter-spacing:.4px;
+  }
+  td{padding:1.8mm 2.5mm;border:1px solid #DDE4E8;vertical-align:top}
+  tr:nth-child(even) td{background:#F7F9FA}
+
+  .callout{
+    border-left:3.5px solid #C97A15;background:#FBECD6;
+    padding:3mm 4mm;border-radius:0 6px 6px 0;margin:3mm 0 4mm;font-size:9.5pt;
+  }
+  .callout.teal{border-color:#0E7C7B;background:#E4F1F0}
+  .callout.red{border-color:#B3402E;background:#F7E0DB}
+  .callout b{display:block;margin-bottom:1mm}
+
+  .tag{
+    display:inline-block;font-size:8pt;font-weight:700;padding:.5mm 2.5mm;
+    border-radius:8px;background:#E4F1F0;color:#0E7C7B;letter-spacing:.3px;
+  }
+  .tag.amber{background:#FBECD6;color:#C97A15}
+  .tag.red{background:#F7E0DB;color:#B3402E}
+
+  .footer{margin-top:8mm;padding-top:3mm;border-top:1px solid #DDE4E8;font-size:8.5pt;color:#7A8791}
+  .pagebreak{page-break-before:always}
+  h2,h3{page-break-after:avoid}
+  table,.callout{page-break-inside:avoid}
+  tr{page-break-inside:avoid}
+</style>
+</head>
+<body>
+<div class="doc">
+
+  <div class="kicker">RentaTodo · Proyecto académico · Rol Zero (App móvil)</div>
+  <h1>Solicitud de datos y análisis del botón "Reportar problema"</h1>
+  <div class="meta">Versión 2 · 12 de julio de 2026 · Reemplaza la solicitud de datos anterior enviada a Trucy · <b>Todos los nombres de campos y endpoints son PROPUESTA, no contrato</b></div>
+
+  <h2>1. Propósito de este documento</h2>
+  <p>Este documento consolida <b>qué datos necesita la app móvil, para qué pantalla, y a quién se le piden</b> (Trucy, Wa o Silverk), tomando como base el mockup de 8 pantallas del flujo del arrendatario. Además analiza el botón <b>"Reportar problema"</b>, considerando que tanto la persona arrendadora como la arrendataria pueden recibir el artículo dañado en distintos momentos de la interacción.</p>
+  <p>Según la regla de equipo n.º 3, nada de lo aquí propuesto se implementa hasta que quede reflejado en el <b>spec OpenAPI congelado</b>, aprobado por sus consumidores.</p>
+
+  <h2>2. Cambio de alcance ya decidido: sin búsqueda por zona</h2>
+  <div class="callout teal">
+    <b>Se eliminó la sección "Cerca de mí" de la pantalla de Inicio.</b>
+    Con esto se cierra el punto abierto de geolocalización por la vía segura. Consecuencias para el contrato:
+  </div>
+  <ul>
+    <li><b>Se retira</b> de la solicitud anterior la operación "listar artículos filtrados por zona del usuario". Ya no se necesita.</li>
+    <li>El campo <code>zonaRegistrada</code> del perfil <b>se mantiene</b> solo como dato informativo de la cuenta (se muestra en Perfil); no alimenta ninguna búsqueda ni cálculo.</li>
+    <li>El campo <code>zona</code> del artículo <b>se mantiene</b> como texto informativo en tarjetas y detalle (ej. "Heredia centro"). Nunca se muestran distancias en km.</li>
+  </ul>
+
+  <h2>3. Datos que se piden a Trucy (Backend Core · dueña del contrato)</h2>
+
+  <h3>3.1 Objeto Artículo — pantallas: Inicio, Búsqueda, Detalle</h3>
+  <table>
+    <tr><th>Campo (propuesta)</th><th>Tipo</th><th>Pantalla que lo usa</th><th>Para qué</th></tr>
+    <tr><td><code>id</code></td><td>identificador</td><td>Todas</td><td>Abrir el detalle al tocar la tarjeta</td></tr>
+    <tr><td><code>nombre</code></td><td>texto</td><td>Inicio, Búsqueda, Detalle</td><td>Título de tarjeta y detalle</td></tr>
+    <tr><td><code>foto</code></td><td>URL de imagen</td><td>Inicio, Búsqueda, Detalle</td><td>Imagen del artículo</td></tr>
+    <tr><td><code>precioPorDia</code></td><td>número</td><td>Inicio, Búsqueda, Detalle, Solicitud</td><td>Mostrar precio y calcular subtotal</td></tr>
+    <tr><td><code>moneda</code></td><td>texto</td><td>Todas las que muestran precio</td><td>Símbolo correcto (ej. CRC / ₡)</td></tr>
+    <tr><td><code>categoria</code></td><td>texto</td><td>Inicio, Búsqueda</td><td>Mostrar y filtrar</td></tr>
+    <tr><td><code>zona</code></td><td>texto</td><td>Inicio, Búsqueda, Detalle</td><td>Solo texto informativo (sin distancias)</td></tr>
+    <tr><td><code>duenoNombre</code> <span class="tag amber">nuevo</span></td><td>texto</td><td>Detalle</td><td>"Publicado por María V."</td></tr>
+    <tr><td><code>montoDeposito</code> <span class="tag amber">nuevo</span></td><td>número</td><td>Detalle, Solicitud</td><td>Mostrar el depósito antes de solicitar</td></tr>
+  </table>
+
+  <h3>3.2 Disponibilidad del artículo — pantalla: Detalle (calendario) <span class="tag amber">nuevo</span></h3>
+  <p>El calendario necesita saber <b>qué fechas están ocupadas</b> para un artículo en un mes dado. Propuesta: una consulta por artículo que devuelva rangos o lista de fechas no disponibles. Esto viene del motor de disponibilidad de Trucy; la app solo pinta.</p>
+
+  <h3>3.3 Objeto Reserva — pantallas: Inicio (Mis solicitudes), Mis rentas, Detalle de reserva</h3>
+  <table>
+    <tr><th>Campo (propuesta)</th><th>Tipo</th><th>Para qué</th></tr>
+    <tr><td><code>id</code></td><td>identificador</td><td>Abrir el detalle de la reserva</td></tr>
+    <tr><td><code>articuloNombre</code> / <code>articuloFoto</code></td><td>texto / URL</td><td>Identificar el artículo en la lista</td></tr>
+    <tr><td><code>fechaInicio</code> / <code>fechaFin</code></td><td>fecha</td><td>Rango del alquiler</td></tr>
+    <tr><td><code>estado</code></td><td>enum</td><td>Badge de color (ver 3.6)</td></tr>
+    <tr><td><code>estadoDeposito</code> <span class="tag amber">nuevo</span></td><td>enum</td><td>retenido / liberado / congelado (mock)</td></tr>
+  </table>
+
+  <h3>3.4 Actualizaciones de la reserva — pantalla: Detalle de reserva <span class="tag amber">nuevo</span></h3>
+  <p>Lista de eventos de la reserva para el <b>polling</b> (no hay push): cada evento con <code>fechaHora</code> y <code>descripcion</code> (ej. "El dueño aprobó tu solicitud"). Pregunta: ¿lo da un endpoint propio o se deriva del historial de estados?</p>
+
+  <h3>3.5 Operaciones requeridas</h3>
+  <table>
+    <tr><th>Operación</th><th>Pantalla</th><th>Nota</th></tr>
+    <tr><td>Listar artículos por popularidad</td><td>Inicio</td><td>¿Orden lo da la API o la app? (pregunta abierta)</td></tr>
+    <tr><td>Listar artículos por fecha de publicación</td><td>Inicio</td><td>Interruptor "Publicados recientemente"</td></tr>
+    <tr><td>Buscar por texto</td><td>Búsqueda</td><td>Único mecanismo junto con categoría</td></tr>
+    <tr><td>Filtrar por categoría</td><td>Búsqueda</td><td>Falta la lista oficial de categorías</td></tr>
+    <tr><td>Detalle de un artículo</td><td>Detalle</td><td>Incluye dueño y depósito</td></tr>
+    <tr><td>Consultar disponibilidad (fechas ocupadas)</td><td>Detalle</td><td>Nuevo — para el calendario</td></tr>
+    <tr><td>Crear solicitud de alquiler</td><td>Solicitud</td><td>Nace en estado "solicitada"; retiene depósito mock</td></tr>
+    <tr><td>Listar reservas del usuario</td><td>Inicio, Mis rentas</td><td>Con estado y estado del depósito</td></tr>
+    <tr><td>Registrar check-in / check-out (con 1 foto)</td><td>Check-in/out</td><td>La foto sube vía servicio de Wa; aquí va la URL</td></tr>
+    <tr><td>Listar actualizaciones de una reserva</td><td>Detalle de reserva</td><td>Nuevo — alimenta el polling</td></tr>
+    <tr><td>Reportar problema</td><td>Detalle de reserva</td><td>Nuevo — ver sección 6</td></tr>
+  </table>
+
+  <h3>3.6 Enum de estados</h3>
+  <p>La app mapea cada estado a etiqueta y color (solicitada, aprobada, entregada, devuelta, cerrada, rechazada, cancelada). <b>Sigue pendiente el enum definitivo</b>: nombres exactos, idioma y mayúsculas. Sin eso, los badges no se pueden codificar.</p>
+
+  <div class="pagebreak"></div>
+
+  <h2>4. Lo que se pide a Wa (Plataforma / QA)</h2>
+  <table>
+    <tr><th>Necesidad</th><th>Para qué pantalla / flujo</th><th>Detalle</th></tr>
+    <tr><td>URLs prefirmadas para subir imagen</td><td>Check-in / Check-out</td><td>1 foto única por evento; carga directa, sin redimensionado</td></tr>
+    <tr><td>¿URL prefirmada también para la foto del reporte?</td><td>Reportar problema</td><td>Solo si el equipo decide que el reporte lleva foto (ver 6.4) — no asumirlo</td></tr>
+    <tr><td>API de pagos mock</td><td>Solicitud, Detalle de reserva</td><td>Operaciones retener / liberar / <b>congelar</b> depósito, coordinadas con la máquina de estados de Trucy</td></tr>
+    <tr><td>Convenciones de ramas, commits y plantilla de PR</td><td>Todo el desarrollo</td><td>Bloqueante para abrir la primera rama <code>feature/*</code></td></tr>
+    <tr><td>Ambiente de staging y datos de prueba</td><td>Demo y tests</td><td>Artículos publicados por Silverk para probar el flujo completo</td></tr>
+  </table>
+
+  <h2>5. Coordinación con Silverk (Frontend Web del dueño)</h2>
+  <ul>
+    <li><b>Flujo de la demo:</b> el dueño publica en la web → la persona arrendataria renta desde la app. La app no publica nunca; necesitamos artículos de prueba publicados desde su dashboard.</li>
+    <li><b>Reportar problema del lado del dueño:</b> si el dueño recibe el artículo dañado en la devolución, su reporte se hace <b>desde la web de Silverk</b>, no desde la app móvil (la app es solo del arrendatario). Ambos clientes deberían llamar la misma operación del backend (ver 6.3).</li>
+    <li><b>Visibilidad cruzada:</b> cuando una parte reporta, ¿qué ve la otra? Propuesta mínima: aparece como evento en la lista de actualizaciones ("Se reportó un problema; el depósito está congelado").</li>
+  </ul>
+
+  <h2>6. Análisis del botón "Reportar problema"</h2>
+
+  <div class="callout teal">
+    <b>Qué dice el plan (alcance):</b>
+    No hay módulo de disputas. Existe únicamente un botón "reportar problema" cuyo efecto es <b>congelar el depósito</b>. Todo lo que sigue respeta ese límite: es un solo botón con un solo efecto, no un flujo de resolución.
+  </div>
+
+  <h3>6.1 Escenario que cubre: el artículo llega dañado a cualquiera de las dos partes</h3>
+  <p>En una renta hay dos "recepciones" del artículo, y en ambas puede aparecer el daño. Además, el daño puede descubrirse durante el uso:</p>
+  <table>
+    <tr><th>Momento de la interacción</th><th>Quién recibe / detecta el daño</th><th>Desde dónde reporta</th><th>Estado típico de la reserva</th></tr>
+    <tr><td>Entrega (check-in)</td><td><b>Arrendatario</b> recibe el artículo dañado</td><td>App móvil (Zero)</td><td>entregada (recién hecha)</td></tr>
+    <tr><td>Durante el alquiler</td><td><b>Arrendatario</b> descubre o provoca un daño</td><td>App móvil (Zero)</td><td>entregada</td></tr>
+    <tr><td>Devolución (check-out)</td><td><b>Arrendador</b> recibe el artículo dañado</td><td>Web del dueño (Silverk)</td><td>devuelta (antes de cerrar)</td></tr>
+    <tr><td>Después de cerrada</td><td>—</td><td>No se puede reportar</td><td>cerrada = depósito ya liberado</td></tr>
+  </table>
+
+  <div class="callout">
+    <b>Punto clave de alcance para la app móvil:</b>
+    aunque ambas partes pueden reportar, <b>en la app móvil solo reporta la persona arrendataria</b> (la app es exclusiva del rol arrendatario). El reporte del arrendador vive en el dashboard web de Silverk. Lo que sí debe garantizar el equipo es que <b>ambos clientes usen la misma operación del backend</b>, para que el efecto (congelar depósito) y el registro sean idénticos.
+  </div>
+
+  <h3>6.2 Cuándo está disponible el botón (propuesta)</h3>
+  <ul>
+    <li><b>Visible y activo:</b> desde que la reserva está <b>entregada</b> (hubo check-in, el arrendatario ya tiene el artículo) hasta antes de <b>cerrada</b>. Del lado web, el dueño puede reportar en <b>devuelta</b>, al recibir el artículo de vuelta.</li>
+    <li><b>No disponible:</b> en solicitada, aprobada (aún no hay artículo en manos de nadie nuevo), rechazada, cancelada y cerrada.</li>
+    <li>El botón se muestra en la pantalla <b>Detalle de la reserva</b>, con estilo de acción destructiva (borde rojo) y una confirmación simple antes de ejecutar ("Esto congela el depósito y avisa a la otra parte. ¿Continuar?").</li>
+  </ul>
+
+  <h3>6.3 Efecto y modelo de datos (propuesta para Trucy)</h3>
+  <ul>
+    <li><b>Efecto único:</b> <code>estadoDeposito</code> pasa a <b>congelado</b>. El depósito congelado no se libera al cerrar; queda para revisión humana fuera del sistema (la resolución de disputas está fuera de alcance).</li>
+    <li><b>La reserva NO cambia de estado.</b> La máquina de estados acordada no tiene un estado "en disputa", y agregarlo sería un cambio de contrato mayor. Propuesta: el reporte es un <b>registro aparte</b> vinculado a la reserva, no una edición de la reserva — coherente con la regla de registros inmutables (audit trail): nunca se edita, se crea uno nuevo.</li>
+    <li><b>Datos del reporte (propuesta):</b> <code>reservaId</code>, <code>rolReportante</code> (arrendatario / arrendador), <code>motivo</code> (texto corto), <code>fechaHora</code> (la pone el servidor). El reporte aparece como evento en la lista de actualizaciones de ambas partes.</li>
+    <li><b>Un reporte por reserva es suficiente</b> para el alcance del curso: si ya está congelado, el botón se deshabilita ("Problema ya reportado").</li>
+  </ul>
+
+  <h3>6.4 Preguntas que el equipo debe responder antes de implementar</h3>
+  <ol>
+    <li>¿El reporte lleva <b>foto</b>? El alcance solo garantiza 1 foto en check-in/check-out. Si se decide que sí, Wa tendría que dar una URL prefirmada adicional. <b>No lo asumimos.</b></li>
+    <li>¿El <b>motivo</b> es texto libre corto o una lista fija de opciones (ej. "llegó dañado", "se dañó durante el uso", "no coincide con la publicación")? Lista fija simplifica la demo.</li>
+    <li>¿Reportar durante <b>devuelta</b> desde el móvil tiene sentido (el arrendatario ya devolvió), o del lado móvil se limita a <b>entregada</b>?</li>
+    <li>¿Cómo se refleja para el dueño en la web de Silverk? (evento + badge de depósito congelado es la propuesta mínima).</li>
+  </ol>
+
+  <h2>7. Preguntas abiertas consolidadas (todas las secciones)</h2>
+  <ol>
+    <li>¿La API devuelve las listas ya ordenadas (popularidad / fecha) o la app ordena?</li>
+    <li>Lista oficial de categorías y si existe rango de precio como filtro.</li>
+    <li>Enum definitivo de estados de reserva (nombres, idioma, mayúsculas).</li>
+    <li>¿Los nombres de campo propuestos se mantienen o cambian?</li>
+    <li>¿La disponibilidad del calendario se consulta por mes, por rango, o viene completa en el detalle?</li>
+    <li>¿Las actualizaciones (polling) tienen endpoint propio o se derivan del historial de estados?</li>
+    <li>Las cuatro preguntas del reporte de problema (sección 6.4).</li>
+  </ol>
+
+  <div class="footer">
+    RentaTodo · Documento del rol Zero (app móvil) · Los nombres de campos, endpoints y comportamientos son propuestas para discusión del equipo; el contrato válido es únicamente el spec OpenAPI congelado. Mockup visual de referencia: <i>mock_flujo_arrendatario.html</i> (8 pantallas, sin búsqueda por zona).
+  </div>
+
+</div>
+</body>
+</html>
