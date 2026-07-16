@@ -15,6 +15,8 @@ Phase 1 rules still apply: no real network calls. All data continues to come fro
 
 **Explicit decision, made with the human:** the mockup's palette (forest green, dark sidebar, amber, blue) replaces `packages/design-tokens`' current palette (teal/ink, originally sourced from `apps/mobile/src/constants/brand.ts`). This is a deliberate, one-way divergence from `apps/mobile`'s current colors — mobile has not been updated to match, and this document does not touch it. `packages/design-tokens/README.md` must be updated to say plainly that the shared-token promise between web and mobile is currently broken, so whoever next touches `apps/mobile`'s theming knows to either update mobile to match or treat the two apps' visual identities as intentionally diverged for now.
 
+**Explicit decision, made with the human: all user-facing UI text moves to Spanish**, matching the mockup exactly (nav labels, buttons, form labels, headings, status badge text) rather than leaving the current English text in place. This is a full translation pass across all 8 existing pages, not just the sidebar nav. Code identifiers (variable/function/component names, CSS classes, comments) stay in English, unchanged — only user-facing strings translate. The full label mapping (including reservation statuses the mockup's static demo doesn't show, like `approved`/`returned`/`cancelled`) is specified per-page below.
+
 ## Global Constraints
 
 - Scope: `apps/web` + `packages/design-tokens` only.
@@ -121,6 +123,31 @@ Add to `apps/web/index.html`'s `<head>`:
 ### Radius
 
 `--radius` becomes `0.625rem` (10px), up from `0.5rem`. shadcn's generated components already reference `var(--radius)` via `rounded-lg`/`rounded-md`/`rounded-sm` in `tailwind.config.ts`'s `borderRadius` extension (Task 4) — no component code changes needed, just the variable value.
+
+### UI Text (Spanish)
+
+Reservation status labels (used everywhere a `ReservationStatus` is displayed — `RequestsPage`, `ItemDetailPage`'s renter list, `ReservationDetailPage`), with the badge color treatment each maps to:
+
+| `ReservationStatus` | Spanish label | Badge colors |
+|---|---|---|
+| `requested` | Solicitada | `warning-tint` bg / `warning-foreground` text (amber) |
+| `approved` | Aprobada | `forest-tint` (`secondary`) bg / `forest-dark` (`secondary-foreground`) text |
+| `delivered` | Entregada | `info-tint` bg / `info` text (blue) |
+| `returned` | Devuelta | `info-tint` bg / `info` text (blue) — same as `delivered`; both are "in progress, not yet closed" |
+| `closed` | Cerrada | `muted` bg / `muted-foreground` text (neutral gray) |
+| `rejected` | Rechazada | `red-tint` (`destructive`-adjacent) bg / `red` text |
+| `cancelled` | Cancelada | same treatment as `rejected` — both are terminal "did not happen" states |
+
+Other common UI strings, by page (only strings that exist today and are changing — new page content's strings are specified inline in each page's section below):
+
+- **Nav (`DashboardLayout`)**: Resumen, Mis artículos, Publicar artículo, Solicitudes, Ganancias, Cerrar sesión (logout button)
+- **Login**: "Iniciar sesión" (heading + submit button), "Correo electrónico" (email label), "Contraseña" (password label)
+- **Register**: "Crear cuenta" (heading + submit button), "Nombre" (name label), "Correo electrónico", "Contraseña"
+- **My items**: "Mis artículos" (heading), "Publicar artículo" (button), "Editar", "Eliminar", "Calendario" (per-card buttons), "Inactivo" (badge)
+- **Requests**: "Solicitudes" (heading), "Arrendatario" (Renter column), "Fechas" (Dates column), "Estado" (Status column), "Acciones" (Actions column), "Aprobar", "Rechazar" (action buttons)
+- **Item detail**: "Disponibilidad" (calendar section heading), "Mes anterior"/"Mes siguiente" (nav button `aria-label`s), "Reservas de este artículo" (renter-history heading)
+- **Reservation detail**: "Cerrar reserva" (close button), "Historial de depósito" (deposit history heading), "Tipo"/"Monto"/"Fecha" (transaction table columns), "Reportar un problema" (report heading), "¿Qué salió mal?" (reason label), "URL de la foto" (photo label), "Enviar reporte" (submit button), "Reporte enviado." (confirmation text)
+- **Earnings**: "Ganancias" (heading), "Por artículo" (item list heading)
 
 ## Layout & Navigation
 
