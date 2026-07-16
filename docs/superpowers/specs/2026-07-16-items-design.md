@@ -77,13 +77,23 @@ __table_args__ = (
     Index("idx_items_category", "category", postgresql_where=text("is_active = true")),
     Index(
         "idx_items_search",
-        text("to_tsvector('simple', unaccent(name || ' ' || description))"),
+        text("to_tsvector('simple', immutable_unaccent(name || ' ' || description))"),
         postgresql_using="gin",
     ),
 )
 ```
 
-The migration also runs `CREATE EXTENSION IF NOT EXISTS unaccent`.
+The migration also runs `CREATE EXTENSION IF NOT EXISTS unaccent`, plus creates a
+wrapper SQL function `immutable_unaccent(text)`. Verified live against Postgres:
+`unaccent()` itself is marked `STABLE`, not `IMMUTABLE`, so Postgres rejects it
+directly inside a functional index expression. The standard fix is a thin
+`IMMUTABLE` wrapper, used both in the index and in every search query:
+
+```sql
+CREATE OR REPLACE FUNCTION immutable_unaccent(text) RETURNS text AS $$
+  SELECT unaccent('unaccent', $1)
+$$ LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT;
+```
 
 ## Schemas (`app/schemas/item.py`)
 
@@ -135,11 +145,14 @@ inconsistent with the GIN `tsvector` index it also specifies; `ILIKE` can't
 use that index, and `tsvector` is already case-insensitive on its own, so
 this design uses full-text search only).
 
-Query side mirrors the index expression, wrapped in `unaccent()`:
+Query side mirrors the index expression, wrapped in `immutable_unaccent()`
+(same wrapper the index uses — a plain `unaccent()` call works fine outside
+an index, but reusing the wrapper keeps index and query in sync and avoids
+having two code paths):
 
 ```sql
-to_tsvector('simple', unaccent(name || ' ' || description))
-  @@ to_tsquery('simple', unaccent(:term) || ':*')
+to_tsvector('simple', immutable_unaccent(name || ' ' || description))
+  @@ to_tsquery('simple', immutable_unaccent(:term) || ':*')
 ```
 
 Partial match ("tala" finds "taladro") requires prefix search
