@@ -19,21 +19,21 @@ export function RegisterPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
       <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-three rounded-lg border border-border bg-card p-four">
-        <h1 className="text-lg font-semibold text-foreground">Create account</h1>
+        <h1 className="font-display text-lg font-semibold text-foreground">Crear cuenta</h1>
         <div className="space-y-half">
-          <Label htmlFor="name">Name</Label>
+          <Label htmlFor="name">Nombre</Label>
           <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
         </div>
         <div className="space-y-half">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email">Correo electrónico</Label>
           <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
         </div>
         <div className="space-y-half">
-          <Label htmlFor="password">Password</Label>
+          <Label htmlFor="password">Contraseña</Label>
           <Input id="password" type="password" minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} required />
         </div>
         <Button type="submit" className="w-full">
-          Create account
+          Crear cuenta
         </Button>
       </form>
     </div>

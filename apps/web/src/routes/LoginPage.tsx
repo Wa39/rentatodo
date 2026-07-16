@@ -21,17 +21,17 @@ export function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
       <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-three rounded-lg border border-border bg-card p-four">
-        <h1 className="text-lg font-semibold text-foreground">Log in</h1>
+        <h1 className="font-display text-lg font-semibold text-foreground">Iniciar sesión</h1>
         <div className="space-y-half">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email">Correo electrónico</Label>
           <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
         </div>
         <div className="space-y-half">
-          <Label htmlFor="password">Password</Label>
+          <Label htmlFor="password">Contraseña</Label>
           <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
         </div>
         <Button type="submit" className="w-full">
-          Log in
+          Iniciar sesión
         </Button>
       </form>
     </div>

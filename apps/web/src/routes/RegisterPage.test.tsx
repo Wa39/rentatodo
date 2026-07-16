@@ -16,10 +16,10 @@ describe('RegisterPage', () => {
       </MemoryRouter>,
     )
 
-    await user.type(screen.getByLabelText('Name'), 'María Vargas')
-    await user.type(screen.getByLabelText('Email'), 'maria@example.com')
-    await user.type(screen.getByLabelText('Password'), 'securepass123')
-    await user.click(screen.getByRole('button', { name: 'Create account' }))
+    await user.type(screen.getByLabelText('Nombre'), 'María Vargas')
+    await user.type(screen.getByLabelText('Correo electrónico'), 'maria@example.com')
+    await user.type(screen.getByLabelText('Contraseña'), 'securepass123')
+    await user.click(screen.getByRole('button', { name: 'Crear cuenta' }))
 
     expect(screen.getByText('Login page')).toBeInTheDocument()
   })
