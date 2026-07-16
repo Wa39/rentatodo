@@ -2,6 +2,7 @@
 per test, and a TestClient wired to use it.
 """
 
+import uuid
 from collections.abc import Iterator
 
 import pytest
@@ -94,7 +95,7 @@ def make_item(db_session: Session):
     """
 
     def _make_item(
-        owner_id,
+        owner_id: uuid.UUID,
         name: str = "Taladro Bosch",
         description: str = "Taladro percutor profesional",
         category: str = "tools",

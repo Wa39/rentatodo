@@ -1,13 +1,14 @@
 """Tests for the Item Pydantic schemas."""
 
-import pytest
 from datetime import datetime
-from uuid import UUID, uuid4
+from uuid import uuid4
+
+import pytest
 from pydantic import ValidationError
 
 from app.models.item import Item
 from app.models.user import User
-from app.schemas.item import CategoryEnum, CreateItemRequest, ItemResponse
+from app.schemas.item import CategoryEnum, CreateItemRequest, ItemDetailResponse, ItemResponse
 
 
 def test_create_item_request_rejects_price_not_positive() -> None:
@@ -93,3 +94,31 @@ def test_item_response_builds_from_an_item_model_including_owner_name() -> None:
 
     assert response.owner_name == "Ana Duena"
     assert response.category == "tools"
+
+
+def test_item_detail_response_defaults_unavailable_dates_to_empty_list() -> None:
+    """Happy path: ItemDetailResponse defaults unavailable_dates to an
+    empty list when the source Item doesn't provide one — there's no
+    Reservation table to derive it from yet.
+    """
+    owner_id = uuid4()
+    item_id = uuid4()
+    created_at = datetime.now()
+
+    owner = User(name="Ana Duena", email="ana@example.com", password_hash="hashed")
+    item = Item(
+        id=item_id,
+        owner_id=owner_id,
+        name="Taladro Bosch",
+        description="Taladro percutor profesional",
+        category="tools",
+        price_per_day=5000,
+        photo_url="https://example.com/photo.jpg",
+        is_active=True,
+        created_at=created_at,
+    )
+    item.owner = owner
+
+    response = ItemDetailResponse.model_validate(item)
+
+    assert response.unavailable_dates == []
