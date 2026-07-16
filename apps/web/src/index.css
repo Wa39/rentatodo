@@ -3,26 +3,41 @@
 @tailwind utilities;
 @layer base {
   :root {
-    --background: 210 11% 96%;        /* paper #F5F6F7 */
-    --foreground: 210 47% 23%;        /* ink #1F3B57 */
-    --card: 0 0% 100%;                /* card #FFFFFF */
-    --card-foreground: 210 47% 23%;   /* ink */
-    --popover: 0 0% 100%;             /* card */
-    --popover-foreground: 210 47% 23%;/* ink */
-    --primary: 179 80% 27%;           /* teal #0E7C7B */
-    --primary-foreground: 0 0% 100%;  /* white text on teal */
-    --secondary: 175 32% 92%;         /* tealSoft #E4F1F0 */
-    --secondary-foreground: 210 47% 23%; /* ink */
-    --muted: 206 14% 90%;             /* line #E2E6E9 */
-    --muted-foreground: 206 9% 52%;   /* muted #7A8791 */
-    --accent: 175 32% 92%;            /* tealSoft */
-    --accent-foreground: 210 47% 23%; /* ink */
-    --destructive: 8 59% 44%;         /* red #B3402E */
+    --background: 120 10% 96%;         /* bg #f4f6f4 */
+    --foreground: 155 21% 11%;         /* ink #16221d */
+    --card: 0 0% 100%;                 /* card #ffffff */
+    --card-foreground: 155 21% 11%;    /* ink */
+    --popover: 0 0% 100%;              /* card */
+    --popover-foreground: 155 21% 11%; /* ink */
+    --primary: 149 41% 31%;            /* forest #2f6f4e */
+    --primary-foreground: 0 0% 100%;   /* white text on forest */
+    --secondary: 138 26% 93%;          /* forest-tint #e7f1ea */
+    --secondary-foreground: 150 39% 22%; /* forest-dark #234f39 */
+    --muted: 132 9% 90%;               /* border #e2e7e3 */
+    --muted-foreground: 152 8% 39%;    /* ink-soft #5c6b64 */
+    --accent: 138 26% 93%;             /* forest-tint */
+    --accent-foreground: 150 39% 22%;  /* forest-dark */
+    --destructive: 9 61% 47%;          /* red #c0442e */
     --destructive-foreground: 0 0% 100%; /* white */
-    --border: 206 14% 90%;            /* line */
-    --input: 206 14% 90%;             /* line */
-    --ring: 179 80% 27%;              /* teal */
-    --radius: 0.5rem;
+    --destructive-tint: 12 64% 92%;    /* red-tint #f8e4df */
+    --warning: 33 70% 51%;             /* amber #d98c2b, solid fill */
+    --warning-ink: 31 76% 8%;          /* amber-ink #241505, text on solid --warning */
+    --warning-tint: 37 81% 92%;        /* amber-tint #fbeed9 */
+    --warning-foreground: 34 77% 35%;  /* amber-foreground #9c6114, text on --warning-tint */
+    --info: 216 52% 43%;               /* blue #3563a8 */
+    --info-tint: 217 50% 93%;          /* blue-tint #e4ebf6 */
+    --border: 132 9% 90%;              /* border */
+    --input: 132 9% 90%;               /* border */
+    --ring: 149 41% 31%;               /* forest */
+    --sidebar: 152 23% 11%;            /* sidebar #16231d */
+    --sidebar-foreground: 138 12% 83%; /* sidebar-foreground #cfd9d2 */
+    --sidebar-primary: 149 41% 31%;    /* forest, active nav item bg */
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 153 23% 16%;     /* sidebar-hover #1f3129 */
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 150 21% 19%;     /* sidebar-border #263a30 */
+    --sidebar-ring: 149 41% 31%;       /* forest */
+    --radius: 0.625rem;
   }
   .dark {
     --background: oklch(0.141 0.005 285.823);
