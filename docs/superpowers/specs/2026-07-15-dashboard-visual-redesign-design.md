@@ -124,7 +124,7 @@ New function in `apps/web/src/lib/availability.ts`, `getItemDateStates(itemId: s
 ### My items (`/items`)
 
 - `PageHeader`: `title: t.items.title` ("My items"), `subtitle: t.items.subtitle(activeCount, inactiveCount)` → `"{n} active · {n} inactive"`, `action`: a "+ Publish item" button linking to `/items/publish`.
-- Search input, placeholder `t.items.searchPlaceholder` ("Search by name or category…"), client-side substring filter (case-insensitive) against item name + category.
+- Search input, placeholder `t.items.searchPlaceholder` ("Search by name or category…"), client-side substring filter (case-insensitive) against item name + the *translated* category label (`t.categories[item.category]`, not the raw `Category` enum value) — the UI is English-first, so search should match what the user actually sees on screen.
 - `grid grid-cols-4 gap-three` of `ItemCard`.
 - The existing Edit Dialog (pre-filled form, same fields/logic as today) stays in `ItemsPage`, now triggered only by each card's Edit button (no longer also the create trigger).
 - `ItemCard` inactive state: replace today's "same 3 buttons regardless of `is_active`" with — active: Edit / Calendar / Delete (unchanged); inactive: **Reactivate** (`variant="default"`, sets `is_active: true` via the same `setItems` pattern `handleDelete` already uses) + Edit only, matching `myarticles.png`. Delete stays a soft-delete (`is_active: false`) exactly as today — no behavior change there, just confirming it's unchanged.
@@ -142,7 +142,7 @@ New function in `apps/web/src/lib/availability.ts`, `getItemDateStates(itemId: s
 - `PageHeader`: `title: t.requests.title` ("Requests"), `subtitle: t.requests.subtitle` ("Everything you've been asked to rent, in one place.").
 - Three tabs with live counts, replacing the current single flat table: **Pending** (`status === 'requested'`), **Active** (`status` in `['approved', 'delivered', 'returned']`), **History** (`status` in `['closed', 'rejected', 'cancelled']`).
 - Search input, placeholder `t.requests.searchPlaceholder` ("Search by person or item…"), filters the active tab's rows by renter name + item name substring.
-- Rows: card style (`rounded-lg border border-border bg-card p-three`, replacing the shadcn `<Table>`), avatar circle (initials, same `getInitials` helper `DashboardLayout` already has — worth extracting to a shared util at implementation time), renter name + item name, dates + total, `StatusBadge`, and Approve/Reject buttons — buttons render only on the Pending tab (same `setStatus` logic as today). Each row is a `<Link>` to `/reservations/{id}`, unchanged destination.
+- Rows: card style (`rounded-lg border border-border bg-card p-three`, replacing the shadcn `<Table>`), avatar circle (initials). `DashboardLayout`'s existing `getInitials` helper is extracted to `apps/web/src/lib/format.ts` (alongside `formatCentavos`) and imported by both `DashboardLayout` and `RequestsPage`, rather than duplicated. Rows also show renter name + item name, dates + total, `StatusBadge`, and Approve/Reject buttons — buttons render only on the Pending tab (same `setStatus` logic as today). Each row is a `<Link>` to `/reservations/{id}`, unchanged destination.
 
 ### Calendar (`/requests/calendar`, new route, optional `?item=` query param)
 
