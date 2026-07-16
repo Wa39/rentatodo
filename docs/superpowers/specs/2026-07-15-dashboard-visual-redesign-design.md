@@ -87,6 +87,97 @@ https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700;800&fa
 
 **Category `other`**: origin/develop's `packages/contracts/openapi.yaml` (PR #13, not yet in this branch) added `'other'` to `CategoryEnum`. Decision: sync only this value manually (not a full merge of develop into this branch) — add `'other'` to `apps/web/src/lib/types.ts`'s `Category` union and to the i18n dictionary's `categories` map (`t.categories.other = 'Other'`), independent of the i18n migration task.
 
+## Addendum (2026-07-16, revision 3): content pages — Items, Publish, Requests, Calendar, Earnings
+
+Silverk sent 6 new screenshots of the updated mockup: `myarticles.png` (My items), `publisharticle.png` (Publish item), `requests.png` (Requests), `calendar.png` (Calendar), `earnings.png` (Earnings), `sidepanel.png` (sidebar). This addendum specs building/restyling the pages these depict — the deferred original-plan Tasks 11-17 — against the already-shipped i18n + revision-2 palette. It supersedes the original spec's "Layout & Navigation" and "Page-by-Page Changes" sections below wherever they conflict; sections not mentioned here (Reservation detail) are unaffected and stay as originally specced, just not built yet.
+
+**Route changes** (supersedes the Global Constraints route list below): `/items/:id` is **removed** (see "Item detail retirement" below) and `/requests/calendar` is **added**. The route set becomes: `/login`, `/register`, `/dashboard`, `/items`, `/items/publish`, `/requests`, `/requests/calendar`, `/reservations/:id`, `/earnings`.
+
+**All content in this addendum is English**, sourced through `apps/web/src/lib/i18n`'s dictionary, per the revision-2 decision — the source mockups are in Spanish (Silverk's working language) but every string below is specified in its English form directly; mock *data* (item names, renter names, descriptions) stays as-authored in `mockData.ts`, Spanish-flavored or not, since it's just fixture content, not UI chrome.
+
+### Shared foundation
+
+**`PageHeader`** (new, `apps/web/src/components/PageHeader.tsx`): renders a full-bleed white (`bg-card`) band with a `border-b border-border`, internal `px-four py-three`. Props: `title: string`, `subtitle: string`, `action?: ReactNode` (right-aligned). Every dashboard page (`DashboardPage`, `ItemsPage`, `PublishItemPage`, `RequestsPage`, `CalendarPage`, `EarningsPage`) renders this first, followed by a `<div className="p-four space-y-four">` for body content. Login/Register are unaffected (not inside `DashboardLayout`).
+
+**`DashboardLayout` changes**:
+- `<main>` drops `p-four` (each page now owns its own padding via `PageHeader` + body wrapper, per above).
+- Sidebar `<aside>`: `w-60` → `w-72`. Nav link padding: `py-one` → `py-two`. Text size unchanged (`text-sm`) — the width increase plus larger padding is the "bigger, not tiny" fix; text is already legible.
+- **Nav icons**: each `navGroups[].items[]` entry gains an `icon` (a `lucide-react` component), rendered at `h-5 w-5` immediately before the label, `flex-shrink-0`, with `gap-two` from the label text. Icon choices (closest `lucide-react` match to the mockup): Overview → `LayoutGrid`, My items → `Package`, Publish item → `Plus`, Requests → `MessageSquare`, Calendar → `Calendar`, Earnings → `DollarSign`.
+- **New nav entry**: "Calendar" under the Activity group, alongside Requests, linking to `/requests/calendar`. (Supersedes the original spec's "no top-level Calendario nav item" decision — the newer mockup has one.)
+- **Sidebar mini-widget**: a card above the user footer, `bg-sidebar-card` (new token, see below), `rounded-lg p-three`, showing `t.nav.earnedThisMonth` label + `formatCentavos(mockEarnings.total_earnings)` value in `text-on-dark-accent`, plus a delta line `+{pct}% vs last month` computed from the new `mockEarnings.by_month` array (current month vs. previous month, `Math.round(((current - previous) / previous) * 100)`).
+- **Pending-badge fix**: the `/requests` nav-link count badge grows `h-5 w-5` (min-width, `px-half` removed in favor of fixed size) → `h-6 w-6`, and gains `flex items-center justify-center` so the digit is actually centered (today it's just a padded pill, not centered).
+
+**New design token**: `sidebarCard` (`#1B2A22`, already named and reserved in the revision-2 palette table but never wired) gets added to `apps/web/src/index.css`'s `:root` (HSL) and `tailwind.config.ts`'s `theme.extend.colors` as `'sidebar-card': 'hsl(var(--sidebar-card))'`, following the exact pattern of the other revision-2 additions. `line`, `redBorder`, `closedTint` remain deferred — still no consumer after this addendum. (`closedTint` note: `StatusBadge`'s `closed` mapping already uses plain `bg-muted`, per the already-shipped revision-2 table — this addendum doesn't change that.)
+
+### Item detail retirement
+
+`/items/:id` (`ItemDetailPage.tsx` + its test) is **deleted**. None of the 6 real mockup screens depict a separate item-detail view — it existed only as a workaround host for the calendar, which now has its own proper page. `ItemCard`'s item name becomes plain text (no longer a `<Link>`); the "Calendar" button is the only drill-in, and now targets `/requests/calendar?item={id}` instead of `/items/{id}`.
+
+`mockItemDetail()`, the `ItemDetail` type, and the `UnavailableRange` type become unreferenced once this lands and the availability derivation below replaces their only other consumer (`CalendarMonth`'s prop shape). Remove them if confirmed unreferenced at implementation time.
+
+### Availability derivation (replaces the old 2-state system)
+
+New function in `apps/web/src/lib/availability.ts`, `getItemDateStates(itemId: string): { start_date: string; end_date: string; state: 'pending' | 'reserved' }[]`, reading `mockRequests` directly (filtered by `item_id`): `status === 'requested'` → `'pending'`; `status` in `['approved', 'delivered', 'returned']` → `'reserved'`; `closed`/`rejected`/`cancelled` are excluded (they don't block dates). This becomes the single source of truth for both:
+- `ItemCard`'s 14-day strip — `getAvailabilityStrip` is updated to accept these tagged ranges and return `('available' | 'pending' | 'reserved')[]`, replacing today's boolean-only `available`/`booked` result. Strip cell colors: available = `bg-muted` (unchanged), pending = `bg-warning/65`, reserved = `bg-destructive/65` (unchanged from today's "booked" color).
+- The new `CalendarPage`'s two-month grid — `CalendarMonth`'s `unavailableDates: UnavailableRange[]` prop is replaced with `dateRanges: { start_date: string; end_date: string; state: 'pending' | 'reserved' }[]`, and its per-day coloring gains a third state: available = `bg-muted text-info` (unchanged), pending = `bg-warning font-bold text-warning-ink`, reserved = `bg-destructive font-bold text-destructive-foreground` (unchanged from today's "booked" styling). Today's `isDateBooked` boolean helper in `apps/web/src/lib/calendar.ts` is replaced with a `getDateState(dateStr, dateRanges): 'available' | 'pending' | 'reserved'` that checks reserved ranges before pending ranges (reserved takes precedence on the rare case of overlap).
+
+### My items (`/items`)
+
+- `PageHeader`: `title: t.items.title` ("My items"), `subtitle: t.items.subtitle(activeCount, inactiveCount)` → `"{n} active · {n} inactive"`, `action`: a "+ Publish item" button linking to `/items/publish`.
+- Search input, placeholder `t.items.searchPlaceholder` ("Search by name or category…"), client-side substring filter (case-insensitive) against item name + category.
+- `grid grid-cols-4 gap-three` of `ItemCard`.
+- The existing Edit Dialog (pre-filled form, same fields/logic as today) stays in `ItemsPage`, now triggered only by each card's Edit button (no longer also the create trigger).
+- `ItemCard` inactive state: replace today's "same 3 buttons regardless of `is_active`" with — active: Edit / Calendar / Delete (unchanged); inactive: **Reactivate** (`variant="default"`, sets `is_active: true` via the same `setItems` pattern `handleDelete` already uses) + Edit only, matching `myarticles.png`. Delete stays a soft-delete (`is_active: false`) exactly as today — no behavior change there, just confirming it's unchanged.
+
+### Publish item (`/items/publish`, new route, create-only)
+
+- `PublishItemPage.tsx`, `RequireAuth`-wrapped alongside the other dashboard routes.
+- Two-column layout: form (left) + live preview (right, `ItemCard` in `readOnly` mode fed the in-progress form state, wrapped in a card labeled `t.publish.previewTitle` "How renters will see it").
+- Fields, same as today's Dialog: name, category (now pill-button single-select instead of a `<select>`, matching `publisharticle.png` — same `Category[]` list, `aria-pressed` for the selected pill), price/day (USD, same centavo conversion), description (textarea), photo URL.
+- Submit creates the item (same logic as today's create path) and navigates to `/items`. Cancel navigates to `/items` without saving.
+- This is a container/extraction change, not new business logic — same validation, same centavo math, same navigation-on-success/-cancel behavior as the current Dialog.
+
+### Requests (`/requests`)
+
+- `PageHeader`: `title: t.requests.title` ("Requests"), `subtitle: t.requests.subtitle` ("Everything you've been asked to rent, in one place.").
+- Three tabs with live counts, replacing the current single flat table: **Pending** (`status === 'requested'`), **Active** (`status` in `['approved', 'delivered', 'returned']`), **History** (`status` in `['closed', 'rejected', 'cancelled']`).
+- Search input, placeholder `t.requests.searchPlaceholder` ("Search by person or item…"), filters the active tab's rows by renter name + item name substring.
+- Rows: card style (`rounded-lg border border-border bg-card p-three`, replacing the shadcn `<Table>`), avatar circle (initials, same `getInitials` helper `DashboardLayout` already has — worth extracting to a shared util at implementation time), renter name + item name, dates + total, `StatusBadge`, and Approve/Reject buttons — buttons render only on the Pending tab (same `setStatus` logic as today). Each row is a `<Link>` to `/reservations/{id}`, unchanged destination.
+
+### Calendar (`/requests/calendar`, new route, optional `?item=` query param)
+
+- `PageHeader`: `title: t.calendar.title` ("Calendar"), `subtitle: t.calendar.subtitle` ("Availability by date, item by item."), `action`: a native `<select>` item picker (same unstyled-native-select pattern `ItemsPage`'s category filter already uses — no new dependency), listing all `mockItems` by name. Reads `?item=` on mount to preselect; defaults to `mockItems[0]` if absent/invalid.
+- Two-month `CalendarMonth` grid, side by side, for the selected item — **current month + next month, no navigation controls** (explicitly simple, per decision — no prev/next arrows).
+- Legend: three swatches + labels, `t.calendar.legend.available` ("Available"), `.pending` ("Pending"), `.reserved` ("Reserved").
+- `t.calendar.reservationsHeading` ("Reservations for this item") list below: every `mockRequests` entry where `item_id` matches the selected item, each row showing renter name, dates, `StatusBadge` (reusing the existing component for consistency rather than the mockup's slightly different pill style), and linking to `/reservations/{id}`.
+
+### Earnings (`/earnings`)
+
+- `PageHeader`: `title: t.earnings.title` ("Earnings"), `subtitle: t.earnings.subtitle` ("Track what each item earns you.").
+- 3 KPI cards: **Total earned** (`t.earnings.kpiTotal`, dark-inverted `bg-sidebar` like the dashboard's 4th card, but plain white text — not `text-on-dark-accent` — per the already-shipped revision-2 note on this exact asymmetry), **This month** (`t.earnings.kpiThisMonth`, light card, latest entry of `mockEarnings.by_month`), **Closed reservations** (`t.earnings.kpiClosedCount`, light card, `mockRequests.filter(r => r.status === 'closed').length`).
+- New bar chart, `t.earnings.chartTitle` ("Earnings by month") / `t.earnings.chartSubtitle` ("Last 6 months"): plain CSS/Tailwind bars (no charting library — no new dependency, matches the mockup's static, non-interactive bars exactly), one per `mockEarnings.by_month` entry, height = `(entry.total / max(...by_month.map(m => m.total))) * 100%`, value label above each bar, month label below, current month's bar `bg-primary` (solid), prior months `bg-secondary` (tint) — mirrors the mockup's current-month highlight.
+- "By item" section: left column, clickable `mockEarnings.by_item` rows with a progress bar (`width: (item.total / max(...by_item.map(i => i.total))) * 100%`, `bg-secondary`/`bg-primary` fill), reservation count (`item.rentals.length`) + total; right column shows the selected item's `rentals` breakdown (unchanged data/logic from today's expand-in-place list) plus the existing privacy note. `selectedItemId` state replaces today's `expandedItemId` — same data, selection instead of expand/collapse.
+
+### New mock data
+
+The only new fixture shape this addendum needs: `mockEarnings.by_month: { month: string; total: number }[]` in `apps/web/src/lib/mockData.ts` — 6 entries (Feb–Jul 2026, illustrative values consistent with the existing `by_item` totals, last entry = current month = `total_earnings`'s most recent contribution). Add a matching `EarningsByMonth` interface + `by_month` field to the `Earnings` type in `apps/web/src/lib/types.ts`. No other type/enum changes.
+
+### i18n dictionary additions
+
+New top-level keys in `apps/web/src/lib/i18n/en.ts`: `items` (title, subtitle fn, searchPlaceholder, reactivate), `publish` (title, field labels, previewTitle, cancel, submit), `requests` (title, subtitle, tab labels, searchPlaceholder — supersedes the old flat-table strings from the original spec's "UI Text" section), `calendar` (extends the existing key: title, subtitle, legend.*, reservationsHeading — the existing `weekdays`/`months` sub-keys are unchanged), `earnings` (title, subtitle, kpi labels, chartTitle, chartSubtitle, byItemHeading, breakdownHeading, privacyNote). One new `nav.calendar` key and one new `nav.earnedThisMonth` key (sidebar widget label). `DashboardPage` switches its inline header markup to render `<PageHeader>` instead, using its existing `t.dashboard.title`/`welcomeBack` strings unchanged.
+
+### Testing
+
+New/updated test coverage, no reduction anywhere: `PageHeader` (new, renders title/subtitle/action, white background class), `DashboardLayout` (icon presence, new Calendar nav link, badge sizing/centering classes, sidebar widget renders the derived delta), `ItemsPage` (grid rendering, search filtering, reactivate flow), `ItemCard` (reactivate button on inactive items, name no longer a link, Calendar link target, 3-state strip colors), `PublishItemPage` (new — form submission creates item with correct centavo conversion, live preview reflects typed values, Cancel navigates to `/items`), `RequestsPage` (tab counts and filtering, search filtering, row still links to `/reservations/:id`), `CalendarPage` (new — item selection via dropdown and via `?item=` query param, 3-state grid rendering, reservations list), `EarningsPage` (KPI values, chart renders 6 bars, row selection updates the breakdown panel). `ItemDetailPage.test.tsx` is deleted along with the page.
+
+### Explicitly out of scope (this addendum)
+
+- `ReservationDetailPage` restyle/i18n — no mockup provided for it this round; stays exactly as-is, still reachable from Requests/Calendar rows.
+- Real API integration (unchanged — still Phase 2, blocked on backend work).
+- Calendar month navigation (prev/next arrows) — deliberately simplified out per the human's explicit instruction.
+- Any `apps/mobile` change.
+- The deferred `line`/`redBorder`/`closedTint` tokens — still no consumer after this addendum.
+
 ## Global Constraints
 
 - Scope: `apps/web` + `packages/design-tokens` only.
