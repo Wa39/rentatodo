@@ -60,7 +60,8 @@ docker compose -f infra/docker-compose.yml up -d
 **API:**
 ```bash
 cd apps/api
-python -m venv .venv && source .venv/bin/activate  # first time only
+python -m venv .venv && source .venv/bin/activate  # first time only (Mac/Linux)
+# Windows: python -m venv .venv && .venv\Scripts\Activate.ps1
 pip install -r requirements.txt                     # first time only
 cp .env.example .env                                # first time only — fill in values
 alembic upgrade head
@@ -82,6 +83,11 @@ npx expo start
 ```
 
 **Web:** TBD — Silverk's scaffold pending.
+
+### E2E tests
+
+- Web: Playwright (once `apps/web` scaffold exists)
+- Mobile: Maestro (Expo confirmed by Zero)
 
 ## What an agent MUST NOT do in this repo
 
