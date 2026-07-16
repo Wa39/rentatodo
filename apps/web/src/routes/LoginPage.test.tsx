@@ -25,9 +25,9 @@ describe('LoginPage', () => {
       </AuthProvider>,
     )
 
-    await user.type(screen.getByLabelText('Correo electrónico'), 'maria@example.com')
-    await user.type(screen.getByLabelText('Contraseña'), 'securepass123')
-    await user.click(screen.getByRole('button', { name: 'Iniciar sesión' }))
+    await user.type(screen.getByLabelText('Email'), 'maria@example.com')
+    await user.type(screen.getByLabelText('Password'), 'securepass123')
+    await user.click(screen.getByRole('button', { name: 'Sign in' }))
 
     expect(screen.getByTestId('status')).toHaveTextContent('in')
     expect(screen.getByText('Dashboard page')).toBeInTheDocument()

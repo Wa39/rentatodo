@@ -7,6 +7,6 @@ describe('App', () => {
   it('redirects an unauthenticated visitor from / to the login page', async () => {
     window.history.pushState({}, '', '/')
     render(<App />)
-    expect(await screen.findByRole('button', { name: 'Iniciar sesión' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Sign in' })).toBeInTheDocument()
   })
 })
