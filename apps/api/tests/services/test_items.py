@@ -3,6 +3,7 @@
 import uuid
 
 import pytest
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.exceptions import AppError
@@ -29,6 +30,24 @@ def test_create_item_sets_owner_from_argument(db_session: Session, make_user) ->
     assert item.id is not None
     assert item.owner_id == owner.id
     assert item.is_active is True
+
+
+def test_create_item_raises_integrity_error_for_nonexistent_owner(db_session: Session) -> None:
+    """Failure path: passing a nonexistent owner_id raises IntegrityError
+    due to foreign-key constraint violation at commit time.
+    """
+    from app.services.items import create_item
+
+    data = CreateItemRequest(
+        name="Taladro Bosch",
+        description="Taladro percutor profesional",
+        category="tools",
+        price_per_day=5000,
+        photo_url="https://example.com/photo.jpg",
+    )
+
+    with pytest.raises(IntegrityError):
+        create_item(db_session, owner_id=uuid.uuid4(), data=data)
 
 
 def test_get_item_returns_item_with_owner_name(db_session: Session, make_user, make_item) -> None:
