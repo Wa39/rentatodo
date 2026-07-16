@@ -1,29 +1,32 @@
-// Mirrors the RentaTodo dashboard visual redesign mockup (dashboard.html,
-// via RentaTodo_Dashboard_Preview.pdf), NOT apps/mobile's current colors —
-// see README.md for why these two are now intentionally out of sync.
+// Mirrors the RentaTodo dashboard visual redesign mockup, revision 2
+// ("RentaTodo Dashboard.html") — see docs/superpowers/specs/2026-07-15-dashboard-visual-redesign-design.md's
+// "Addendum (2026-07-15, revision 2)" section for the full palette derivation.
+// NOT apps/mobile's current colors — see README.md for why these two are
+// intentionally out of sync.
 
 export const colors = {
-  sidebar: '#16231d',
-  sidebarHover: '#1f3129',
-  sidebarBorder: '#263a30',
-  sidebarForeground: '#cfd9d2',
-  bg: '#f4f6f4',
-  card: '#ffffff',
-  border: '#e2e7e3',
-  ink: '#16221d',
-  inkSoft: '#5c6b64',
-  inkFaint: '#94a39c',
-  forest: '#2f6f4e',
-  forestDark: '#234f39',
-  forestTint: '#e7f1ea',
-  amber: '#d98c2b',
+  sidebar: '#141F19',
+  sidebarHover: '#1E2E26',
+  sidebarBorder: '#263A30',
+  sidebarForeground: '#AEBBB3',
+  bg: '#EFEDE6',
+  card: '#FFFFFF',
+  border: '#E4E2D8',
+  ink: '#17201B',
+  inkSoft: '#5B655E',
+  inkFaint: '#9AA39C',
+  forest: '#1E7A4F',
+  forestDark: '#155C3B',
+  forestTint: '#E2F0E7',
+  amber: '#D9862A',
   amberInk: '#241505',
-  amberTint: '#fbeed9',
-  amberForeground: '#9c6114',
-  red: '#c0442e',
-  redTint: '#f8e4df',
-  blue: '#3563a8',
-  blueTint: '#e4ebf6',
+  amberTint: '#F9ECD6',
+  amberForeground: '#8F550F',
+  red: '#C24A32',
+  redTint: '#F7E1DA',
+  blue: '#33608F',
+  blueTint: '#E3EAF3',
+  onDarkAccent: '#6FB88E',
 } as const
 
 export const spacing = {
