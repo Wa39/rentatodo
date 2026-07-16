@@ -1,6 +1,6 @@
 import { ApiRequestError } from '@/data/api/http';
 import type { DataSource } from '@/data/data-source';
-import type { Item, ItemDetail, Reservation } from '@/data/types';
+import type { Item, ItemDetail, Report, Reservation } from '@/data/types';
 import { countDaysInclusive, expandRanges, rangeHasUnavailable } from '@/utils/dates';
 
 /**
@@ -194,6 +194,41 @@ export class MockDataSource implements DataSource {
       );
     }
     return { ...reservation };
+  }
+
+  // One report per reservation (contract rule), tracked for REPORT_EXISTS.
+  private reportedReservations = new Set<string>();
+
+  /**
+   * Mirrors POST /reservations/{id}/report: only from delivered|returned,
+   * one per reservation, freezes the deposit, status unchanged.
+   */
+  async reportProblem(reservationId: string, reason: string, photoUrl: string): Promise<Report> {
+    const reservation = RESERVATIONS.find((r) => r.id === reservationId);
+    if (!reservation) {
+      throw new ApiRequestError(404, 'NOT_FOUND', 'Reservation not found');
+    }
+    if (reservation.status !== 'delivered' && reservation.status !== 'returned') {
+      throw new ApiRequestError(
+        409,
+        'INVALID_TRANSITION',
+        'Reports are only allowed from delivered or returned',
+      );
+    }
+    if (this.reportedReservations.has(reservationId)) {
+      throw new ApiRequestError(409, 'REPORT_EXISTS', 'This reservation already has a report');
+    }
+    this.reportedReservations.add(reservationId);
+    reservation.deposit_status = 'frozen';
+    reservation.updated_at = new Date().toISOString();
+    return {
+      id: `rep-${Date.now()}`,
+      reservation_id: reservationId,
+      reported_by: MOCK_RENTER_ID,
+      reason,
+      photo_url: photoUrl,
+      created_at: new Date().toISOString(),
+    };
   }
 
   /** Mirrors POST /reservations/{id}/checkin: approved → delivered. */

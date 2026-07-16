@@ -65,6 +65,16 @@ export type Reservation = {
   updated_at: string;
 };
 
+/** Problem report (contract ReportResponse). Creating one freezes the deposit. */
+export type Report = {
+  id: string;
+  reservation_id: string;
+  reported_by: string;
+  reason: string;
+  photo_url: string;
+  created_at: string;
+};
+
 /** Public user profile (contract UserResponse — no zone, no password). */
 export type User = {
   id: string;

@@ -143,6 +143,25 @@ export default function ReservationDetailScreen() {
           </Pressable>
         )}
 
+        {(reservation.status === 'delivered' || reservation.status === 'returned') &&
+          (reservation.deposit_status === 'frozen' ? (
+            <View style={styles.frozenNotice}>
+              <Ionicons name="snow-outline" size={16} color="#7A2A1D" />
+              <Text style={styles.frozenText}>
+                Reporte activo: el depósito está congelado hasta resolver la disputa.
+              </Text>
+            </View>
+          ) : (
+            <Pressable
+              style={styles.reportButton}
+              onPress={() =>
+                router.push({ pathname: '/report/[id]', params: { id: reservation.id } })
+              }>
+              <Ionicons name="alert-circle-outline" size={18} color={Brand.red} />
+              <Text style={styles.reportButtonText}>Reportar problema</Text>
+            </Pressable>
+          ))}
+
         {cancellable && !confirming && (
           <Pressable style={styles.cancelButton} onPress={() => setConfirming(true)}>
             <Text style={styles.cancelText}>Cancelar reserva</Text>
@@ -268,6 +287,28 @@ const styles = StyleSheet.create({
     marginTop: 14,
   },
   primaryButtonText: { color: '#fff', fontSize: 13.5, fontWeight: '800' },
+  reportButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1.5,
+    borderColor: Brand.red,
+    borderRadius: 14,
+    padding: 13,
+    marginTop: 14,
+  },
+  reportButtonText: { color: Brand.red, fontSize: 13.5, fontWeight: '800' },
+  frozenNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#F7E0DB',
+    borderRadius: 14,
+    padding: 12,
+    marginTop: 14,
+  },
+  frozenText: { flex: 1, fontSize: 12, color: '#7A2A1D', lineHeight: 17 },
   cancelButton: {
     borderWidth: 1.5,
     borderColor: Brand.red,
