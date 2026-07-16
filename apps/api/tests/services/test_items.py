@@ -1,6 +1,7 @@
 """Tests for app.services.items: create_item and get_item."""
 
 import uuid
+from datetime import date, datetime, timedelta, timezone
 
 import pytest
 from sqlalchemy.exc import IntegrityError
@@ -90,3 +91,143 @@ def test_get_item_raises_not_found_for_inactive_item(
 
     assert exc_info.value.status_code == 404
     assert exc_info.value.code == "NOT_FOUND"
+
+
+def test_list_items_filters_by_category(db_session: Session, make_user, make_item) -> None:
+    """Happy path: category filter returns only matching items."""
+    from app.services.items import list_items
+
+    owner = make_user(email="lister1@example.com")
+    make_item(owner_id=owner.id, name="Taladro", category="tools")
+    make_item(owner_id=owner.id, name="Camara", category="photography")
+
+    items, total = list_items(db_session, category="photography")
+
+    assert total == 1
+    assert items[0].name == "Camara"
+
+
+def test_list_items_filters_by_price_range(db_session: Session, make_user, make_item) -> None:
+    """Happy path: min_price and max_price are both inclusive."""
+    from app.services.items import list_items
+
+    owner = make_user(email="lister2@example.com")
+    make_item(owner_id=owner.id, name="Barato", price_per_day=1000)
+    make_item(owner_id=owner.id, name="Medio", price_per_day=5000)
+    make_item(owner_id=owner.id, name="Caro", price_per_day=10000)
+
+    items, total = list_items(db_session, min_price=2000, max_price=8000)
+
+    assert total == 1
+    assert items[0].name == "Medio"
+
+
+def test_list_items_search_finds_partial_accent_insensitive_match(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Happy path: searching "camara" (no accent, partial) finds an item
+    named "Camara Canon" (also tests the DB's own accent handling by
+    storing the accented form and searching the plain form).
+    """
+    from app.services.items import list_items
+
+    owner = make_user(email="lister3@example.com")
+    make_item(owner_id=owner.id, name="Camara Canon", description="Buen estado")
+    make_item(owner_id=owner.id, name="Taladro Bosch", description="Percutor")
+
+    items, total = list_items(db_session, q="cama")
+
+    assert total == 1
+    assert items[0].name == "Camara Canon"
+
+
+def test_list_items_search_handles_multiple_words(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Happy path: a two-word query matches an item containing both terms."""
+    from app.services.items import list_items
+
+    owner = make_user(email="lister4@example.com")
+    make_item(owner_id=owner.id, name="Taladro Bosch", description="Percutor profesional")
+    make_item(owner_id=owner.id, name="Taladro Makita", description="Basico")
+
+    items, total = list_items(db_session, q="taladro bosch")
+
+    assert total == 1
+    assert items[0].name == "Taladro Bosch"
+
+
+def test_list_items_excludes_inactive_items(db_session: Session, make_user, make_item) -> None:
+    """Failure/edge path: an inactive item never appears in the list,
+    even with no filters at all.
+    """
+    from app.services.items import list_items
+
+    owner = make_user(email="lister5@example.com")
+    make_item(owner_id=owner.id, name="Activo", is_active=True)
+    make_item(owner_id=owner.id, name="Inactivo", is_active=False)
+
+    items, total = list_items(db_session)
+
+    assert total == 1
+    assert items[0].name == "Activo"
+
+
+def test_list_items_paginates_and_reports_total(db_session: Session, make_user, make_item) -> None:
+    """Happy path: limit caps the page size, total reflects all matches."""
+    from app.services.items import list_items
+
+    owner = make_user(email="lister6@example.com")
+    for i in range(3):
+        make_item(owner_id=owner.id, name=f"Item {i}")
+
+    page_1, total = list_items(db_session, page=1, limit=2)
+    page_2, _ = list_items(db_session, page=2, limit=2)
+
+    assert total == 3
+    assert len(page_1) == 2
+    assert len(page_2) == 1
+
+
+def test_list_items_sort_popular_falls_back_to_recent_order(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Edge case: sort=popular has no real metric yet (no Reservations),
+    so it must order identically to sort=recent (newest first).
+    """
+    from app.services.items import list_items
+
+    owner = make_user(email="lister7@example.com")
+    first = make_item(owner_id=owner.id, name="Primero")
+    # Backdated: Postgres's now() is frozen for the whole test
+    # transaction (db_session wraps the test in one transaction), so
+    # both items would otherwise get an identical created_at and the
+    # DESC ordering this test checks would be undefined.
+    first.created_at = datetime.now(timezone.utc) - timedelta(minutes=1)
+    db_session.add(first)
+    db_session.commit()
+
+    second = make_item(owner_id=owner.id, name="Segundo")
+
+    items, _ = list_items(db_session, sort="popular")
+
+    assert [item.id for item in items] == [second.id, first.id]
+
+
+def test_list_items_accepts_available_dates_without_excluding_anything(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Edge case: available_from/available_to are accepted but don't
+    exclude any active item yet — there's no Reservation table to check
+    against.
+    """
+    from app.services.items import list_items
+
+    owner = make_user(email="lister8@example.com")
+    make_item(owner_id=owner.id, name="Cualquiera")
+
+    items, total = list_items(
+        db_session, available_from=date(2026, 8, 1), available_to=date(2026, 8, 5)
+    )
+
+    assert total == 1
