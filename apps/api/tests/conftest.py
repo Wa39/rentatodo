@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.database import engine, get_db
 from app.main import app
+from app.models.item import Item
 from app.models.user import User
 from app.services.auth import hash_password
 
@@ -80,3 +81,39 @@ def make_user(db_session: Session):
         return user
 
     return _make_user
+
+
+@pytest.fixture()
+def make_item(db_session: Session):
+    """Factory fixture: persists an Item for a given owner.
+
+    Returns:
+        A callable ``make_item(owner_id, name=..., description=...,
+        category=..., price_per_day=..., photo_url=..., is_active=...) ->
+        Item`` that inserts and returns a fully persisted Item.
+    """
+
+    def _make_item(
+        owner_id,
+        name: str = "Taladro Bosch",
+        description: str = "Taladro percutor profesional",
+        category: str = "tools",
+        price_per_day: int = 5000,
+        photo_url: str = "https://example.com/photo.jpg",
+        is_active: bool = True,
+    ) -> Item:
+        item = Item(
+            owner_id=owner_id,
+            name=name,
+            description=description,
+            category=category,
+            price_per_day=price_per_day,
+            photo_url=photo_url,
+            is_active=is_active,
+        )
+        db_session.add(item)
+        db_session.commit()
+        db_session.refresh(item)
+        return item
+
+    return _make_item
