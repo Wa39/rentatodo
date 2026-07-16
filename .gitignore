@@ -47,3 +47,6 @@ venv/
 
 # Superpowers subagent-driven-development scratch state
 .superpowers/
+
+# Git worktrees
+.worktrees/
