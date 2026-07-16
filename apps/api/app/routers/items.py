@@ -71,10 +71,6 @@ def list_items_endpoint(
     Returns:
         The matching page of items, plus pagination metadata.
     """
-    # Guard against a whitespace-only q: list_items's own `if q:` check is
-    # truthy for "  ", which reaches to_tsquery with an empty term and
-    # raises a 500 at execution time instead of behaving like no search.
-    q = q.strip() or None if q else None
     items, total = list_items(
         db,
         q=q,

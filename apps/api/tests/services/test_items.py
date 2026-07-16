@@ -1,4 +1,6 @@
-"""Tests for app.services.items: create_item and get_item."""
+"""Tests for app.services.items: create_item, get_item, and list_items
+(including search sanitization, filtering, and pagination).
+"""
 
 import uuid
 from datetime import date, datetime, timedelta, timezone
@@ -212,6 +214,82 @@ def test_list_items_sort_popular_falls_back_to_recent_order(
     items, _ = list_items(db_session, sort="popular")
 
     assert [item.id for item in items] == [second.id, first.id]
+
+
+def test_list_items_search_sanitizes_tsquery_special_characters(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Regression test: a query containing tsquery operator characters
+    (&, parentheses, etc.) must not raise a Postgres syntax error — each
+    token is sanitized down to word characters before being fed to
+    to_tsquery, and the sanitized tokens still find a matching item.
+    """
+    from app.services.items import list_items
+
+    owner = make_user(email="lister9@example.com")
+    make_item(owner_id=owner.id, name="Taladro Bosch", description="Percutor profesional")
+    make_item(owner_id=owner.id, name="Camara Canon", description="Buen estado")
+
+    items, total = list_items(db_session, q="taladro & bosch")
+
+    assert total == 1
+    assert items[0].name == "Taladro Bosch"
+
+
+def test_list_items_search_sanitizes_accented_special_characters(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Regression test: punctuation mixed with accented characters (e.g.
+    "cámara (nueva)") doesn't raise either — sanitization is Unicode-aware
+    so the accented letters survive stripping, and unaccent still matches
+    the plain-text stored name.
+    """
+    from app.services.items import list_items
+
+    owner = make_user(email="lister10@example.com")
+    make_item(owner_id=owner.id, name="Camara Nueva", description="Sin uso")
+    make_item(owner_id=owner.id, name="Taladro Bosch", description="Percutor profesional")
+
+    items, total = list_items(db_session, q="cámara (nueva)")
+
+    assert total == 1
+    assert items[0].name == "Camara Nueva"
+
+
+def test_list_items_whitespace_only_query_behaves_like_no_filter(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Regression test: list_items itself (not just the router) must treat
+    a whitespace-only q as "no search filter" rather than raising — the
+    service is the reusable unit and must be self-protecting.
+    """
+    from app.services.items import list_items
+
+    owner = make_user(email="lister11@example.com")
+    make_item(owner_id=owner.id, name="Cualquiera")
+
+    items, total = list_items(db_session, q="   ")
+
+    assert total == 1
+    assert items[0].name == "Cualquiera"
+
+
+def test_list_items_query_that_sanitizes_to_empty_behaves_like_no_filter(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Regression test: a query made entirely of tsquery-special
+    punctuation (nothing survives sanitization) must not raise, and must
+    behave exactly like no search filter at all.
+    """
+    from app.services.items import list_items
+
+    owner = make_user(email="lister12@example.com")
+    make_item(owner_id=owner.id, name="Cualquiera")
+
+    items, total = list_items(db_session, q="&&&")
+
+    assert total == 1
+    assert items[0].name == "Cualquiera"
 
 
 def test_list_items_accepts_available_dates_without_excluding_anything(

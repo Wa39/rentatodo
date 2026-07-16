@@ -2,6 +2,7 @@
 filtered/paginated listing.
 """
 
+import re
 import uuid
 from datetime import date
 
@@ -64,7 +65,21 @@ def get_item(db: Session, item_id: uuid.UUID) -> Item:
     return item
 
 
-def _search_condition(q: str) -> TextClause:
+def _sanitize_search_token(token: str) -> str:
+    """Strip tsquery operator characters (&, |, !, (, ), :, etc.) from a
+    raw search token so it can't be interpreted as tsquery syntax — only
+    word characters (Unicode letters/digits/underscore) survive.
+
+    Args:
+        token: One raw whitespace-delimited token from the user's query.
+
+    Returns:
+        The token with every non-word character removed. May be empty.
+    """
+    return re.sub(r"[^\w]", "", token, flags=re.UNICODE)
+
+
+def _search_condition(q: str) -> TextClause | None:
     """Build a full-text search condition matching idx_items_search:
     to_tsvector('simple', immutable_unaccent(name || ' ' || description)),
     with each query token turned into a prefix match, ANDed together.
@@ -74,14 +89,24 @@ def _search_condition(q: str) -> TextClause:
     to_tsquery (unlike plainto_tsquery) requires explicit boolean
     operators between lexemes and supports prefix matching (':*') —
     needed for "tala" to find "taladro", which the contract requires.
+    Because to_tsquery parses its own mini-language, &, |, !, (, ), and
+    : in raw user input would otherwise be interpreted as operators and
+    raise a syntax error (e.g. q="camping & hiking") — so every token is
+    sanitized down to word characters before being embedded.
 
     Args:
         q: The raw search string, e.g. "taladro bosch".
 
     Returns:
-        A SQLAlchemy text() clause with one bound parameter per token.
+        A SQLAlchemy text() clause with one bound parameter per surviving
+        token, or None if q contains no usable search term at all (empty,
+        whitespace-only, or entirely tsquery-special punctuation) —
+        callers should treat None the same as "no search filter".
     """
-    tokens = q.strip().split()
+    tokens = [_sanitize_search_token(token) for token in q.split()]
+    tokens = [token for token in tokens if token]
+    if not tokens:
+        return None
     params = {f"term{i}": token for i, token in enumerate(tokens)}
     tsquery_expr = " || ' & ' || ".join(
         f"(immutable_unaccent(:term{i}) || ':*')" for i in range(len(tokens))
@@ -115,6 +140,8 @@ def list_items(
     Args:
         db: Database session.
         q: Free-text search over name+description (see _search_condition).
+            An empty, whitespace-only, or all-punctuation value is treated
+            the same as no search filter — never raises.
         category: Exact category match.
         min_price: Inclusive lower bound on price_per_day.
         max_price: Inclusive upper bound on price_per_day.
@@ -133,7 +160,9 @@ def list_items(
     query = select(Item).options(joinedload(Item.owner)).where(Item.is_active == True)  # noqa: E712
 
     if q:
-        query = query.where(_search_condition(q))
+        condition = _search_condition(q)
+        if condition is not None:
+            query = query.where(condition)
     if category:
         query = query.where(Item.category == category)
     if min_price is not None:
