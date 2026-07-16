@@ -10,7 +10,8 @@ export type Category =
   | 'camping'
   | 'sports'
   | 'electronics'
-  | 'home';
+  | 'home'
+  | 'other';
 
 export type Item = {
   id: string;

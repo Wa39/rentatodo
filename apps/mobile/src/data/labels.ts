@@ -25,6 +25,7 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   sports: 'Deportes',
   electronics: 'Electrónica',
   home: 'Hogar',
+  other: 'Otros',
 };
 
 /** Spanish UI messages for the contract's stable error codes. */

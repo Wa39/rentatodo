@@ -15,14 +15,28 @@ services:
       timeout: 5s
       retries: 5
 
+  # MiniStack: local AWS emulator for development (S3, and 60+ other services).
+  # Production uses real AWS — see AWS_ENDPOINT_URL in apps/api/.env.example.
+  ministack:
+    image: ministackorg/ministack
+    ports:
+      - "4566:4566"
+    volumes:
+      - ministackdata:/var/lib/ministack
+
 volumes:
   pgdata:
+  ministackdata:
 
 # Usage:
 #   docker compose -f infra/docker-compose.yml up -d
 #
 # Corresponding DATABASE_URL for apps/api/.env:
 #   DATABASE_URL=postgresql+psycopg://rentatodo:rentatodo@localhost:5432/rentatodo
+#
+# Create the S3 bucket in MiniStack (first time only, needs AWS CLI):
+#   AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test \
+#   aws --endpoint-url http://localhost:4566 s3 mb s3://rentatodo-items-wa
 #
 # Then from apps/api/ (with virtualenv active):
 #   alembic upgrade head
