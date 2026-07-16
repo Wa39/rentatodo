@@ -1,11 +1,6 @@
 import { getMonthGridDays, isDateBooked, toDateOnlyString } from '@/lib/calendar'
+import { useTranslation } from '@/lib/i18n'
 import type { UnavailableRange } from '@/lib/types'
-
-const WEEKDAY_LABELS = ['D', 'L', 'M', 'M', 'J', 'V', 'S']
-const MONTH_LABELS = [
-  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
-]
 
 export function CalendarMonth({
   monthStart,
@@ -14,14 +9,15 @@ export function CalendarMonth({
   monthStart: Date
   unavailableDates: UnavailableRange[]
 }) {
+  const t = useTranslation()
   const days = getMonthGridDays(monthStart)
-  const label = `${MONTH_LABELS[monthStart.getMonth()]} ${monthStart.getFullYear()}`
+  const label = `${t.calendar.months[monthStart.getMonth()]} ${monthStart.getFullYear()}`
 
   return (
     <div>
       <div className="mb-two font-display text-base font-bold text-foreground">{label}</div>
       <div className="mb-two grid grid-cols-7 text-xs font-semibold uppercase text-info">
-        {WEEKDAY_LABELS.map((weekday, index) => (
+        {t.calendar.weekdays.map((weekday, index) => (
           <div key={index} className="p-half text-center">
             {weekday}
           </div>
