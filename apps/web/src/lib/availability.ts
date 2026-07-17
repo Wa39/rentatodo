@@ -1,17 +1,14 @@
-import { isDateBooked, toDateOnlyString } from './calendar'
-import type { UnavailableRange } from './types'
+import type { DateRangeState, Reservation } from './types'
 
-export type AvailabilityDay = 'available' | 'booked'
+const RESERVED_STATUSES = ['approved', 'delivered', 'returned']
 
-export function getAvailabilityStrip(
-  unavailableDates: UnavailableRange[],
-  referenceDate: Date = new Date(),
-  days = 14,
-): AvailabilityDay[] {
-  const strip: AvailabilityDay[] = []
-  for (let i = 0; i < days; i++) {
-    const date = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate() + i)
-    strip.push(isDateBooked(toDateOnlyString(date), unavailableDates) ? 'booked' : 'available')
-  }
-  return strip
+export function getItemDateStates(itemId: string, reservations: Reservation[]): DateRangeState[] {
+  return reservations
+    .filter((r) => r.item_id === itemId)
+    .filter((r) => r.status === 'requested' || RESERVED_STATUSES.includes(r.status))
+    .map((r) => ({
+      start_date: r.start_date,
+      end_date: r.end_date,
+      state: r.status === 'requested' ? 'pending' : 'reserved',
+    }))
 }

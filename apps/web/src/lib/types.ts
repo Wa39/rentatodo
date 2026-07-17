@@ -63,6 +63,14 @@ export interface Reservation {
   updated_at: string
 }
 
+export type ReservationDateState = 'pending' | 'reserved'
+
+export interface DateRangeState {
+  start_date: string
+  end_date: string
+  state: ReservationDateState
+}
+
 export type TransactionType = 'hold' | 'release' | 'freeze'
 
 export interface Transaction {
