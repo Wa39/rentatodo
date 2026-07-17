@@ -13,8 +13,11 @@ export function DashboardLayout() {
   const pendingCount = mockRequests.filter((r) => r.status === 'requested').length
   const months = mockEarnings.by_month
   const currentMonth = months[months.length - 1]
-  const previousMonth = months[months.length - 2]
-  const deltaPct = Math.round(((currentMonth.total - previousMonth.total) / previousMonth.total) * 100)
+  const previousMonth = months.length >= 2 ? months[months.length - 2] : undefined
+  const deltaPct =
+    previousMonth && previousMonth.total !== 0
+      ? Math.round(((currentMonth.total - previousMonth.total) / previousMonth.total) * 100)
+      : undefined
 
   const navGroups = [
     { label: t.nav.groupPanel, items: [{ to: '/dashboard', label: t.nav.overview, icon: LayoutGrid }] },
@@ -83,9 +86,11 @@ export function DashboardLayout() {
         <div className="mt-four rounded-lg bg-sidebar-card p-three">
           <p className="text-xs font-medium uppercase tracking-wide text-sidebar-foreground/60">{t.nav.earnedThisMonth}</p>
           <p className="mt-half font-display text-xl font-semibold text-white">{formatCentavos(currentMonth.total)}</p>
-          <p className="mt-half text-xs text-on-dark-accent">
-            ↑ {deltaPct}% {t.nav.vsLastMonth}
-          </p>
+          {deltaPct !== undefined && (
+            <p className="mt-half text-xs text-on-dark-accent">
+              {deltaPct >= 0 ? '↑' : '↓'} {Math.abs(deltaPct)}% {t.nav.vsLastMonth}
+            </p>
+          )}
         </div>
 
         <div className="mt-four flex items-center gap-two border-t border-sidebar-border pt-three">
