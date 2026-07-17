@@ -65,17 +65,16 @@ describe('DashboardPage', () => {
     const user = userEvent.setup()
     render(
       <RequestsProvider>
-        <MemoryRouter initialEntries={['/dashboard']}>
-          <Routes>
-            <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/requests" element={<RequestsPage />} />
-          </Routes>
+        <MemoryRouter>
+          <DashboardPage />
+          <RequestsPage />
         </MemoryRouter>
       </RequestsProvider>,
     )
     const firstPending = mockRequests.filter((r) => r.status === 'requested')[0]
-    const row = screen.getByText(new RegExp(firstPending.renter_name)).closest('li')!
-    await user.click(within(row).getByRole('button', { name: 'Approve' }))
-    expect(screen.queryByText(new RegExp(firstPending.renter_name))).not.toBeInTheDocument()
+    const dashboardRow = screen.getAllByText(new RegExp(firstPending.renter_name))[0].closest('li')!
+    await user.click(within(dashboardRow).getByRole('button', { name: 'Approve' }))
+    await user.click(screen.getByRole('button', { name: /^Active/ }))
+    expect(screen.getByText(new RegExp(firstPending.renter_name))).toBeInTheDocument()
   })
 })
