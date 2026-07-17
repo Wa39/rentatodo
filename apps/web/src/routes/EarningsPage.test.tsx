@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { mockEarnings } from '@/lib/mockData'
 import { formatCentavos } from '@/lib/format'
 import { EarningsPage } from './EarningsPage'
@@ -31,5 +31,18 @@ describe('EarningsPage', () => {
 
     await user.click(screen.getByRole('button', { name: new RegExp(second.item_name) }))
     expect(screen.getByText(second.item_name, { selector: 'h2' })).toBeInTheDocument()
+  })
+
+  it('does not render NaN/Infinity bar heights when earnings data is empty', () => {
+    vi.resetModules()
+    vi.doMock('@/lib/mockData', async () => {
+      const actual = await vi.importActual<typeof import('@/lib/mockData')>('@/lib/mockData')
+      return { ...actual, mockEarnings: { total_earnings: 0, by_item: [], by_month: [] } }
+    })
+    expect(async () => {
+      const { EarningsPage: PatchedPage } = await import('./EarningsPage')
+      render(<PatchedPage />)
+    }).not.toThrow()
+    vi.doUnmock('@/lib/mockData')
   })
 })
