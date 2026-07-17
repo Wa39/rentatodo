@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 import { AuthProvider } from '@/lib/AuthContext'
+import { RequestsProvider } from '@/lib/RequestsContext'
 import { mockEarnings } from '@/lib/mockData'
 import { formatCentavos } from '@/lib/format'
 import { DashboardLayout } from './DashboardLayout'
@@ -9,13 +10,15 @@ import { DashboardLayout } from './DashboardLayout'
 function renderLayout() {
   render(
     <AuthProvider>
-      <MemoryRouter initialEntries={['/dashboard']}>
-        <Routes>
-          <Route element={<DashboardLayout />}>
-            <Route path="/dashboard" element={<div>Home content</div>} />
-          </Route>
-        </Routes>
-      </MemoryRouter>
+      <RequestsProvider>
+        <MemoryRouter initialEntries={['/dashboard']}>
+          <Routes>
+            <Route element={<DashboardLayout />}>
+              <Route path="/dashboard" element={<div>Home content</div>} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </RequestsProvider>
     </AuthProvider>,
   )
 }
@@ -57,16 +60,19 @@ describe('DashboardLayout', () => {
       }
     })
     const authModule = await import('@/lib/AuthContext')
+    const requestsModule = await import('@/lib/RequestsContext')
     const { DashboardLayout: PatchedLayout } = await import('./DashboardLayout')
     render(
       <authModule.AuthProvider>
-        <MemoryRouter initialEntries={['/dashboard']}>
-          <Routes>
-            <Route element={<PatchedLayout />}>
-              <Route path="/dashboard" element={<div>Home content</div>} />
-            </Route>
-          </Routes>
-        </MemoryRouter>
+        <requestsModule.RequestsProvider>
+          <MemoryRouter initialEntries={['/dashboard']}>
+            <Routes>
+              <Route element={<PatchedLayout />}>
+                <Route path="/dashboard" element={<div>Home content</div>} />
+              </Route>
+            </Routes>
+          </MemoryRouter>
+        </requestsModule.RequestsProvider>
       </authModule.AuthProvider>,
     )
     expect(screen.getByText(/↓ 50%/)).toBeInTheDocument()

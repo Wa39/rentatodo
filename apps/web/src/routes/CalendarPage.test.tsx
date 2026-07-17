@@ -4,17 +4,20 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 import { mockItems, mockRequests } from '@/lib/mockData'
 import { ItemsProvider } from '@/lib/ItemsContext'
+import { RequestsProvider } from '@/lib/RequestsContext'
 import { CalendarPage } from './CalendarPage'
 
 function renderPage(initialEntry = '/requests/calendar') {
   render(
-    <ItemsProvider>
-      <MemoryRouter initialEntries={[initialEntry]}>
-        <Routes>
-          <Route path="/requests/calendar" element={<CalendarPage />} />
-        </Routes>
-      </MemoryRouter>
-    </ItemsProvider>,
+    <RequestsProvider>
+      <ItemsProvider>
+        <MemoryRouter initialEntries={[initialEntry]}>
+          <Routes>
+            <Route path="/requests/calendar" element={<CalendarPage />} />
+          </Routes>
+        </MemoryRouter>
+      </ItemsProvider>
+    </RequestsProvider>,
   )
 }
 

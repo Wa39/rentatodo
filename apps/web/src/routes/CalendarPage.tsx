@@ -5,23 +5,24 @@ import { CalendarMonth } from '@/components/CalendarMonth'
 import { StatusBadge } from '@/components/StatusBadge'
 import { getItemDateStates } from '@/lib/availability'
 import { useItems } from '@/lib/ItemsContext'
-import { mockRequests } from '@/lib/mockData'
+import { useRequests } from '@/lib/RequestsContext'
 import { useTranslation } from '@/lib/i18n'
 
 export function CalendarPage() {
   const t = useTranslation()
   const { items } = useItems()
+  const { requests } = useRequests()
   const [searchParams, setSearchParams] = useSearchParams()
   const requestedId = searchParams.get('item')
   const selectedItem = requestedId ? items.find((i) => i.id === requestedId) : items[0]
 
   const dateRanges = useMemo(
-    () => (selectedItem ? getItemDateStates(selectedItem.id, mockRequests) : []),
-    [selectedItem],
+    () => (selectedItem ? getItemDateStates(selectedItem.id, requests) : []),
+    [selectedItem, requests],
   )
   const itemReservations = useMemo(
-    () => (selectedItem ? mockRequests.filter((r) => r.item_id === selectedItem.id) : []),
-    [selectedItem],
+    () => (selectedItem ? requests.filter((r) => r.item_id === selectedItem.id) : []),
+    [selectedItem, requests],
   )
 
   const now = new Date()

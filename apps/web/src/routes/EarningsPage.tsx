@@ -1,14 +1,16 @@
 import { useState } from 'react'
-import { mockEarnings, mockRequests } from '@/lib/mockData'
+import { mockEarnings } from '@/lib/mockData'
 import { formatCentavos } from '@/lib/format'
 import { useTranslation } from '@/lib/i18n'
+import { useRequests } from '@/lib/RequestsContext'
 import { PageHeader } from '@/components/PageHeader'
 
 export function EarningsPage() {
   const t = useTranslation()
   const [selectedItemId, setSelectedItemId] = useState(mockEarnings.by_item[0]?.item_id)
   const selected = mockEarnings.by_item.find((i) => i.item_id === selectedItemId)
-  const closedCount = mockRequests.filter((r) => r.status === 'closed').length
+  const { requests } = useRequests()
+  const closedCount = requests.filter((r) => r.status === 'closed').length
   const currentMonth = mockEarnings.by_month[mockEarnings.by_month.length - 1] ?? { month: '', total: 0 }
   const maxMonth = Math.max(1, ...mockEarnings.by_month.map((m) => m.total))
   const maxItem = Math.max(1, ...mockEarnings.by_item.map((i) => i.total))
