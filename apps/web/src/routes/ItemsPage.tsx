@@ -1,28 +1,35 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { mockItems, mockUser } from '@/lib/mockData'
+import { PageHeader } from '@/components/PageHeader'
+import { ItemCard } from '@/components/ItemCard'
+import { mockItems } from '@/lib/mockData'
 import type { Category, Item } from '@/lib/types'
-import { formatCentavos } from '@/lib/format'
+import { useTranslation } from '@/lib/i18n'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
-const CATEGORIES: Category[] = ['tools', 'photography', 'camping', 'sports', 'electronics', 'home']
+const CATEGORIES: Category[] = ['tools', 'photography', 'camping', 'sports', 'electronics', 'home', 'other']
 
 const BLANK_FORM = { name: '', description: '', category: CATEGORIES[0], priceDollars: '', photoUrl: '' }
 
 export function ItemsPage() {
+  const t = useTranslation()
   const [items, setItems] = useState<Item[]>(mockItems)
   const [open, setOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(BLANK_FORM)
+  const [query, setQuery] = useState('')
 
-  function openCreateDialog() {
-    setEditingId(null)
-    setForm(BLANK_FORM)
-    setOpen(true)
-  }
+  const activeCount = items.filter((i) => i.is_active).length
+  const inactiveCount = items.length - activeCount
+
+  const filteredItems = items.filter((item) => {
+    const q = query.trim().toLowerCase()
+    if (!q) return true
+    return item.name.toLowerCase().includes(q) || t.categories[item.category].toLowerCase().includes(q)
+  })
 
   function openEditDialog(item: Item) {
     setEditingId(item.id)
@@ -39,31 +46,22 @@ export function ItemsPage() {
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
     const priceCentavos = Math.round(Number(form.priceDollars) * 100)
-
     if (editingId) {
       setItems((current) =>
         current.map((item) =>
           item.id === editingId
-            ? { ...item, name: form.name, description: form.description, category: form.category, price_per_day: priceCentavos, photo_url: form.photoUrl }
+            ? {
+                ...item,
+                name: form.name,
+                description: form.description,
+                category: form.category,
+                price_per_day: priceCentavos,
+                photo_url: form.photoUrl,
+              }
             : item,
         ),
       )
-    } else {
-      const newItem: Item = {
-        id: crypto.randomUUID(),
-        name: form.name,
-        description: form.description,
-        category: form.category,
-        price_per_day: priceCentavos,
-        photo_url: form.photoUrl,
-        is_active: true,
-        owner_id: mockUser.id,
-        owner_name: 'You',
-        created_at: new Date().toISOString(),
-      }
-      setItems((current) => [...current, newItem])
     }
-
     setOpen(false)
     setEditingId(null)
     setForm(BLANK_FORM)
@@ -77,17 +75,33 @@ export function ItemsPage() {
     setItems((current) => current.map((i) => (i.id === item.id ? { ...i, is_active: false } : i)))
   }
 
+  function handleReactivate(item: Item) {
+    setItems((current) => current.map((i) => (i.id === item.id ? { ...i, is_active: true } : i)))
+  }
+
   return (
-    <div className="space-y-three">
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-foreground">My items</h1>
+    <div>
+      <PageHeader
+        title={t.items.title}
+        subtitle={t.items.subtitle(activeCount, inactiveCount)}
+        action={
+          <Button asChild>
+            <Link to="/items/publish">{t.dashboard.publishItem}</Link>
+          </Button>
+        }
+      />
+      <div className="space-y-three p-four">
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={t.items.searchPlaceholder}
+          aria-label={t.items.searchPlaceholder}
+        />
+
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={openCreateDialog}>Publish item</Button>
-          </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>{editingId ? 'Edit item' : 'Publish item'}</DialogTitle>
+              <DialogTitle>Edit item</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-two">
               <div className="space-y-half">
@@ -113,7 +127,7 @@ export function ItemsPage() {
                 >
                   {CATEGORIES.map((c) => (
                     <option key={c} value={c}>
-                      {c}
+                      {t.categories[c]}
                     </option>
                   ))}
                 </select>
@@ -146,33 +160,13 @@ export function ItemsPage() {
             </form>
           </DialogContent>
         </Dialog>
-      </div>
 
-      <ul className="space-y-two">
-        {items.map((item) => (
-          <li key={item.id} className="flex items-center justify-between rounded-lg border border-border bg-card p-three">
-            <div>
-              <Link to={`/items/${item.id}`} className="font-medium text-foreground hover:text-primary">
-                {item.name}
-              </Link>
-              <p className="text-sm text-muted-foreground">
-                {item.category} · {formatCentavos(item.price_per_day)}/day
-              </p>
-            </div>
-            <div className="flex items-center gap-two">
-              {!item.is_active && (
-                <span className="rounded-full bg-destructive px-two py-half text-xs text-destructive-foreground">Inactive</span>
-              )}
-              <Button size="sm" variant="outline" onClick={() => openEditDialog(item)}>
-                Edit
-              </Button>
-              <Button size="sm" variant="destructive" onClick={() => handleDelete(item)}>
-                Delete
-              </Button>
-            </div>
-          </li>
-        ))}
-      </ul>
+        <div className="grid grid-cols-4 gap-three">
+          {filteredItems.map((item) => (
+            <ItemCard key={item.id} item={item} onEdit={openEditDialog} onDelete={handleDelete} onReactivate={handleReactivate} />
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
