@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 import { mockRequests, mockTransactions } from '@/lib/mockData'
+import { RequestsProvider } from '@/lib/RequestsContext'
 import { ReservationDetailPage } from './ReservationDetailPage'
 
 describe('ReservationDetailPage', () => {
@@ -10,11 +11,13 @@ describe('ReservationDetailPage', () => {
     const user = userEvent.setup()
     const reservation = mockRequests[1]
     render(
-      <MemoryRouter initialEntries={[`/reservations/${reservation.id}`]}>
-        <Routes>
-          <Route path="/reservations/:id" element={<ReservationDetailPage />} />
-        </Routes>
-      </MemoryRouter>,
+      <RequestsProvider>
+        <MemoryRouter initialEntries={[`/reservations/${reservation.id}`]}>
+          <Routes>
+            <Route path="/reservations/:id" element={<ReservationDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      </RequestsProvider>,
     )
 
     expect(screen.getByText(mockTransactions[0].type)).toBeInTheDocument()

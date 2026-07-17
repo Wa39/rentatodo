@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useParams } from 'react-router-dom'
-import { mockRequests, mockTransactions } from '@/lib/mockData'
+import { mockTransactions } from '@/lib/mockData'
+import { useRequests } from '@/lib/RequestsContext'
 import { formatCentavos } from '@/lib/format'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,7 +10,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 
 export function ReservationDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const reservation = mockRequests.find((r) => r.id === id)
+  const { requests } = useRequests()
+  const reservation = requests.find((r) => r.id === id)
   const transactions = mockTransactions.filter((tx) => tx.reservation_id === id)
   const [reason, setReason] = useState('')
   const [photoUrl, setPhotoUrl] = useState('')

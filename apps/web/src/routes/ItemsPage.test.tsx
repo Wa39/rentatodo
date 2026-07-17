@@ -4,15 +4,18 @@ import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 import { mockItems } from '@/lib/mockData'
 import { ItemsProvider } from '@/lib/ItemsContext'
+import { RequestsProvider } from '@/lib/RequestsContext'
 import { ItemsPage } from './ItemsPage'
 
 function renderPage() {
   render(
-    <ItemsProvider>
-      <MemoryRouter>
-        <ItemsPage />
-      </MemoryRouter>
-    </ItemsProvider>,
+    <RequestsProvider>
+      <ItemsProvider>
+        <MemoryRouter>
+          <ItemsPage />
+        </MemoryRouter>
+      </ItemsProvider>
+    </RequestsProvider>,
   )
 }
 

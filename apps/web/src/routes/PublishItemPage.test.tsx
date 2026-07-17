@@ -3,19 +3,22 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 import { ItemsProvider } from '@/lib/ItemsContext'
+import { RequestsProvider } from '@/lib/RequestsContext'
 import { PublishItemPage } from './PublishItemPage'
 import { ItemsPage } from './ItemsPage'
 
 function renderPage() {
   render(
-    <ItemsProvider>
-      <MemoryRouter initialEntries={['/items/publish']}>
-        <Routes>
-          <Route path="/items/publish" element={<PublishItemPage />} />
-          <Route path="/items" element={<ItemsPage />} />
-        </Routes>
-      </MemoryRouter>
-    </ItemsProvider>,
+    <RequestsProvider>
+      <ItemsProvider>
+        <MemoryRouter initialEntries={['/items/publish']}>
+          <Routes>
+            <Route path="/items/publish" element={<PublishItemPage />} />
+            <Route path="/items" element={<ItemsPage />} />
+          </Routes>
+        </MemoryRouter>
+      </ItemsProvider>
+    </RequestsProvider>,
   )
 }
 

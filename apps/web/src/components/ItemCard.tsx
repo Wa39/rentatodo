@@ -3,7 +3,7 @@ import type { Item } from '@/lib/types'
 import { formatCentavos } from '@/lib/format'
 import { getAvailabilityStrip, getItemDateStates } from '@/lib/availability'
 import { useTranslation } from '@/lib/i18n'
-import { mockRequests } from '@/lib/mockData'
+import { useRequests } from '@/lib/RequestsContext'
 import { Button } from '@/components/ui/button'
 
 interface ItemCardProps {
@@ -16,7 +16,8 @@ interface ItemCardProps {
 
 export function ItemCard({ item, onEdit, onDelete, onReactivate, readOnly = false }: ItemCardProps) {
   const t = useTranslation()
-  const dateRanges = getItemDateStates(item.id, mockRequests)
+  const { requests } = useRequests()
+  const dateRanges = getItemDateStates(item.id, requests)
   const strip = getAvailabilityStrip(dateRanges)
 
   return (
