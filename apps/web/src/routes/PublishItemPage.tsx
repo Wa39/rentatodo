@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PageHeader } from '@/components/PageHeader'
+import { useItems } from '@/lib/ItemsContext'
 import { ItemCard } from '@/components/ItemCard'
 import { mockUser } from '@/lib/mockData'
 import type { Category, Item } from '@/lib/types'
@@ -14,6 +15,7 @@ const CATEGORIES: Category[] = ['tools', 'photography', 'camping', 'sports', 'el
 export function PublishItemPage() {
   const t = useTranslation()
   const navigate = useNavigate()
+  const { addItem } = useItems()
   const [name, setName] = useState('')
   const [category, setCategory] = useState<Category>(CATEGORIES[0])
   const [priceDollars, setPriceDollars] = useState('')
@@ -35,8 +37,15 @@ export function PublishItemPage() {
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    // Phase 1: no real POST /items call yet — mirrors the rest of the app's
-    // mock-data-only behavior, just navigates back.
+    addItem({
+      name,
+      description,
+      category,
+      price_per_day: Math.round(Number(priceDollars || '0') * 100),
+      photo_url: photoUrl,
+      owner_id: mockUser.id,
+      owner_name: mockUser.name,
+    })
     navigate('/items')
   }
 

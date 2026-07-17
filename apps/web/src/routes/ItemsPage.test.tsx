@@ -3,15 +3,22 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 import { mockItems } from '@/lib/mockData'
+import { ItemsProvider } from '@/lib/ItemsContext'
 import { ItemsPage } from './ItemsPage'
+
+function renderPage() {
+  render(
+    <ItemsProvider>
+      <MemoryRouter>
+        <ItemsPage />
+      </MemoryRouter>
+    </ItemsProvider>,
+  )
+}
 
 describe('ItemsPage', () => {
   it('renders a card for every mock item with an active/inactive count in the header', () => {
-    render(
-      <MemoryRouter>
-        <ItemsPage />
-      </MemoryRouter>,
-    )
+    renderPage()
     for (const item of mockItems) {
       expect(screen.getByText(item.name)).toBeInTheDocument()
     }
@@ -22,11 +29,7 @@ describe('ItemsPage', () => {
 
   it('filters items by name as the user types in the search box', async () => {
     const user = userEvent.setup({ delay: null })
-    render(
-      <MemoryRouter>
-        <ItemsPage />
-      </MemoryRouter>,
-    )
+    renderPage()
     const searchTerm = mockItems[0].name.split(' ')[0]
     await user.type(screen.getByRole('textbox'), searchTerm)
     expect(screen.getByText(mockItems[0].name)).toBeInTheDocument()
@@ -39,22 +42,14 @@ describe('ItemsPage', () => {
 
   it('reactivates an inactive item when its Reactivate button is clicked', async () => {
     const user = userEvent.setup({ delay: null })
-    render(
-      <MemoryRouter>
-        <ItemsPage />
-      </MemoryRouter>,
-    )
+    renderPage()
     await user.click(screen.getByRole('button', { name: 'Reactivate' }))
     expect(screen.queryByRole('button', { name: 'Reactivate' })).not.toBeInTheDocument()
   })
 
   it('edits an existing item through the pre-filled dialog', async () => {
     const user = userEvent.setup({ delay: null })
-    render(
-      <MemoryRouter>
-        <ItemsPage />
-      </MemoryRouter>,
-    )
+    renderPage()
     const item = mockItems[0]
     const card = screen.getByTestId(`item-card-${item.id}`)
     await user.click(within(card).getByRole('button', { name: 'Edit' }))

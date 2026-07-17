@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { PageHeader } from '@/components/PageHeader'
 import { ItemCard } from '@/components/ItemCard'
-import { mockItems } from '@/lib/mockData'
+import { useItems } from '@/lib/ItemsContext'
 import type { Category, Item } from '@/lib/types'
 import { useTranslation } from '@/lib/i18n'
 import { Button } from '@/components/ui/button'
@@ -16,7 +16,7 @@ const BLANK_FORM = { name: '', description: '', category: CATEGORIES[0], priceDo
 
 export function ItemsPage() {
   const t = useTranslation()
-  const [items, setItems] = useState<Item[]>(mockItems)
+  const { items, updateItem, setItemActive } = useItems()
   const [open, setOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(BLANK_FORM)
@@ -47,20 +47,13 @@ export function ItemsPage() {
     event.preventDefault()
     const priceCentavos = Math.round(Number(form.priceDollars) * 100)
     if (editingId) {
-      setItems((current) =>
-        current.map((item) =>
-          item.id === editingId
-            ? {
-                ...item,
-                name: form.name,
-                description: form.description,
-                category: form.category,
-                price_per_day: priceCentavos,
-                photo_url: form.photoUrl,
-              }
-            : item,
-        ),
-      )
+      updateItem(editingId, {
+        name: form.name,
+        description: form.description,
+        category: form.category,
+        price_per_day: priceCentavos,
+        photo_url: form.photoUrl,
+      })
     }
     setOpen(false)
     setEditingId(null)
@@ -72,11 +65,11 @@ export function ItemsPage() {
     // delete (is_active: false), never removes the row.
     const confirmed = window.confirm(`Delete "${item.name}"? It will stop appearing in public search.`)
     if (!confirmed) return
-    setItems((current) => current.map((i) => (i.id === item.id ? { ...i, is_active: false } : i)))
+    setItemActive(item.id, false)
   }
 
   function handleReactivate(item: Item) {
-    setItems((current) => current.map((i) => (i.id === item.id ? { ...i, is_active: true } : i)))
+    setItemActive(item.id, true)
   }
 
   return (
