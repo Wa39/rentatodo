@@ -1,7 +1,7 @@
 import { getDateState, toDateOnlyString } from './calendar'
-import type { DateRangeState, Reservation } from './types'
+import type { DateRangeState, Reservation, ReservationStatus } from './types'
 
-const RESERVED_STATUSES = ['approved', 'delivered', 'returned']
+export const RESERVED_STATUSES: ReservationStatus[] = ['approved', 'delivered', 'returned']
 
 export function getItemDateStates(itemId: string, reservations: Reservation[]): DateRangeState[] {
   return reservations
