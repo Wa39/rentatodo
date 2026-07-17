@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { formatCentavos } from './format'
+import { formatCentavos, getInitials } from './format'
+
+describe('getInitials', () => {
+  it('returns the first letter of the first two words, uppercased', () => {
+    expect(getInitials('María Vargas')).toBe('MV')
+  })
+
+  it('handles a single-word name', () => {
+    expect(getInitials('Cher')).toBe('C')
+  })
+})
 
 describe('formatCentavos', () => {
   it('formats whole dollars without cents drift', () => {

@@ -3,15 +3,7 @@ import { useAuth } from '@/lib/AuthContext'
 import { useTranslation } from '@/lib/i18n'
 import { mockRequests, mockUser } from '@/lib/mockData'
 import { Button } from '@/components/ui/button'
-
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map((part) => part[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase()
-}
+import { getInitials } from '@/lib/format'
 
 export function DashboardLayout() {
   const { logout } = useAuth()
