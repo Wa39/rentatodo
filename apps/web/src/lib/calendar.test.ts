@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getMonthGridDays, isDateBooked, toDateOnlyString } from './calendar'
+import { getDateState, getMonthGridDays, toDateOnlyString } from './calendar'
 
 describe('getMonthGridDays', () => {
   it('returns a grid padded to complete weeks, with July 2026 starting on Wednesday (3 leading June days)', () => {
@@ -58,22 +58,34 @@ describe('toDateOnlyString', () => {
   })
 })
 
-describe('isDateBooked', () => {
-  const ranges = [
-    { start_date: '2026-07-18', end_date: '2026-07-20' },
-    { start_date: '2026-07-25', end_date: '2026-07-27' },
+describe('getDateState', () => {
+  const dateRanges = [
+    { start_date: '2026-07-18', end_date: '2026-07-20', state: 'reserved' as const },
+    { start_date: '2026-07-25', end_date: '2026-07-25', state: 'pending' as const },
   ]
 
-  it('returns true for a date inside a range', () => {
-    expect(isDateBooked('2026-07-19', ranges)).toBe(true)
+  it('returns reserved for a date inside a reserved range', () => {
+    expect(getDateState('2026-07-19', dateRanges)).toBe('reserved')
   })
 
-  it('returns true for a range boundary date', () => {
-    expect(isDateBooked('2026-07-18', ranges)).toBe(true)
-    expect(isDateBooked('2026-07-27', ranges)).toBe(true)
+  it('returns reserved for a range boundary date', () => {
+    expect(getDateState('2026-07-18', dateRanges)).toBe('reserved')
+    expect(getDateState('2026-07-20', dateRanges)).toBe('reserved')
   })
 
-  it('returns false for a date outside every range', () => {
-    expect(isDateBooked('2026-07-21', ranges)).toBe(false)
+  it('returns pending for a date inside a pending range', () => {
+    expect(getDateState('2026-07-25', dateRanges)).toBe('pending')
+  })
+
+  it('returns available for a date outside every range', () => {
+    expect(getDateState('2026-07-21', dateRanges)).toBe('available')
+  })
+
+  it('prioritizes reserved over pending on an overlapping date', () => {
+    const overlapping = [
+      { start_date: '2026-08-01', end_date: '2026-08-01', state: 'pending' as const },
+      { start_date: '2026-08-01', end_date: '2026-08-01', state: 'reserved' as const },
+    ]
+    expect(getDateState('2026-08-01', overlapping)).toBe('reserved')
   })
 })

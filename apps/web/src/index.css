@@ -37,6 +37,7 @@
     --sidebar-accent: 150 21% 15%;     /* sidebar-hover #1E2E26 */
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 150 21% 19%;     /* sidebar-border #263A30 (unchanged) */
+    --sidebar-card: 148 22% 14%;
     --sidebar-ring: 152 61% 30%;       /* forest */
     --radius: 0.625rem;
   }

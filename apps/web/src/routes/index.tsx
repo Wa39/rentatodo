@@ -5,8 +5,9 @@ import { LoginPage } from './LoginPage'
 import { RegisterPage } from './RegisterPage'
 import { DashboardPage } from './DashboardPage'
 import { ItemsPage } from './ItemsPage'
-import { ItemDetailPage } from './ItemDetailPage'
+import { PublishItemPage } from './PublishItemPage'
 import { RequestsPage } from './RequestsPage'
+import { CalendarPage } from './CalendarPage'
 import { ReservationDetailPage } from './ReservationDetailPage'
 import { EarningsPage } from './EarningsPage'
 
@@ -23,8 +24,9 @@ export const router = createBrowserRouter([
     children: [
       { path: '/dashboard', element: <DashboardPage /> },
       { path: '/items', element: <ItemsPage /> },
-      { path: '/items/:id', element: <ItemDetailPage /> },
+      { path: '/items/publish', element: <PublishItemPage /> },
       { path: '/requests', element: <RequestsPage /> },
+      { path: '/requests/calendar', element: <CalendarPage /> },
       { path: '/reservations/:id', element: <ReservationDetailPage /> },
       { path: '/earnings', element: <EarningsPage /> },
     ],

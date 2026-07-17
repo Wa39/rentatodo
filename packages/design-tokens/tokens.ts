@@ -9,6 +9,7 @@ export const colors = {
   sidebarHover: '#1E2E26',
   sidebarBorder: '#263A30',
   sidebarForeground: '#AEBBB3',
+  sidebarCard: '#1B2A22',
   bg: '#EFEDE6',
   card: '#FFFFFF',
   border: '#E4E2D8',

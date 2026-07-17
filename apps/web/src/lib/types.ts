@@ -27,15 +27,6 @@ export interface Item {
   created_at: string
 }
 
-export interface UnavailableRange {
-  start_date: string
-  end_date: string
-}
-
-export interface ItemDetail extends Item {
-  unavailable_dates: UnavailableRange[]
-}
-
 export type ReservationStatus =
   | 'requested'
   | 'approved'
@@ -63,6 +54,14 @@ export interface Reservation {
   updated_at: string
 }
 
+export type ReservationDateState = 'pending' | 'reserved'
+
+export interface DateRangeState {
+  start_date: string
+  end_date: string
+  state: ReservationDateState
+}
+
 export type TransactionType = 'hold' | 'release' | 'freeze'
 
 export interface Transaction {
@@ -86,7 +85,13 @@ export interface EarningsByItem {
   rentals: EarningsRental[]
 }
 
+export interface EarningsByMonth {
+  month: string
+  total: number
+}
+
 export interface Earnings {
   total_earnings: number
   by_item: EarningsByItem[]
+  by_month: EarningsByMonth[]
 }
