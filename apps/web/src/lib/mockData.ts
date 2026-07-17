@@ -169,4 +169,12 @@ export const mockEarnings: Earnings = {
       rentals: [{ start_date: '2026-06-10', end_date: '2026-06-12', amount: 4000 }],
     },
   ],
+  by_month: [
+    { month: 'Feb', total: 800 },
+    { month: 'Mar', total: 1100 },
+    { month: 'Apr', total: 900 },
+    { month: 'May', total: 1300 },
+    { month: 'Jun', total: 1200 },
+    { month: 'Jul', total: 1700 },
+  ],
 }

@@ -86,7 +86,13 @@ export interface EarningsByItem {
   rentals: EarningsRental[]
 }
 
+export interface EarningsByMonth {
+  month: string
+  total: number
+}
+
 export interface Earnings {
   total_earnings: number
   by_item: EarningsByItem[]
+  by_month: EarningsByMonth[]
 }

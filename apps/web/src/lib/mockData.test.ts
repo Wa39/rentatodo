@@ -37,4 +37,13 @@ describe('mockData', () => {
     }
     expect(Number.isInteger(mockEarnings.total_earnings)).toBe(true)
   })
+
+  it('mockEarnings.by_month has 6 integer entries summing to total_earnings', () => {
+    expect(mockEarnings.by_month).toHaveLength(6)
+    for (const entry of mockEarnings.by_month) {
+      expect(Number.isInteger(entry.total)).toBe(true)
+    }
+    const sum = mockEarnings.by_month.reduce((acc, entry) => acc + entry.total, 0)
+    expect(sum).toBe(mockEarnings.total_earnings)
+  })
 })
