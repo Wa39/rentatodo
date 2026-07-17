@@ -33,16 +33,14 @@ describe('EarningsPage', () => {
     expect(screen.getByText(second.item_name, { selector: 'h2' })).toBeInTheDocument()
   })
 
-  it('does not render NaN/Infinity bar heights when earnings data is empty', () => {
+  it('does not render NaN/Infinity bar heights when earnings data is empty', async () => {
     vi.resetModules()
     vi.doMock('@/lib/mockData', async () => {
       const actual = await vi.importActual<typeof import('@/lib/mockData')>('@/lib/mockData')
       return { ...actual, mockEarnings: { total_earnings: 0, by_item: [], by_month: [] } }
     })
-    expect(async () => {
-      const { EarningsPage: PatchedPage } = await import('./EarningsPage')
-      render(<PatchedPage />)
-    }).not.toThrow()
+    const { EarningsPage: PatchedPage } = await import('./EarningsPage')
+    expect(() => render(<PatchedPage />)).not.toThrow()
     vi.doUnmock('@/lib/mockData')
   })
 })
