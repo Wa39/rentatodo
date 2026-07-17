@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { mockRequests } from '@/lib/mockData'
-import type { Reservation, ReservationStatus } from '@/lib/types'
+import type { ReservationStatus } from '@/lib/types'
 import { formatCentavos, getInitials } from '@/lib/format'
 import { useTranslation } from '@/lib/i18n'
+import { useRequests } from '@/lib/RequestsContext'
 import { PageHeader } from '@/components/PageHeader'
 import { StatusBadge } from '@/components/StatusBadge'
 import { Button } from '@/components/ui/button'
@@ -19,13 +19,9 @@ const TAB_STATUSES: Record<Tab, ReservationStatus[]> = {
 
 export function RequestsPage() {
   const t = useTranslation()
-  const [requests, setRequests] = useState<Reservation[]>(mockRequests)
+  const { requests, setStatus } = useRequests()
   const [tab, setTab] = useState<Tab>('pending')
   const [query, setQuery] = useState('')
-
-  function setStatus(id: string, status: Reservation['status']) {
-    setRequests((current) => current.map((r) => (r.id === id ? { ...r, status } : r)))
-  }
 
   const counts: Record<Tab, number> = {
     pending: requests.filter((r) => TAB_STATUSES.pending.includes(r.status)).length,

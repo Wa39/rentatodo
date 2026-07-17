@@ -3,16 +3,19 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 import { mockRequests } from '@/lib/mockData'
+import { RequestsProvider } from '@/lib/RequestsContext'
 import { RequestsPage } from './RequestsPage'
 
 function renderPage() {
   render(
-    <MemoryRouter initialEntries={['/requests']}>
-      <Routes>
-        <Route path="/requests" element={<RequestsPage />} />
-        <Route path="/reservations/:id" element={<div>Reservation detail</div>} />
-      </Routes>
-    </MemoryRouter>,
+    <RequestsProvider>
+      <MemoryRouter initialEntries={['/requests']}>
+        <Routes>
+          <Route path="/requests" element={<RequestsPage />} />
+          <Route path="/reservations/:id" element={<div>Reservation detail</div>} />
+        </Routes>
+      </MemoryRouter>
+    </RequestsProvider>,
   )
 }
 

@@ -1,18 +1,27 @@
 // apps/web/src/routes/DashboardPage.test.tsx
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 import { mockItems, mockRequests } from '@/lib/mockData'
+import { RequestsProvider } from '@/lib/RequestsContext'
+import { RESERVED_STATUSES } from '@/lib/availability'
 import { DashboardPage } from './DashboardPage'
+import { RequestsPage } from './RequestsPage'
+
+function renderDashboard() {
+  render(
+    <RequestsProvider>
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>
+    </RequestsProvider>,
+  )
+}
 
 describe('DashboardPage', () => {
   it('renders KPI cards derived from mock data', () => {
-    render(
-      <MemoryRouter>
-        <DashboardPage />
-      </MemoryRouter>,
-    )
+    renderDashboard()
     const activeItems = mockItems.filter((i) => i.is_active).length
     const pending = mockRequests.filter((r) => r.status === 'requested').length
 
@@ -24,11 +33,7 @@ describe('DashboardPage', () => {
   })
 
   it('renders the "Earned this month" KPI card with the dark-inverted treatment', () => {
-    render(
-      <MemoryRouter>
-        <DashboardPage />
-      </MemoryRouter>,
-    )
+    renderDashboard()
     const earnedCard = screen.getByText('Earned this month').closest('div')!
     expect(earnedCard).toHaveClass('bg-sidebar')
     expect(within(earnedCard).getByText((content) => content.startsWith('$'))).toHaveClass('text-on-dark-accent')
@@ -36,11 +41,7 @@ describe('DashboardPage', () => {
 
   it('shows at most 2 pending requests and lets you approve one', async () => {
     const user = userEvent.setup()
-    render(
-      <MemoryRouter>
-        <DashboardPage />
-      </MemoryRouter>,
-    )
+    renderDashboard()
     const firstPending = mockRequests.filter((r) => r.status === 'requested')[0]
     const row = screen.getByText(new RegExp(firstPending.renter_name)).closest('li')!
     await user.click(within(row).getByRole('button', { name: 'Approve' }))
@@ -48,12 +49,33 @@ describe('DashboardPage', () => {
   })
 
   it('renders the page header with the title and welcome message', () => {
-    render(
-      <MemoryRouter>
-        <DashboardPage />
-      </MemoryRouter>,
-    )
+    renderDashboard()
     expect(screen.getByRole('heading', { name: 'Overview' })).toBeInTheDocument()
     expect(screen.getByText('Welcome back, María')).toBeInTheDocument()
+  })
+
+  it('"Active reservations" KPI matches RequestsPage\'s Active tab count, including returned', () => {
+    renderDashboard()
+    const expectedActive = mockRequests.filter((r) => RESERVED_STATUSES.includes(r.status)).length
+    const activeCard = screen.getByText('Active reservations').closest('div')!
+    expect(within(activeCard).getByText(String(expectedActive))).toBeInTheDocument()
+  })
+
+  it('approving a request on the Dashboard is reflected on the Requests page', async () => {
+    const user = userEvent.setup()
+    render(
+      <RequestsProvider>
+        <MemoryRouter initialEntries={['/dashboard']}>
+          <Routes>
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/requests" element={<RequestsPage />} />
+          </Routes>
+        </MemoryRouter>
+      </RequestsProvider>,
+    )
+    const firstPending = mockRequests.filter((r) => r.status === 'requested')[0]
+    const row = screen.getByText(new RegExp(firstPending.renter_name)).closest('li')!
+    await user.click(within(row).getByRole('button', { name: 'Approve' }))
+    expect(screen.queryByText(new RegExp(firstPending.renter_name))).not.toBeInTheDocument()
   })
 })

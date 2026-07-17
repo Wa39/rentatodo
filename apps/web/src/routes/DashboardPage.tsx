@@ -1,23 +1,19 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { mockEarnings, mockItems, mockRequests, mockUser } from '@/lib/mockData'
-import type { Reservation } from '@/lib/types'
+import { mockEarnings, mockItems, mockUser } from '@/lib/mockData'
 import { formatCentavos } from '@/lib/format'
 import { useTranslation } from '@/lib/i18n'
+import { useRequests } from '@/lib/RequestsContext'
+import { RESERVED_STATUSES } from '@/lib/availability'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/PageHeader'
 
 export function DashboardPage() {
   const t = useTranslation()
-  const [requests, setRequests] = useState<Reservation[]>(mockRequests)
+  const { requests, setStatus } = useRequests()
   const activeItems = mockItems.filter((item) => item.is_active).length
   const pendingRequests = requests.filter((r) => r.status === 'requested')
-  const activeReservations = requests.filter((r) => ['approved', 'delivered'].includes(r.status)).length
+  const activeReservations = requests.filter((r) => RESERVED_STATUSES.includes(r.status)).length
   const recentPending = pendingRequests.slice(0, 2)
-
-  function setStatus(id: string, status: Reservation['status']) {
-    setRequests((current) => current.map((r) => (r.id === id ? { ...r, status } : r)))
-  }
 
   return (
     <div>
