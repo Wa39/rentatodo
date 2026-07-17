@@ -2,12 +2,20 @@ import { describe, expect, it } from 'vitest'
 import { formatCentavos, getInitials } from './format'
 
 describe('getInitials', () => {
-  it('returns the first letter of the first two words, uppercased', () => {
+  it('takes the first letter of the first two words', () => {
     expect(getInitials('María Vargas')).toBe('MV')
   })
 
-  it('handles a single-word name', () => {
-    expect(getInitials('Cher')).toBe('C')
+  it('handles a double space between words', () => {
+    expect(getInitials('María  Vargas')).toBe('MV')
+  })
+
+  it('handles a leading space', () => {
+    expect(getInitials(' María Vargas')).toBe('MV')
+  })
+
+  it('handles a single word', () => {
+    expect(getInitials('María')).toBe('M')
   })
 })
 
