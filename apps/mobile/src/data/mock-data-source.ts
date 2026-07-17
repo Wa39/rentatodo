@@ -195,4 +195,35 @@ export class MockDataSource implements DataSource {
     }
     return { ...reservation };
   }
+
+  /** Mirrors POST /reservations/{id}/checkin: approved → delivered. */
+  async checkInReservation(reservationId: string): Promise<Reservation> {
+    return this.transition(reservationId, 'approved', 'delivered');
+  }
+
+  /** Mirrors POST /reservations/{id}/checkout: delivered → returned. */
+  async checkOutReservation(reservationId: string): Promise<Reservation> {
+    return this.transition(reservationId, 'delivered', 'returned');
+  }
+
+  private transition(
+    reservationId: string,
+    from: Reservation['status'],
+    to: Reservation['status'],
+  ): Reservation {
+    const reservation = RESERVATIONS.find((r) => r.id === reservationId);
+    if (!reservation) {
+      throw new ApiRequestError(404, 'NOT_FOUND', 'Reservation not found');
+    }
+    if (reservation.status !== from) {
+      throw new ApiRequestError(
+        409,
+        'INVALID_TRANSITION',
+        `Requires status ${from}, current is ${reservation.status}`,
+      );
+    }
+    reservation.status = to;
+    reservation.updated_at = new Date().toISOString();
+    return { ...reservation };
+  }
 }
