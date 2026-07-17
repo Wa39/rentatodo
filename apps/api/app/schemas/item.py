@@ -33,6 +33,21 @@ class CreateItemRequest(BaseModel):
     photo_url: AnyUrl = Field(..., description="URL to the item's photo.")
 
 
+class UpdateItemRequest(BaseModel):
+    """Payload for PATCH /items/{item_id}. Every field is optional —
+    an omitted field (or an explicit None) means "leave this field
+    unchanged". Only send the fields you want to change.
+    """
+
+    name: str | None = Field(None, min_length=1, description="Short display name.")
+    description: str | None = Field(None, min_length=1, description="Full text description.")
+    category: CategoryEnum | None = Field(None, description="One of the closed set of categories.")
+    price_per_day: int | None = Field(
+        None, gt=0, description="Price in USD centavos. 5000 = $50.00."
+    )
+    photo_url: AnyUrl | None = Field(None, description="URL to the item's photo.")
+
+
 class ItemResponse(BaseModel):
     """Public item representation, as returned by create/list/detail."""
 
