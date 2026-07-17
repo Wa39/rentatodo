@@ -17,14 +17,14 @@ function renderPage() {
 
 describe('PublishItemPage', () => {
   it('reflects the typed name in the live preview', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     renderPage()
     await user.type(screen.getByLabelText('Name'), 'Taladro Bosch Professional')
     expect(screen.getAllByText('Taladro Bosch Professional')).toHaveLength(1)
   })
 
   it('navigates to /items on submit', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     renderPage()
     await user.type(screen.getByLabelText('Name'), 'Taladro Bosch Professional')
     await user.type(screen.getByLabelText('Price per day (USD)'), '10')
@@ -35,7 +35,7 @@ describe('PublishItemPage', () => {
   })
 
   it('navigates to /items on cancel without submitting', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     renderPage()
     await user.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(screen.getByText('Items page')).toBeInTheDocument()

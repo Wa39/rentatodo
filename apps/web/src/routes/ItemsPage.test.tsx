@@ -21,7 +21,7 @@ describe('ItemsPage', () => {
   })
 
   it('filters items by name as the user types in the search box', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     render(
       <MemoryRouter>
         <ItemsPage />
@@ -38,7 +38,7 @@ describe('ItemsPage', () => {
   })
 
   it('reactivates an inactive item when its Reactivate button is clicked', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     render(
       <MemoryRouter>
         <ItemsPage />
@@ -49,7 +49,7 @@ describe('ItemsPage', () => {
   })
 
   it('edits an existing item through the pre-filled dialog', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     render(
       <MemoryRouter>
         <ItemsPage />
