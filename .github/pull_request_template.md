@@ -5,6 +5,7 @@
 ## Why?
 
 <!-- Motivation or linked issue -->
+Closes #
 
 ## How did I test it?
 
@@ -13,4 +14,5 @@
 ## Checklist
 
 - [ ] CI green (`ci-gate` passed)
+- [ ] Tests added or updated for new logic
 - [ ] If this touches `packages/contracts/`, all affected consumers have approved

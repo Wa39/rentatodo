@@ -21,6 +21,10 @@ export interface DataSource {
   createReservation(itemId: string, startDate: string, endDate: string): Promise<Reservation>;
   /** PATCH /reservations/{id}/cancel — renter only; requested|approved → cancelled. */
   cancelReservation(reservationId: string): Promise<Reservation>;
+  /** POST /reservations/{id}/checkin — renter only; approved → delivered. Photo required. */
+  checkInReservation(reservationId: string, photoUrl: string, notes?: string): Promise<Reservation>;
+  /** POST /reservations/{id}/checkout — renter only; delivered → returned. Photo required. */
+  checkOutReservation(reservationId: string, photoUrl: string, notes?: string): Promise<Reservation>;
 }
 
 export const dataSource: DataSource = getApiUrl() ? new ApiDataSource() : new MockDataSource();
