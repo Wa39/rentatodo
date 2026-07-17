@@ -1,38 +1,34 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MonthCalendar } from '@/components/month-calendar';
 import { Brand } from '@/constants/brand';
 import { dataSource } from '@/data/data-source';
-import { CATEGORY_LABELS } from '@/data/labels';
-import { formatUSD, type ItemDetail, type UnavailableRange } from '@/data/types';
+import { CATEGORY_LABELS, errorMessage } from '@/data/labels';
+import { formatUSD, type ItemDetail } from '@/data/types';
+import { countDaysInclusive, expandRanges, rangeHasUnavailable, todayIso } from '@/utils/dates';
 
 /**
- * Expands the contract's unavailable_dates ranges into a Set of ISO dates,
- * which is what the calendar paints day by day.
- */
-function expandRanges(ranges: UnavailableRange[]): Set<string> {
-  const dates = new Set<string>();
-  for (const r of ranges) {
-    const end = new Date(r.end_date + 'T00:00:00');
-    for (let d = new Date(r.start_date + 'T00:00:00'); d <= end; d.setDate(d.getDate() + 1)) {
-      dates.add(d.toISOString().slice(0, 10));
-    }
-  }
-  return dates;
-}
-
-/**
- * Item detail with availability calendar (mock shaped like the contract).
- * The request + deposit flow gets implemented once the contract is approved.
+ * Item detail + reservation request (POST /items/{item_id}/reservations).
+ * Range selection: first tap sets the start, second tap the end; a tap on
+ * the same day requests a single-day rental. Deposit = price_per_day ×
+ * days, both dates inclusive (backend-calculated; shown here as preview).
  * No item editing here: that belongs to the owner web (Silverk).
  */
 export default function ItemDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [item, setItem] = useState<ItemDetail | undefined>();
+
+  const today = todayIso();
+  const [calYear, setCalYear] = useState(Number(today.slice(0, 4)));
+  const [calMonth, setCalMonth] = useState(Number(today.slice(5, 7)));
+  const [start, setStart] = useState<string | null>(null);
+  const [end, setEnd] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -48,6 +44,55 @@ export default function ItemDetailScreen() {
   }
 
   const unavailable = expandRanges(item.unavailable_dates);
+  const days = start && end ? countDaysInclusive(start, end) : 0;
+  const deposit = days * item.price_per_day;
+
+  function onNavigateMonth(delta: number) {
+    const next = new Date(calYear, calMonth - 1 + delta, 1);
+    setCalYear(next.getFullYear());
+    setCalMonth(next.getMonth() + 1);
+  }
+
+  function onSelectDay(day: string) {
+    setError(null);
+    // No selection yet, or a complete range: start over from this day.
+    if (!start || end) {
+      setStart(day);
+      setEnd(null);
+      return;
+    }
+    // Tapping before the start moves the start.
+    if (day < start) {
+      setStart(day);
+      return;
+    }
+    // Closing the range: reject it if it crosses an occupied day.
+    if (rangeHasUnavailable(start, day, unavailable)) {
+      setError('El rango elegido incluye días ocupados. Seleccione fechas continuas libres.');
+      return;
+    }
+    setEnd(day);
+  }
+
+  async function onSubmit() {
+    if (!item || !start || !end) return;
+    setError(null);
+    setSubmitting(true);
+    try {
+      await dataSource.createReservation(item.id, start, end);
+      // The new request appears in "Mis rentas" with status "Solicitada".
+      router.replace('/rentals');
+    } catch (e) {
+      setError(errorMessage(e));
+      // Availability may have changed underneath: repaint with fresh data.
+      const fresh = await dataSource.getItem(item.id);
+      if (fresh) setItem(fresh);
+      setStart(null);
+      setEnd(null);
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -82,21 +127,64 @@ export default function ItemDetailScreen() {
         </View>
 
         <View style={styles.calendar}>
-          <MonthCalendar year={2026} month={7} unavailable={unavailable} />
+          <MonthCalendar
+            year={calYear}
+            month={calMonth}
+            unavailable={unavailable}
+            minDate={today}
+            selectedStart={start}
+            selectedEnd={end}
+            onSelectDay={onSelectDay}
+            onNavigateMonth={onNavigateMonth}
+          />
+          <Text style={styles.hint}>
+            {!start
+              ? 'Toque el primer día del alquiler.'
+              : !end
+                ? 'Ahora toque el último día (o el mismo para un solo día).'
+                : 'Fechas listas. Revise el resumen y envíe la solicitud.'}
+          </Text>
         </View>
 
+        {start && end && (
+          <View style={styles.summary}>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Fechas</Text>
+              <Text style={styles.summaryValue}>
+                {start} → {end}
+              </Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Duración</Text>
+              <Text style={styles.summaryValue}>
+                {days} {days === 1 ? 'día' : 'días'} × {formatUSD(item.price_per_day)}
+              </Text>
+            </View>
+            <View style={[styles.summaryRow, styles.summaryTotal]}>
+              <Text style={styles.summaryLabelStrong}>Depósito (retenido)</Text>
+              <Text style={styles.summaryValueStrong}>{formatUSD(deposit)}</Text>
+            </View>
+            <Text style={styles.summaryNote}>
+              Pago simulado: el depósito se retiene al aprobarse y se libera al cerrar sin
+              reportes. Sin cargos reales.
+            </Text>
+          </View>
+        )}
+
+        {error && <Text style={styles.error}>{error}</Text>}
+
         <Pressable
-          style={styles.cta}
-          onPress={() =>
-            Alert.alert(
-              'Flujo pendiente',
-              'La solicitud de alquiler y el depósito (simulado) se implementan cuando el contrato OpenAPI quede aprobado y congelado.',
-            )
-          }>
-          <Text style={styles.ctaText}>Solicitar alquiler</Text>
+          style={[styles.cta, (!start || !end || submitting) && styles.ctaDisabled]}
+          disabled={!start || !end || submitting}
+          onPress={onSubmit}>
+          {submitting ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.ctaText}>Solicitar alquiler</Text>
+          )}
         </Pressable>
         <Text style={styles.ctaNote}>
-          Marcador del flujo de la semana 2 — POST /items/{'{id}'}/reservations según el contrato.
+          La solicitud queda en estado “Solicitada” hasta que la persona propietaria la apruebe.
         </Text>
       </ScrollView>
     </SafeAreaView>
@@ -160,6 +248,24 @@ const styles = StyleSheet.create({
   avatarText: { fontSize: 13, fontWeight: '800', color: Brand.teal },
   ownerName: { fontSize: 12.5, fontWeight: '700', color: Brand.ink },
   calendar: { marginTop: 12 },
+  hint: { fontSize: 11.5, color: Brand.muted, textAlign: 'center', marginTop: 8 },
+  summary: {
+    backgroundColor: Brand.card,
+    borderWidth: 1,
+    borderColor: Brand.line,
+    borderRadius: 14,
+    padding: 14,
+    marginTop: 12,
+    gap: 8,
+  },
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  summaryTotal: { borderTopWidth: 1, borderTopColor: Brand.line, paddingTop: 8 },
+  summaryLabel: { fontSize: 12.5, color: Brand.muted },
+  summaryValue: { fontSize: 12.5, fontWeight: '700', color: Brand.ink },
+  summaryLabelStrong: { fontSize: 13, fontWeight: '800', color: Brand.ink },
+  summaryValueStrong: { fontSize: 14, fontWeight: '800', color: Brand.teal },
+  summaryNote: { fontSize: 10.5, color: Brand.muted, lineHeight: 15 },
+  error: { color: Brand.red, fontSize: 12, marginTop: 12, textAlign: 'center' },
   cta: {
     backgroundColor: Brand.teal,
     borderRadius: 14,
@@ -167,6 +273,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 14,
   },
+  ctaDisabled: { opacity: 0.5 },
   ctaText: { color: '#fff', fontSize: 14, fontWeight: '800' },
   ctaNote: { fontSize: 11, color: Brand.muted, textAlign: 'center', marginTop: 8 },
   empty: { fontSize: 13, color: Brand.muted, padding: 24, textAlign: 'center' },

@@ -1,30 +1,32 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Link } from 'expo-router';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { StatusBadge } from '@/components/status-badge';
 import { Brand } from '@/constants/brand';
 import type { Reservation } from '@/data/types';
+import { formatDateRangeEs } from '@/utils/dates';
 
-function formatDateRange(r: Reservation): string {
-  const options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' };
-  const start = new Date(r.start_date + 'T00:00:00').toLocaleDateString('es-CR', options);
-  const end = new Date(r.end_date + 'T00:00:00').toLocaleDateString('es-CR', options);
-  return start === end ? start : `${start} – ${end}`;
-}
-
+/** Row in reservation lists; taps into the reservation detail. */
 export function ReservationRow({ reservation }: { reservation: Reservation }) {
   return (
-    <View style={styles.row}>
-      <View style={styles.thumb}>
-        <Text style={styles.initial}>{reservation.item_name.charAt(0)}</Text>
-      </View>
-      <View style={styles.info}>
-        <Text style={styles.name} numberOfLines={1}>
-          {reservation.item_name}
-        </Text>
-        <Text style={styles.dates}>{formatDateRange(reservation)}</Text>
-      </View>
-      <StatusBadge status={reservation.status} />
-    </View>
+    <Link
+      href={{ pathname: '/reservation/[id]', params: { id: reservation.id } }}
+      asChild>
+      <Pressable style={styles.row}>
+        <View style={styles.thumb}>
+          <Text style={styles.initial}>{reservation.item_name.charAt(0)}</Text>
+        </View>
+        <View style={styles.info}>
+          <Text style={styles.name} numberOfLines={1}>
+            {reservation.item_name}
+          </Text>
+          <Text style={styles.dates}>
+            {formatDateRangeEs(reservation.start_date, reservation.end_date)}
+          </Text>
+        </View>
+        <StatusBadge status={reservation.status} />
+      </Pressable>
+    </Link>
   );
 }
 

@@ -1,56 +1,58 @@
-# Welcome to your Expo app 👋
+# RentaTodo — Mobile (renter app)
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Expo SDK 57 + expo-router + TypeScript. This app covers **only the renter
+experience**: browse, search, request reservations, check-in/out and report
+problems. Publishing/managing items belongs to the owner web (`apps/web`).
 
-## Get started
-
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Run it
 
 ```bash
-npm run reset-project
+npm install
+npm run web       # quickest way to try it (browser)
+npx expo start    # native: scan the QR with Expo Go
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Demo mode vs real API
 
-### Other setup steps
+The data layer switches on one env var:
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+| `EXPO_PUBLIC_API_URL` | Behavior |
+|---|---|
+| unset (default) | **Demo mode** — local mock data shaped exactly like the contract; any email/password signs in |
+| set (e.g. `http://localhost:8000`) | Real API — auth, items and reservations hit the backend |
 
-## Learn more
+Copy `.env.example` to `.env` and fill the URL when the API is running
+(docker compose in `apps/api`). No code changes needed.
 
-To learn more about developing your project with Expo, look at the following resources:
+## Architecture (short version)
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+- `src/app/` — expo-router routes: `(tabs)` group (Home, My rentals,
+  Profile + hidden detail routes) behind an auth guard, plus `/login` and
+  `/register`.
+- `src/data/data-source.ts` — the `DataSource` interface. Two
+  implementations: `ApiDataSource` (real, `src/data/api/`) and
+  `MockDataSource` (demo). Screens only know the interface.
+- `src/data/types.ts` — mirrors the frozen contract
+  (`packages/contracts/openapi.yaml`): snake_case fields, money in USD
+  cents (`formatUSD` divides by 100), English enums, stable error codes.
+- `src/data/labels.ts` — the single place where contract enums/errors map
+  to Spanish UI text.
+- `src/context/session-context.tsx` — token restore, login/register/logout.
+  Token lives in expo-secure-store (keychain); localStorage on web.
+- `src/hooks/use-polling.ts` — 15s refresh while a screen is focused
+  (project decision: polling instead of push).
 
-## Join the community
+## Scope rules (do not break)
 
-Join our community of developers creating universal apps.
+- No publish/manage item flows — mobile rents only.
+- No geolocation, no push notifications, one photo per check-in/out.
+- Payments are simulated: deposit hold/release/freeze, no real charges.
+- The API contract is frozen; never invent fields — change
+  `packages/contracts/openapi.yaml` first (PR approved by all consumers).
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Verify before pushing
+
+```bash
+npx tsc --noEmit                  # typecheck
+npx expo export --platform web    # all routes must bundle
+```
