@@ -1,7 +1,6 @@
 import type {
   Earnings,
   Item,
-  ItemDetail,
   Reservation,
   Transaction,
   User,
@@ -52,18 +51,6 @@ export const mockItems: Item[] = [
     created_at: '2026-05-20T09:00:00Z',
   },
 ]
-
-export function mockItemDetail(itemId: string): ItemDetail | undefined {
-  const item = mockItems.find((candidate) => candidate.id === itemId)
-  if (!item) return undefined
-  return {
-    ...item,
-    unavailable_dates: [
-      { start_date: '2026-07-18', end_date: '2026-07-20' },
-      { start_date: '2026-07-25', end_date: '2026-07-27' },
-    ],
-  }
-}
 
 export const mockRequests: Reservation[] = [
   {

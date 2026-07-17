@@ -27,15 +27,6 @@ export interface Item {
   created_at: string
 }
 
-export interface UnavailableRange {
-  start_date: string
-  end_date: string
-}
-
-export interface ItemDetail extends Item {
-  unavailable_dates: UnavailableRange[]
-}
-
 export type ReservationStatus =
   | 'requested'
   | 'approved'

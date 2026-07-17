@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { mockEarnings, mockItemDetail, mockItems, mockRequests, mockTransactions, mockUser } from './mockData'
+import { mockEarnings, mockItems, mockRequests, mockTransactions, mockUser } from './mockData'
 
 const CATEGORIES = ['tools', 'photography', 'camping', 'sports', 'electronics', 'home']
 const RESERVATION_STATUSES = ['requested', 'approved', 'delivered', 'returned', 'closed', 'rejected', 'cancelled']
@@ -18,11 +18,6 @@ describe('mockData', () => {
       expect(CATEGORIES).toContain(item.category)
       expect(Number.isInteger(item.price_per_day)).toBe(true)
     }
-  })
-
-  it('mockItemDetail returns unavailable_dates for a known item id', () => {
-    const detail = mockItemDetail(mockItems[0].id)
-    expect(detail?.unavailable_dates.length).toBeGreaterThan(0)
   })
 
   it('every mock request has an allowed reservation status', () => {
