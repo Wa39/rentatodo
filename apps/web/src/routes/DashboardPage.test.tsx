@@ -1,7 +1,7 @@
 // apps/web/src/routes/DashboardPage.test.tsx
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 import { mockItems, mockRequests } from '@/lib/mockData'
 import { RequestsProvider } from '@/lib/RequestsContext'
