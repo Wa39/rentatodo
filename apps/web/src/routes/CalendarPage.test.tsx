@@ -3,15 +3,18 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 import { mockItems, mockRequests } from '@/lib/mockData'
+import { ItemsProvider } from '@/lib/ItemsContext'
 import { CalendarPage } from './CalendarPage'
 
 function renderPage(initialEntry = '/requests/calendar') {
   render(
-    <MemoryRouter initialEntries={[initialEntry]}>
-      <Routes>
-        <Route path="/requests/calendar" element={<CalendarPage />} />
-      </Routes>
-    </MemoryRouter>,
+    <ItemsProvider>
+      <MemoryRouter initialEntries={[initialEntry]}>
+        <Routes>
+          <Route path="/requests/calendar" element={<CalendarPage />} />
+        </Routes>
+      </MemoryRouter>
+    </ItemsProvider>,
   )
 }
 
@@ -37,5 +40,11 @@ describe('CalendarPage', () => {
     renderPage()
     const reservation = mockRequests.find((r) => r.item_id === mockItems[0].id)!
     expect(screen.getByText(new RegExp(reservation.renter_name))).toBeInTheDocument()
+  })
+
+  it('shows a not-found message instead of silently falling back for an invalid ?item=', () => {
+    renderPage('/requests/calendar?item=does-not-exist')
+    expect(screen.getByText("This item doesn't exist or is no longer yours.")).toBeInTheDocument()
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
   })
 })

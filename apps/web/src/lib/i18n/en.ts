@@ -40,6 +40,7 @@ export const en = {
   calendar: {
     title: 'Calendar',
     subtitle: 'Availability by date, item by item.',
+    itemNotFound: "This item doesn't exist or is no longer yours.",
     weekdays: ['S', 'M', 'T', 'W', 'T', 'F', 'S'],
     months: [
       'January', 'February', 'March', 'April', 'May', 'June',
