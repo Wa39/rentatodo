@@ -1,4 +1,4 @@
-import type { UnavailableRange } from './types'
+import type { DateRangeState } from './types'
 
 export interface CalendarDay {
   date: Date
@@ -47,6 +47,10 @@ export function toDateOnlyString(date: Date): string {
   return `${year}-${month}-${day}`
 }
 
-export function isDateBooked(dateStr: string, unavailableDates: UnavailableRange[]): boolean {
-  return unavailableDates.some((range) => dateStr >= range.start_date && dateStr <= range.end_date)
+export function getDateState(dateStr: string, dateRanges: DateRangeState[]): 'available' | 'pending' | 'reserved' {
+  const reserved = dateRanges.some((r) => r.state === 'reserved' && dateStr >= r.start_date && dateStr <= r.end_date)
+  if (reserved) return 'reserved'
+  const pending = dateRanges.some((r) => r.state === 'pending' && dateStr >= r.start_date && dateStr <= r.end_date)
+  if (pending) return 'pending'
+  return 'available'
 }
