@@ -379,7 +379,7 @@ def list_my_items(db: Session, owner_id: uuid.UUID) -> list[Item]:
 - [ ] **Step 4: Run tests again to verify they pass**
 
 Run: `cd apps/api && venv/Scripts/python.exe -m pytest tests/services/test_items.py -v`
-Expected: `24 passed` (17 existing + 7 new).
+Expected: `25 passed` (17 existing + 8 new).
 
 - [ ] **Step 5: Commit**
 
@@ -666,7 +666,7 @@ Expected: `13 passed` (7 existing + 6 new).
 - [ ] **Step 5: Run the full suite**
 
 Run: `cd apps/api && venv/Scripts/python.exe -m pytest -v`
-Expected: all tests pass (65 existing + 4 + 7 + 6 = 82).
+Expected: all tests pass (65 existing + 4 + 8 + 6 = 83).
 
 - [ ] **Step 6: Commit**
 
