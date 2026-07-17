@@ -1,3 +1,4 @@
+import { getDateState, toDateOnlyString } from './calendar'
 import type { DateRangeState, Reservation } from './types'
 
 const RESERVED_STATUSES = ['approved', 'delivered', 'returned']
@@ -11,4 +12,19 @@ export function getItemDateStates(itemId: string, reservations: Reservation[]): 
       end_date: r.end_date,
       state: r.status === 'requested' ? 'pending' : 'reserved',
     }))
+}
+
+export type AvailabilityDay = 'available' | 'pending' | 'reserved'
+
+export function getAvailabilityStrip(
+  dateRanges: DateRangeState[],
+  referenceDate: Date = new Date(),
+  days = 14,
+): AvailabilityDay[] {
+  const strip: AvailabilityDay[] = []
+  for (let i = 0; i < days; i++) {
+    const date = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate() + i)
+    strip.push(getDateState(toDateOnlyString(date), dateRanges))
+  }
+  return strip
 }

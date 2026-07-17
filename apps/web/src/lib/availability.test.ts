@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getItemDateStates } from './availability'
+import { getAvailabilityStrip, getItemDateStates } from './availability'
 import { mockItems, mockRequests } from './mockData'
 
 describe('getItemDateStates', () => {
@@ -40,5 +40,31 @@ describe('getItemDateStates', () => {
 
   it('excludes reservations for other items', () => {
     expect(getItemDateStates('nonexistent-item-id', mockRequests)).toHaveLength(0)
+  })
+})
+
+describe('getAvailabilityStrip', () => {
+  it('returns 14 entries by default', () => {
+    const strip = getAvailabilityStrip([], new Date(2026, 6, 1))
+    expect(strip).toHaveLength(14)
+  })
+
+  it('marks days inside a reserved range as reserved', () => {
+    const strip = getAvailabilityStrip(
+      [{ start_date: '2026-07-03', end_date: '2026-07-04', state: 'reserved' }],
+      new Date(2026, 6, 1),
+    )
+    expect(strip[0]).toBe('available') // Jul 1
+    expect(strip[2]).toBe('reserved') // Jul 3
+    expect(strip[3]).toBe('reserved') // Jul 4
+    expect(strip[4]).toBe('available') // Jul 5
+  })
+
+  it('marks days inside a pending range as pending', () => {
+    const strip = getAvailabilityStrip(
+      [{ start_date: '2026-07-06', end_date: '2026-07-06', state: 'pending' }],
+      new Date(2026, 6, 1),
+    )
+    expect(strip[5]).toBe('pending') // Jul 6
   })
 })
