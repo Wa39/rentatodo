@@ -46,4 +46,14 @@ describe('DashboardPage', () => {
     await user.click(within(row).getByRole('button', { name: 'Approve' }))
     expect(screen.queryByText(new RegExp(firstPending.renter_name))).not.toBeInTheDocument()
   })
+
+  it('renders the page header with the title and welcome message', () => {
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+    )
+    expect(screen.getByRole('heading', { name: 'Overview' })).toBeInTheDocument()
+    expect(screen.getByText('Welcome back, María')).toBeInTheDocument()
+  })
 })
