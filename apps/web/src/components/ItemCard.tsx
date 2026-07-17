@@ -1,22 +1,23 @@
 import { Link } from 'react-router-dom'
 import type { Item } from '@/lib/types'
 import { formatCentavos } from '@/lib/format'
-import { getAvailabilityStrip } from '@/lib/availability'
+import { getAvailabilityStrip, getItemDateStates } from '@/lib/availability'
 import { useTranslation } from '@/lib/i18n'
-import { mockItemDetail } from '@/lib/mockData'
+import { mockRequests } from '@/lib/mockData'
 import { Button } from '@/components/ui/button'
 
 interface ItemCardProps {
   item: Item
   onEdit?: (item: Item) => void
   onDelete?: (item: Item) => void
+  onReactivate?: (item: Item) => void
   readOnly?: boolean
 }
 
-export function ItemCard({ item, onEdit, onDelete, readOnly = false }: ItemCardProps) {
+export function ItemCard({ item, onEdit, onDelete, onReactivate, readOnly = false }: ItemCardProps) {
   const t = useTranslation()
-  const detail = mockItemDetail(item.id)
-  const strip = getAvailabilityStrip(detail?.unavailable_dates ?? [])
+  const dateRanges = getItemDateStates(item.id, mockRequests)
+  const strip = getAvailabilityStrip(dateRanges)
 
   return (
     <div data-testid={`item-card-${item.id}`} className="overflow-hidden rounded-lg border border-border bg-card">
@@ -27,9 +28,7 @@ export function ItemCard({ item, onEdit, onDelete, readOnly = false }: ItemCardP
       </div>
       <div className="space-y-two p-three">
         <div className="flex items-start justify-between gap-two">
-          <Link to={`/items/${item.id}`} className="font-semibold text-foreground hover:text-primary">
-            {item.name}
-          </Link>
+          <span className="font-semibold text-foreground">{item.name}</span>
           <span className="whitespace-nowrap font-mono text-sm font-semibold text-secondary-foreground">
             {formatCentavos(item.price_per_day)}
             <span className="text-xs font-normal text-muted-foreground">{t.itemCard.perDay}</span>
@@ -41,23 +40,38 @@ export function ItemCard({ item, onEdit, onDelete, readOnly = false }: ItemCardP
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t.itemCard.next14Days}</p>
             <div className="mt-one flex gap-half">
               {strip.map((day, index) => (
-                <div key={index} className={`h-4 flex-1 rounded-sm ${day === 'booked' ? 'bg-destructive/65' : 'bg-muted'}`} />
+                <div
+                  key={index}
+                  className={`h-4 flex-1 rounded-sm ${
+                    day === 'reserved' ? 'bg-destructive/65' : day === 'pending' ? 'bg-warning/65' : 'bg-muted'
+                  }`}
+                />
               ))}
             </div>
           </div>
         ) : (
           <p className="text-xs font-semibold text-muted-foreground">{t.itemCard.inactive}</p>
         )}
-        {!readOnly && (
+        {!readOnly && item.is_active && (
           <div className="flex gap-two pt-one">
             <Button size="sm" variant="outline" className="flex-1" onClick={() => onEdit?.(item)}>
               {t.itemCard.edit}
             </Button>
             <Button size="sm" variant="outline" className="flex-1" asChild>
-              <Link to={`/items/${item.id}`}>{t.itemCard.calendar}</Link>
+              <Link to={`/requests/calendar?item=${item.id}`}>{t.itemCard.calendar}</Link>
             </Button>
             <Button size="sm" variant="destructive" className="flex-1" onClick={() => onDelete?.(item)}>
               {t.itemCard.delete}
+            </Button>
+          </div>
+        )}
+        {!readOnly && !item.is_active && (
+          <div className="flex gap-two pt-one">
+            <Button size="sm" className="flex-1" onClick={() => onReactivate?.(item)}>
+              {t.itemCard.reactivate}
+            </Button>
+            <Button size="sm" variant="outline" className="flex-1" onClick={() => onEdit?.(item)}>
+              {t.itemCard.edit}
             </Button>
           </div>
         )}
