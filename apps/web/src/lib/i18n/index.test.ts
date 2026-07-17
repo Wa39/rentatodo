@@ -17,4 +17,18 @@ describe('useTranslation', () => {
     expect(t.categories.other).toBe('Other')
     expect(Object.keys(t.categories)).toHaveLength(7)
   })
+
+  it('has the new nav, item-card, calendar, items, publish, requests, and earnings keys', () => {
+    const t = useTranslation()
+    expect(t.nav.calendar).toBe('Calendar')
+    expect(t.nav.earnedThisMonth).toBe('Earned this month')
+    expect(t.itemCard.reactivate).toBe('Reactivate')
+    expect(t.calendar.legend.pending).toBe('Pending')
+    expect(t.items.title).toBe('My items')
+    expect(t.publish.submit).toBe('Publish item')
+    expect(t.requests.tabPending).toBe('Pending')
+    expect(t.earnings.kpiTotal).toBe('Total earned')
+    expect(t.earnings.reservationCount(1)).toBe('1 closed reservation')
+    expect(t.earnings.reservationCount(3)).toBe('3 closed reservations')
+  })
 })
