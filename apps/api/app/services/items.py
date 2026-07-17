@@ -1,5 +1,5 @@
-"""Business logic for Items: creation, single-item lookup, and (Task 4)
-filtered/paginated listing.
+"""Business logic for Items: creation, update, soft delete, single-item
+lookup, filtered/paginated listing, and listing an owner's own items.
 """
 
 import re

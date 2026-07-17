@@ -58,8 +58,10 @@ contract — unpaginated, unlike `GET /items`).
   inactive item too, e.g. before reactivating; there's just no
   reactivate-toggle in this contract version). Raises `AppError(404,
   "NOT_FOUND", ...)` if missing, `AppError(403, "FORBIDDEN", ...)` if
-  `item.owner_id != owner_id`. Applies only the fields the client actually
-  sent (`data.model_dump(exclude_unset=True)`), commits, refreshes.
+  `item.owner_id != owner_id`. Applies only the fields that aren't `None`
+  (a per-field `is not None` check, not `model_dump(exclude_unset=True)`
+  — this way an explicit `{"name": null}` is also treated as "unchanged"
+  rather than reaching the `NOT NULL` column), commits, refreshes.
 
 - `delete_item(db, item_id, owner_id) -> Item`
   Same lookup/ownership check as `update_item`. Sets `is_active = False`,

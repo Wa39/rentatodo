@@ -1,5 +1,5 @@
-"""Pydantic schemas for the Items endpoints: create, list, and detail.
-Mirrors packages/contracts/openapi.yaml exactly.
+"""Pydantic schemas for the Items endpoints: create, update, list, and
+detail. Mirrors packages/contracts/openapi.yaml exactly.
 """
 
 from datetime import datetime
