@@ -97,4 +97,9 @@ describe('LoginPage', () => {
     )
     await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('in'))
   })
+
+  it('links to /register for users without an account', () => {
+    renderPage()
+    expect(screen.getByRole('link', { name: 'Create one' })).toHaveAttribute('href', '/register')
+  })
 })

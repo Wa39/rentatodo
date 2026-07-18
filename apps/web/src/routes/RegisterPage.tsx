@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/lib/AuthContext'
 import { ApiError } from '@/lib/api'
 import { useTranslation } from '@/lib/i18n'
@@ -66,6 +66,12 @@ export function RegisterPage() {
         <Button type="submit" className="w-full" disabled={submitting}>
           {submitting ? t.register.submitting : t.register.submit}
         </Button>
+        <p className="text-center text-sm text-muted-foreground">
+          {t.register.hasAccountPrompt}{' '}
+          <Link to="/login" className="font-medium text-primary hover:underline">
+            {t.register.loginLink}
+          </Link>
+        </p>
       </form>
     </div>
   )

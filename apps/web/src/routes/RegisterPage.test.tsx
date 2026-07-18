@@ -124,4 +124,9 @@ describe('RegisterPage', () => {
 
     await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('in'))
   })
+
+  it('links to /login for users who already have an account', () => {
+    renderPage()
+    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/login')
+  })
 })

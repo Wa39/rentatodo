@@ -21,6 +21,8 @@ export const en = {
     password: 'Password',
     submit: 'Sign in',
     submitting: 'Signing in…',
+    noAccountPrompt: "Don't have an account?",
+    registerLink: 'Create one',
   },
   register: {
     title: 'Create account',
@@ -31,6 +33,8 @@ export const en = {
     submitting: 'Creating account…',
     passwordTooShort: 'Password must be at least 8 characters.',
     passwordConsecutiveDigits: 'Password cannot contain 5 or more digits in a row.',
+    hasAccountPrompt: 'Already have an account?',
+    loginLink: 'Sign in',
   },
   statusBadge: {
     requested: 'Pending',
