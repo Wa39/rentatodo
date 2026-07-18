@@ -46,7 +46,13 @@ export function RegisterPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
+    <div className="flex min-h-screen flex-col items-center justify-center gap-four bg-background">
+      <div className="flex items-center gap-two">
+        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gradient-to-br from-primary to-secondary-foreground font-display text-base font-bold text-primary-foreground">
+          R
+        </div>
+        <span className="font-display text-base font-semibold text-foreground">RentaTodo</span>
+      </div>
       <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-three rounded-lg border border-border bg-card p-four">
         <h1 className="font-display text-lg font-semibold text-foreground">{t.register.title}</h1>
         {error && <p className="rounded-md bg-destructive/10 p-two text-sm text-destructive">{error}</p>}

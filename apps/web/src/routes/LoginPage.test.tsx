@@ -102,4 +102,9 @@ describe('LoginPage', () => {
     renderPage()
     expect(screen.getByRole('link', { name: 'Create one' })).toHaveAttribute('href', '/register')
   })
+
+  it('shows the RentaTodo brand name', () => {
+    renderPage()
+    expect(screen.getByText('RentaTodo')).toBeInTheDocument()
+  })
 })
