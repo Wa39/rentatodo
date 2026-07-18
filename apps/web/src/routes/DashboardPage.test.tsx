@@ -67,7 +67,7 @@ describe('DashboardPage', () => {
     expect(screen.queryByText(new RegExp(firstPending.renter_name))).not.toBeInTheDocument()
   })
 
-  it('renders the page header with the title and welcome message', () => {
+  it('renders the page header with the title', () => {
     renderDashboard()
     expect(screen.getByRole('heading', { name: 'Overview' })).toBeInTheDocument()
   })
