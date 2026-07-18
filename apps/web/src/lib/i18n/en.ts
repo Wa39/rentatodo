@@ -20,6 +20,7 @@ export const en = {
     email: 'Email',
     password: 'Password',
     submit: 'Sign in',
+    submitting: 'Signing in…',
   },
   register: {
     title: 'Create account',
@@ -129,5 +130,8 @@ export const en = {
     requestSummary: (renterName: string, itemName: string) => `${renterName} requested ${itemName}`,
     reject: 'Reject',
     approve: 'Approve',
+  },
+  errors: {
+    network: "Couldn't reach the server. Check your connection and try again.",
   },
 } as const
