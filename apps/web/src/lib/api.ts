@@ -21,10 +21,7 @@ interface UserProfile {
 }
 
 async function request<T>(path: string, options: RequestInit): Promise<T> {
-  // Falls back to the API's own default dev port when VITE_API_URL isn't
-  // set (e.g. running tests without a .env file) — mirrors apps/api's
-  // config.py, which defaults CORS_ORIGINS the same way for local dev.
-  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+  const baseUrl = import.meta.env.VITE_API_URL
   const response = await fetch(`${baseUrl}${path}`, {
     ...options,
     headers: { 'Content-Type': 'application/json', ...options.headers },
