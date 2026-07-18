@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { apiGetMe, apiLogin, apiRegister } from './api'
+import { apiGetMe, apiLogin, apiRegister, ApiError } from './api'
 
 const TOKEN_KEY = 'rentatodo_token'
 
@@ -33,7 +33,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!token) return
     apiGetMe(token)
       .then((profile) => setUser({ id: profile.id, name: profile.name, email: profile.email }))
-      .catch(() => logout())
+      .catch((err) => {
+        if (err instanceof ApiError) logout()
+      })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

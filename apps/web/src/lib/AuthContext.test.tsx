@@ -142,4 +142,19 @@ describe('AuthContext', () => {
     await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('out'))
     expect(localStorage.getItem('rentatodo_token')).toBeNull()
   })
+
+  it('keeps the session when the profile check fails for a reason other than an invalid token', async () => {
+    localStorage.setItem('rentatodo_token', 'still-valid-tok')
+    vi.mocked(fetch).mockRejectedValueOnce(new TypeError('Failed to fetch'))
+
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    )
+
+    expect(screen.getByTestId('status')).toHaveTextContent('in')
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
+    expect(localStorage.getItem('rentatodo_token')).toBe('still-valid-tok')
+  })
 })
