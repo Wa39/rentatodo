@@ -6,10 +6,8 @@ appId: host.exp.Exponent
 - launchApp
 - assertVisible: "RentaTodo"
 - tapOn:
-    text: "Iniciar sesión"
-- tapOn:
-    text: "¿No tiene cuenta?"
-- assertVisible: "Crear cuenta"
+    text: "Crear cuenta"
+- assertVisible: "Solo se necesita nombre, correo y contraseña"
 - tapOn:
     placeholder: "Nombre y apellido"
 - inputText:

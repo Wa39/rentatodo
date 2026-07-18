@@ -11,7 +11,7 @@ appId: host.exp.Exponent  # Expo Go; replace with bundle ID for standalone build
 - clearText:
     placeholder: "correo@ejemplo.com"
 - inputText:
-    text: "owner@rentatodo.dev"
+    text: "renter@rentatodo.dev"
 - tapOn:
     placeholder: "••••••••"
 - inputText:

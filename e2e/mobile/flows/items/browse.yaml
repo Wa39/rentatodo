@@ -6,8 +6,6 @@ appId: host.exp.Exponent
 ---
 - launchApp
 - tapOn:
-    text: "Iniciar sesión"
-- tapOn:
     placeholder: "correo@ejemplo.com"
 - inputText:
     text: "renter@rentatodo.dev"
