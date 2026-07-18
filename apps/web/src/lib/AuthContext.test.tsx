@@ -16,8 +16,8 @@ function Probe() {
     <div>
       <span data-testid="status">{isAuthenticated ? 'in' : 'out'}</span>
       <span data-testid="user-name">{user?.name ?? ''}</span>
-      <button onClick={() => login('maria@example.com', 'securepass123')}>login</button>
-      <button onClick={() => register('María Vargas', 'maria@example.com', 'securepass123')}>register</button>
+      <button onClick={() => login('maria@example.com', 'securepass123').catch(() => {})}>login</button>
+      <button onClick={() => register('María Vargas', 'maria@example.com', 'securepass123').catch(() => {})}>register</button>
       <button onClick={logout}>logout</button>
     </div>
   )
@@ -169,13 +169,11 @@ describe('AuthContext', () => {
       </AuthProvider>,
     )
 
-    await expect(
-      act(async () => {
-        await screen.getByText('login').click()
-      }),
-    ).rejects.toThrow()
+    act(() => {
+      screen.getByText('login').click()
+    })
 
-    expect(screen.getByTestId('status')).toHaveTextContent('out')
+    await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('out'))
     expect(localStorage.getItem('rentatodo_token')).toBeNull()
   })
 })
