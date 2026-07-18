@@ -8,7 +8,13 @@ from pydantic import ValidationError
 
 from app.models.item import Item
 from app.models.user import User
-from app.schemas.item import CategoryEnum, CreateItemRequest, ItemDetailResponse, ItemResponse
+from app.schemas.item import (
+    CategoryEnum,
+    CreateItemRequest,
+    ItemDetailResponse,
+    ItemResponse,
+    UpdateItemRequest,
+)
 
 
 def test_create_item_request_rejects_price_not_positive() -> None:
@@ -122,3 +128,35 @@ def test_item_detail_response_defaults_unavailable_dates_to_empty_list() -> None
     response = ItemDetailResponse.model_validate(item)
 
     assert response.unavailable_dates == []
+
+
+def test_update_item_request_accepts_partial_payload() -> None:
+    """Happy path: only name is provided; every other field defaults to
+    None, meaning "leave unchanged".
+    """
+    request = UpdateItemRequest(name="Nuevo nombre")
+
+    assert request.name == "Nuevo nombre"
+    assert request.description is None
+    assert request.category is None
+    assert request.price_per_day is None
+    assert request.photo_url is None
+
+
+def test_update_item_request_accepts_empty_payload() -> None:
+    """Edge case: an empty payload is valid — every field is optional."""
+    request = UpdateItemRequest()
+
+    assert request.name is None
+
+
+def test_update_item_request_rejects_invalid_price_when_provided() -> None:
+    """Failure path: price_per_day, if sent, must still be > 0."""
+    with pytest.raises(ValidationError):
+        UpdateItemRequest(price_per_day=0)
+
+
+def test_update_item_request_rejects_invalid_category_when_provided() -> None:
+    """Failure path: category, if sent, must still be a real CategoryEnum value."""
+    with pytest.raises(ValidationError):
+        UpdateItemRequest(category="not-a-real-category")

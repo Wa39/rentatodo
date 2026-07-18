@@ -10,7 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.exceptions import AppError
-from app.schemas.item import CreateItemRequest
+from app.schemas.item import CreateItemRequest, UpdateItemRequest
 
 
 def test_create_item_sets_owner_from_argument(db_session: Session, make_user) -> None:
@@ -416,3 +416,127 @@ def test_list_items_available_filter_open_ended_on_one_side_still_excludes_overl
     items, total = list_items(db_session, available_from=start)
 
     assert total == 0
+
+
+def test_update_item_updates_only_sent_fields(db_session: Session, make_user, make_item) -> None:
+    """Happy path: only the fields present in the payload change; the
+    rest keep their original value.
+    """
+    from app.services.items import update_item
+
+    owner = make_user(email="updater1@example.com")
+    item = make_item(owner_id=owner.id, name="Original", price_per_day=5000)
+    data = UpdateItemRequest(name="Actualizado")
+
+    updated = update_item(db_session, item_id=item.id, owner_id=owner.id, data=data)
+
+    assert updated.name == "Actualizado"
+    assert updated.price_per_day == 5000
+
+
+def test_update_item_raises_not_found_for_missing_id(db_session: Session, make_user) -> None:
+    """Failure path: a nonexistent item id raises 404 NOT_FOUND."""
+    from app.services.items import update_item
+
+    owner = make_user(email="updater2@example.com")
+    data = UpdateItemRequest(name="No importa")
+
+    with pytest.raises(AppError) as exc_info:
+        update_item(db_session, item_id=uuid.uuid4(), owner_id=owner.id, data=data)
+
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.code == "NOT_FOUND"
+
+
+def test_update_item_raises_forbidden_for_non_owner(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Failure path: a caller who isn't the item's owner gets 403
+    FORBIDDEN, not a silent update.
+    """
+    from app.services.items import update_item
+
+    owner = make_user(email="owner-real@example.com")
+    other = make_user(email="owner-other@example.com")
+    item = make_item(owner_id=owner.id)
+    data = UpdateItemRequest(name="Hackeado")
+
+    with pytest.raises(AppError) as exc_info:
+        update_item(db_session, item_id=item.id, owner_id=other.id, data=data)
+
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.code == "FORBIDDEN"
+
+
+def test_delete_item_sets_is_active_false(db_session: Session, make_user, make_item) -> None:
+    """Happy path: delete_item soft-deletes, never removes the row."""
+    from app.services.items import delete_item
+
+    owner = make_user(email="deleter1@example.com")
+    item = make_item(owner_id=owner.id, is_active=True)
+
+    deleted = delete_item(db_session, item_id=item.id, owner_id=owner.id)
+
+    assert deleted.is_active is False
+
+
+def test_delete_item_is_idempotent(db_session: Session, make_user, make_item) -> None:
+    """Edge case: deleting an already-inactive item succeeds without
+    raising, and stays inactive.
+    """
+    from app.services.items import delete_item
+
+    owner = make_user(email="deleter2@example.com")
+    item = make_item(owner_id=owner.id, is_active=False)
+
+    deleted = delete_item(db_session, item_id=item.id, owner_id=owner.id)
+
+    assert deleted.is_active is False
+
+
+def test_delete_item_raises_forbidden_for_non_owner(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Failure path: a non-owner cannot delete someone else's item."""
+    from app.services.items import delete_item
+
+    owner = make_user(email="owner-real2@example.com")
+    other = make_user(email="owner-other2@example.com")
+    item = make_item(owner_id=owner.id)
+
+    with pytest.raises(AppError) as exc_info:
+        delete_item(db_session, item_id=item.id, owner_id=other.id)
+
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.code == "FORBIDDEN"
+
+
+def test_list_my_items_includes_active_and_inactive(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Happy path: list_my_items returns both active and inactive items
+    for the given owner.
+    """
+    from app.services.items import list_my_items
+
+    owner = make_user(email="myitems1@example.com")
+    make_item(owner_id=owner.id, name="Activo", is_active=True)
+    make_item(owner_id=owner.id, name="Inactivo", is_active=False)
+
+    items = list_my_items(db_session, owner_id=owner.id)
+
+    assert {item.name for item in items} == {"Activo", "Inactivo"}
+
+
+def test_list_my_items_excludes_other_owners(db_session: Session, make_user, make_item) -> None:
+    """Failure/edge path: another owner's items never show up."""
+    from app.services.items import list_my_items
+
+    owner = make_user(email="myitems2@example.com")
+    other = make_user(email="myitems3@example.com")
+    make_item(owner_id=owner.id, name="Mio")
+    make_item(owner_id=other.id, name="Ajeno")
+
+    items = list_my_items(db_session, owner_id=owner.id)
+
+    assert [item.name for item in items] == ["Mio"]
