@@ -44,3 +44,9 @@ venv/
 *.p12
 *.key
 *.mobileprovision
+
+# Superpowers subagent-driven-development scratch state
+.superpowers/
+
+# Git worktrees
+.worktrees/

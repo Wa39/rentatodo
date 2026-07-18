@@ -88,11 +88,15 @@ export function formatUSD(cents: number): string {
 
 /**
  * Stable error codes — agreed with Trucy on 2026-07-14 and part of the
- * frozen contract. The app decides by `code`, never by the message text.
+ * frozen contract. The app decides by `code`, NEVER by the HTTP status
+ * or the message text — so a status change in the contract (e.g. the
+ * open 403-vs-422 question for CANNOT_RENT_OWN_ITEM, tracked in
+ * apps/api/ROADMAP.md) requires no client change.
  *
- * HTTP → codes: 401 UNAUTHORIZED|TOKEN_EXPIRED · 403 FORBIDDEN|CANNOT_RENT_OWN_ITEM
- * 404 NOT_FOUND · 409 DATES_UNAVAILABLE|INVALID_TRANSITION|DUPLICATE_RESERVATION|
- * FREEZE_ACTIVE|REPORT_EXISTS · 422 VALIDATION_ERROR
+ * Reference statuses: 401 UNAUTHORIZED|TOKEN_EXPIRED ·
+ * 403 FORBIDDEN · 403/422 (pending) CANNOT_RENT_OWN_ITEM ·
+ * 404 NOT_FOUND · 409 DATES_UNAVAILABLE|INVALID_TRANSITION|
+ * DUPLICATE_RESERVATION|FREEZE_ACTIVE|REPORT_EXISTS · 422 VALIDATION_ERROR
  */
 export type ApiErrorCode =
   | 'CANNOT_RENT_OWN_ITEM'

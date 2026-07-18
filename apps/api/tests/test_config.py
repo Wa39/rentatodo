@@ -20,3 +20,21 @@ def test_cors_origins_list_defaults_to_expo_web() -> None:
     settings = Settings()
 
     assert settings.cors_origins_list == ["http://localhost:8081"]
+
+
+def test_resolved_aws_endpoint_url_defaults_to_real_aws() -> None:
+    """Default path: with no AWS_ENDPOINT_URL set, the S3 client should
+    target real AWS, not a local override left on by accident.
+    """
+    settings = Settings()
+
+    assert settings.resolved_aws_endpoint_url is None
+
+
+def test_resolved_aws_endpoint_url_overrides_for_ministack() -> None:
+    """Happy path: a non-empty AWS_ENDPOINT_URL redirects the S3 client to
+    MiniStack for local development.
+    """
+    settings = Settings(aws_endpoint_url="http://localhost:4566")
+
+    assert settings.resolved_aws_endpoint_url == "http://localhost:4566"

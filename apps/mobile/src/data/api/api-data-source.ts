@@ -64,4 +64,18 @@ export class ApiDataSource implements DataSource {
   cancelReservation(reservationId: string): Promise<Reservation> {
     return apiFetch<Reservation>(`/reservations/${reservationId}/cancel`, { method: 'PATCH' });
   }
+
+  checkInReservation(reservationId: string, photoUrl: string, notes?: string): Promise<Reservation> {
+    return apiFetch<Reservation>(`/reservations/${reservationId}/checkin`, {
+      method: 'POST',
+      body: JSON.stringify({ photo_url: photoUrl, ...(notes ? { notes } : {}) }),
+    });
+  }
+
+  checkOutReservation(reservationId: string, photoUrl: string, notes?: string): Promise<Reservation> {
+    return apiFetch<Reservation>(`/reservations/${reservationId}/checkout`, {
+      method: 'POST',
+      body: JSON.stringify({ photo_url: photoUrl, ...(notes ? { notes } : {}) }),
+    });
+  }
 }
