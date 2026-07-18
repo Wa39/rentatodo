@@ -51,8 +51,8 @@ class ItemResponse(BaseModel):
 
 
 class ItemDetailResponse(ItemResponse):
-    """ItemResponse plus unavailable date ranges. Always empty for now —
-    see Global Constraints in the implementation plan for why.
+    """ItemResponse plus unavailable date ranges derived from blocking
+    reservations via app.services.items.get_unavailable_dates.
     """
 
     unavailable_dates: list[dict[str, str]] = Field(default_factory=list)
