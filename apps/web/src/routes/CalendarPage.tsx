@@ -80,9 +80,9 @@ export function CalendarPage() {
             </span>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-four rounded-lg border border-border bg-card p-four">
-          <CalendarMonth monthStart={firstMonth} dateRanges={dateRanges} />
-          <CalendarMonth monthStart={secondMonth} dateRanges={dateRanges} />
+        <div className="flex w-fit gap-four rounded-lg border border-border bg-card p-four">
+          <CalendarMonth monthStart={firstMonth} dateRanges={dateRanges} className="w-[280px]" />
+          <CalendarMonth monthStart={secondMonth} dateRanges={dateRanges} className="w-[280px]" />
         </div>
 
         <div>

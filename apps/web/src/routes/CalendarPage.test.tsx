@@ -50,4 +50,13 @@ describe('CalendarPage', () => {
     expect(screen.getByText("This item doesn't exist or is no longer yours.")).toBeInTheDocument()
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
   })
+
+  it('renders each month at a fixed compact width instead of stretching full-width', () => {
+    renderPage()
+    const monthHeadings = screen.getAllByText(/2026$/)
+    expect(monthHeadings).toHaveLength(2)
+    for (const heading of monthHeadings) {
+      expect(heading.parentElement).toHaveClass('w-[280px]')
+    }
+  })
 })
