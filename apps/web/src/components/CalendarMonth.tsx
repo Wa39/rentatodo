@@ -5,18 +5,16 @@ import type { DateRangeState } from '@/lib/types'
 export function CalendarMonth({
   monthStart,
   dateRanges,
-  className,
 }: {
   monthStart: Date
   dateRanges: DateRangeState[]
-  className?: string
 }) {
   const t = useTranslation()
   const days = getMonthGridDays(monthStart)
   const label = `${t.calendar.months[monthStart.getMonth()]} ${monthStart.getFullYear()}`
 
   return (
-    <div className={className}>
+    <div>
       <div className="mb-two font-display text-base font-bold text-foreground">{label}</div>
       <div className="mb-two grid grid-cols-7 text-xs font-semibold uppercase text-info">
         {t.calendar.weekdays.map((weekday, index) => (

@@ -56,7 +56,7 @@ describe('CalendarPage', () => {
     const monthHeadings = screen.getAllByText(/2026$/)
     expect(monthHeadings).toHaveLength(2)
     for (const heading of monthHeadings) {
-      expect(heading.parentElement).toHaveClass('w-[280px]')
+      expect(heading.parentElement?.parentElement).toHaveClass('w-[280px]')
     }
   })
 })
