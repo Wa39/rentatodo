@@ -29,9 +29,9 @@ async function request<T>(path: string, options: RequestInit): Promise<T> {
     ...options,
     headers: { 'Content-Type': 'application/json', ...options.headers },
   })
-  const body = await response.json()
+  const body = await response.json().catch(() => null)
   if (!response.ok) {
-    throw new ApiError(body.error.code, body.error.message)
+    throw new ApiError(body?.error?.code ?? 'UNKNOWN_ERROR', body?.error?.message ?? 'Something went wrong. Please try again.')
   }
   return body as T
 }

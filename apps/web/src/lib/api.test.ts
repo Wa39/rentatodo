@@ -45,6 +45,12 @@ describe('api', () => {
         message: 'Invalid email or password',
       })
     })
+
+    it('throws a generic ApiError instead of a raw TypeError when the error body has no error envelope', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ detail: 'Internal Server Error' }, 500))
+
+      await expect(apiLogin('maria@example.com', 'securepass123')).rejects.toBeInstanceOf(ApiError)
+    })
   })
 
   describe('apiRegister', () => {
