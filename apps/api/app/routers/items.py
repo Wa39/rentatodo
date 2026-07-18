@@ -15,8 +15,16 @@ from app.schemas.item import (
     ItemDetailResponse,
     ItemListResponse,
     ItemResponse,
+    UpdateItemRequest,
 )
-from app.services.items import create_item, get_item, list_items
+from app.services.items import (
+    create_item,
+    delete_item,
+    get_item,
+    list_items,
+    list_my_items,
+    update_item,
+)
 
 router = APIRouter()
 
@@ -105,3 +113,63 @@ def get_item_endpoint(item_id: UUID, db: Session = Depends(get_db)) -> ItemDetai
     """
     item = get_item(db, item_id)
     return ItemDetailResponse.model_validate(item)
+
+
+@router.patch("/items/{item_id}")
+def update_item_endpoint(
+    item_id: UUID,
+    data: UpdateItemRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ItemResponse:
+    """Edit an item's own fields. Only the owner may edit.
+
+    Args:
+        item_id: The item's id.
+        data: Only the fields to change; omitted fields are left as-is.
+        current_user: Resolved by get_current_user — must be the item's owner.
+        db: Database session injected by FastAPI.
+
+    Returns:
+        The updated item's public representation.
+    """
+    item = update_item(db, item_id=item_id, owner_id=current_user.id, data=data)
+    return ItemResponse.model_validate(item)
+
+
+@router.delete("/items/{item_id}")
+def delete_item_endpoint(
+    item_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ItemResponse:
+    """Soft-delete an item (is_active=False). Only the owner may delete.
+
+    Args:
+        item_id: The item's id.
+        current_user: Resolved by get_current_user — must be the item's owner.
+        db: Database session injected by FastAPI.
+
+    Returns:
+        The deactivated item's public representation.
+    """
+    item = delete_item(db, item_id=item_id, owner_id=current_user.id)
+    return ItemResponse.model_validate(item)
+
+
+@router.get("/users/me/items")
+def list_my_items_endpoint(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[ItemResponse]:
+    """List every item the authenticated user owns, active or not.
+
+    Args:
+        current_user: Resolved by get_current_user.
+        db: Database session injected by FastAPI.
+
+    Returns:
+        All of the caller's items, active and inactive.
+    """
+    items = list_my_items(db, owner_id=current_user.id)
+    return [ItemResponse.model_validate(item) for item in items]

@@ -141,3 +141,152 @@ def test_get_item_returns_404_for_missing_id(client: TestClient) -> None:
 
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "NOT_FOUND"
+
+
+def test_update_item_happy_path_updates_only_sent_field(client: TestClient) -> None:
+    """Happy path: PATCH with only one field changes just that field."""
+    token = _register_and_login(client, "patcher1@example.com")
+    create_response = client.post(
+        "/items",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "name": "Original",
+            "description": "Descripcion",
+            "category": "tools",
+            "price_per_day": 5000,
+            "photo_url": "https://example.com/photo.jpg",
+        },
+    )
+    item_id = create_response.json()["id"]
+
+    response = client.patch(
+        f"/items/{item_id}",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"name": "Actualizado"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["name"] == "Actualizado"
+    assert body["price_per_day"] == 5000
+
+
+def test_update_item_returns_403_for_non_owner(client: TestClient) -> None:
+    """Failure path: a different authenticated user cannot edit this item."""
+    owner_token = _register_and_login(client, "patcher-owner@example.com")
+    other_token = _register_and_login(client, "patcher-other@example.com")
+    create_response = client.post(
+        "/items",
+        headers={"Authorization": f"Bearer {owner_token}"},
+        json={
+            "name": "Original",
+            "description": "Descripcion",
+            "category": "tools",
+            "price_per_day": 5000,
+            "photo_url": "https://example.com/photo.jpg",
+        },
+    )
+    item_id = create_response.json()["id"]
+
+    response = client.patch(
+        f"/items/{item_id}",
+        headers={"Authorization": f"Bearer {other_token}"},
+        json={"name": "Hackeado"},
+    )
+
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "FORBIDDEN"
+
+
+def test_delete_item_happy_path_deactivates(client: TestClient) -> None:
+    """Happy path: DELETE sets is_active=False and returns the item."""
+    token = _register_and_login(client, "deleter1@example.com")
+    create_response = client.post(
+        "/items",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "name": "A borrar",
+            "description": "Descripcion",
+            "category": "tools",
+            "price_per_day": 5000,
+            "photo_url": "https://example.com/photo.jpg",
+        },
+    )
+    item_id = create_response.json()["id"]
+
+    response = client.delete(f"/items/{item_id}", headers={"Authorization": f"Bearer {token}"})
+
+    assert response.status_code == 200
+    assert response.json()["is_active"] is False
+
+
+def test_delete_item_returns_404_for_missing_id(client: TestClient) -> None:
+    """Failure path: deleting a nonexistent item returns 404 NOT_FOUND."""
+    token = _register_and_login(client, "deleter2@example.com")
+
+    response = client.delete(
+        "/items/00000000-0000-0000-0000-000000000000",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "NOT_FOUND"
+
+
+def test_list_my_items_requires_authentication(client: TestClient) -> None:
+    """Failure path: no token returns 401 UNAUTHORIZED."""
+    response = client.get("/users/me/items")
+
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "UNAUTHORIZED"
+
+
+def test_list_my_items_happy_path_includes_inactive_excludes_others(client: TestClient) -> None:
+    """Happy path: my items list includes both an active and a
+    soft-deleted item of mine, but not another user's item.
+    """
+    token = _register_and_login(client, "myitems-router@example.com")
+    other_token = _register_and_login(client, "myitems-router-other@example.com")
+    client.post(
+        "/items",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "name": "Activo",
+            "description": "Descripcion",
+            "category": "tools",
+            "price_per_day": 5000,
+            "photo_url": "https://example.com/photo.jpg",
+        },
+    )
+    to_delete_response = client.post(
+        "/items",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "name": "Para borrar",
+            "description": "Descripcion",
+            "category": "tools",
+            "price_per_day": 5000,
+            "photo_url": "https://example.com/photo.jpg",
+        },
+    )
+    client.delete(
+        f"/items/{to_delete_response.json()['id']}",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    client.post(
+        "/items",
+        headers={"Authorization": f"Bearer {other_token}"},
+        json={
+            "name": "Ajeno",
+            "description": "Descripcion",
+            "category": "tools",
+            "price_per_day": 5000,
+            "photo_url": "https://example.com/photo.jpg",
+        },
+    )
+
+    response = client.get("/users/me/items", headers={"Authorization": f"Bearer {token}"})
+
+    assert response.status_code == 200
+    names = {item["name"] for item in response.json()}
+    assert names == {"Activo", "Para borrar"}

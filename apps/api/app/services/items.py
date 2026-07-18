@@ -1,5 +1,5 @@
-"""Business logic for Items: creation, single-item lookup, and (Task 4)
-filtered/paginated listing.
+"""Business logic for Items: creation, update, soft delete, single-item
+lookup, filtered/paginated listing, and listing an owner's own items.
 """
 
 import re
@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.exceptions import AppError
 from app.models.item import Item
-from app.schemas.item import CreateItemRequest
+from app.schemas.item import CreateItemRequest, UpdateItemRequest
 
 
 def create_item(db: Session, owner_id: uuid.UUID, data: CreateItemRequest) -> Item:
@@ -177,3 +177,94 @@ def list_items(
 
     items = list(db.scalars(query).unique())
     return items, total
+
+
+def update_item(
+    db: Session, item_id: uuid.UUID, owner_id: uuid.UUID, data: UpdateItemRequest
+) -> Item:
+    """Edit an item's fields. Only the fields present in ``data`` change.
+
+    Args:
+        db: Database session.
+        item_id: The item's id.
+        owner_id: The authenticated caller's id — must match the item's
+            owner, or the edit is refused.
+        data: Only the fields to change; a field left as ``None`` is
+            treated as "not sent" and keeps its current value.
+
+    Returns:
+        The updated Item.
+
+    Raises:
+        AppError: 404 NOT_FOUND if no item exists with that id. 403
+            FORBIDDEN if the item exists but ``owner_id`` isn't its owner.
+    """
+    item = db.scalar(select(Item).where(Item.id == item_id))
+    if item is None:
+        raise AppError(404, "NOT_FOUND", "Item not found")
+    if item.owner_id != owner_id:
+        raise AppError(403, "FORBIDDEN", "You do not own this item")
+
+    if data.name is not None:
+        item.name = data.name
+    if data.description is not None:
+        item.description = data.description
+    if data.category is not None:
+        item.category = data.category.value
+    if data.price_per_day is not None:
+        item.price_per_day = data.price_per_day
+    if data.photo_url is not None:
+        item.photo_url = str(data.photo_url)
+
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+def delete_item(db: Session, item_id: uuid.UUID, owner_id: uuid.UUID) -> Item:
+    """Soft-delete an item by setting ``is_active = False``. Never removes
+    the row. Idempotent — deleting an already-inactive item just
+    re-confirms the same state.
+
+    Args:
+        db: Database session.
+        item_id: The item's id.
+        owner_id: The authenticated caller's id — must match the item's
+            owner, or the delete is refused.
+
+    Returns:
+        The deactivated Item.
+
+    Raises:
+        AppError: 404 NOT_FOUND if no item exists with that id. 403
+            FORBIDDEN if the item exists but ``owner_id`` isn't its owner.
+    """
+    item = db.scalar(select(Item).where(Item.id == item_id))
+    if item is None:
+        raise AppError(404, "NOT_FOUND", "Item not found")
+    if item.owner_id != owner_id:
+        raise AppError(403, "FORBIDDEN", "You do not own this item")
+
+    item.is_active = False
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+def list_my_items(db: Session, owner_id: uuid.UUID) -> list[Item]:
+    """List every item an owner has published, active or not.
+
+    Args:
+        db: Database session.
+        owner_id: The authenticated caller's id.
+
+    Returns:
+        All of the owner's items, newest first.
+    """
+    query = (
+        select(Item)
+        .options(joinedload(Item.owner))
+        .where(Item.owner_id == owner_id)
+        .order_by(Item.created_at.desc())
+    )
+    return list(db.scalars(query).unique())
