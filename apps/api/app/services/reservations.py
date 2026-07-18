@@ -7,11 +7,11 @@ from datetime import date
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.exceptions import AppError
 from app.models.item import Item
-from app.models.reservation import BLOCKING_STATUSES, Reservation
+from app.models.reservation import BLOCKING_STATUSES, Reservation, Transaction
 from app.schemas.reservation import CreateReservationRequest
 
 
@@ -108,5 +108,128 @@ def create_reservation(
     except IntegrityError:
         db.rollback()
         raise AppError(409, "DATES_UNAVAILABLE", "The requested dates are not available")
+    db.refresh(reservation)
+    return reservation
+
+
+def _get_reservation_or_404(db: Session, reservation_id: uuid.UUID) -> Reservation:
+    """Look up a reservation by id, with its item and renter pre-loaded.
+
+    Args:
+        db: Database session.
+        reservation_id: The reservation's id.
+
+    Returns:
+        The matching Reservation.
+
+    Raises:
+        AppError: 404 NOT_FOUND if no reservation exists with that id.
+    """
+    reservation = db.scalar(
+        select(Reservation)
+        .options(joinedload(Reservation.item), joinedload(Reservation.renter))
+        .where(Reservation.id == reservation_id)
+    )
+    if reservation is None:
+        raise AppError(404, "NOT_FOUND", "Reservation not found")
+    return reservation
+
+
+def approve_reservation(db: Session, reservation_id: uuid.UUID, owner_id: uuid.UUID) -> Reservation:
+    """Owner approves a requested reservation.
+
+    Args:
+        db: Database session.
+        reservation_id: The reservation to approve.
+        owner_id: The authenticated caller's id — must be the item's owner.
+
+    Returns:
+        The approved Reservation, with a "hold" Transaction inserted.
+
+    Raises:
+        AppError: 404 NOT_FOUND if the reservation doesn't exist. 403
+            FORBIDDEN if the caller isn't the item's owner. 409
+            INVALID_TRANSITION if the reservation isn't "requested".
+    """
+    reservation = _get_reservation_or_404(db, reservation_id)
+    if reservation.item.owner_id != owner_id:
+        raise AppError(403, "FORBIDDEN", "You do not own this item")
+    if reservation.status != "requested":
+        raise AppError(409, "INVALID_TRANSITION", "Only a requested reservation can be approved")
+
+    reservation.status = "approved"
+    db.add(
+        Transaction(reservation_id=reservation.id, type="hold", amount=reservation.deposit_amount)
+    )
+    db.commit()
+    db.refresh(reservation)
+    return reservation
+
+
+def reject_reservation(db: Session, reservation_id: uuid.UUID, owner_id: uuid.UUID) -> Reservation:
+    """Owner rejects a requested reservation. No transaction is created —
+    nothing was ever held.
+
+    Args:
+        db: Database session.
+        reservation_id: The reservation to reject.
+        owner_id: The authenticated caller's id — must be the item's owner.
+
+    Returns:
+        The rejected Reservation.
+
+    Raises:
+        AppError: 404 NOT_FOUND if the reservation doesn't exist. 403
+            FORBIDDEN if the caller isn't the item's owner. 409
+            INVALID_TRANSITION if the reservation isn't "requested".
+    """
+    reservation = _get_reservation_or_404(db, reservation_id)
+    if reservation.item.owner_id != owner_id:
+        raise AppError(403, "FORBIDDEN", "You do not own this item")
+    if reservation.status != "requested":
+        raise AppError(409, "INVALID_TRANSITION", "Only a requested reservation can be rejected")
+
+    reservation.status = "rejected"
+    db.commit()
+    db.refresh(reservation)
+    return reservation
+
+
+def cancel_reservation(db: Session, reservation_id: uuid.UUID, renter_id: uuid.UUID) -> Reservation:
+    """Renter cancels their own reservation. If it had already been
+    approved (meaning a "hold" transaction exists), a "release" is
+    inserted to return the deposit.
+
+    Args:
+        db: Database session.
+        reservation_id: The reservation to cancel.
+        renter_id: The authenticated caller's id — must be the
+            reservation's renter.
+
+    Returns:
+        The cancelled Reservation.
+
+    Raises:
+        AppError: 404 NOT_FOUND if the reservation doesn't exist. 403
+            FORBIDDEN if the caller isn't its renter. 409
+            INVALID_TRANSITION if it's not "requested" or "approved".
+    """
+    reservation = _get_reservation_or_404(db, reservation_id)
+    if reservation.renter_id != renter_id:
+        raise AppError(403, "FORBIDDEN", "You are not the renter for this reservation")
+    if reservation.status not in ("requested", "approved"):
+        raise AppError(
+            409, "INVALID_TRANSITION", "Only a requested or approved reservation can be cancelled"
+        )
+
+    had_hold = reservation.status == "approved"
+    reservation.status = "cancelled"
+    if had_hold:
+        db.add(
+            Transaction(
+                reservation_id=reservation.id, type="release", amount=reservation.deposit_amount
+            )
+        )
+    db.commit()
     db.refresh(reservation)
     return reservation

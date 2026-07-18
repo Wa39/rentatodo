@@ -191,3 +191,226 @@ def test_create_reservation_allows_back_to_back_non_overlapping_dates(
 
     assert second.status == "requested"
     assert first.id != second.id
+
+
+def test_approve_reservation_happy_path_creates_hold_transaction(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Happy path: approving moves status to approved and inserts a hold
+    transaction for the full deposit amount.
+    """
+    from app.services.reservations import approve_reservation, create_reservation
+
+    owner = make_user(email="approve-owner1@example.com")
+    renter = make_user(email="approve-renter1@example.com")
+    item = make_item(owner_id=owner.id, price_per_day=5000)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(5, 3)
+    )
+
+    approved = approve_reservation(db_session, reservation_id=reservation.id, owner_id=owner.id)
+
+    assert approved.status == "approved"
+    assert approved.deposit_status == "held"
+
+
+def test_approve_reservation_requires_ownership(db_session: Session, make_user, make_item) -> None:
+    """Failure path: a non-owner can't approve, 403 FORBIDDEN."""
+    from app.services.reservations import approve_reservation, create_reservation
+
+    owner = make_user(email="approve-owner2@example.com")
+    renter = make_user(email="approve-renter2@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(10, 2)
+    )
+
+    with pytest.raises(AppError) as exc_info:
+        approve_reservation(db_session, reservation_id=reservation.id, owner_id=renter.id)
+
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.code == "FORBIDDEN"
+
+
+def test_approve_reservation_requires_requested_status(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Failure path: approving an already-approved reservation is 409
+    INVALID_TRANSITION.
+    """
+    from app.services.reservations import approve_reservation, create_reservation
+
+    owner = make_user(email="approve-owner3@example.com")
+    renter = make_user(email="approve-renter3@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(15, 2)
+    )
+    approve_reservation(db_session, reservation_id=reservation.id, owner_id=owner.id)
+
+    with pytest.raises(AppError) as exc_info:
+        approve_reservation(db_session, reservation_id=reservation.id, owner_id=owner.id)
+
+    assert exc_info.value.status_code == 409
+    assert exc_info.value.code == "INVALID_TRANSITION"
+
+
+def test_approve_reservation_raises_not_found(db_session: Session, make_user) -> None:
+    """Failure path: a random reservation id is 404 NOT_FOUND."""
+    from app.services.reservations import approve_reservation
+
+    owner = make_user(email="approve-owner4@example.com")
+
+    with pytest.raises(AppError) as exc_info:
+        approve_reservation(db_session, reservation_id=uuid.uuid4(), owner_id=owner.id)
+
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.code == "NOT_FOUND"
+
+
+def test_reject_reservation_happy_path(db_session: Session, make_user, make_item) -> None:
+    """Happy path: rejecting moves status to rejected, no transaction created."""
+    from app.services.reservations import create_reservation, reject_reservation
+
+    owner = make_user(email="reject-owner1@example.com")
+    renter = make_user(email="reject-renter1@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(20, 2)
+    )
+
+    rejected = reject_reservation(db_session, reservation_id=reservation.id, owner_id=owner.id)
+
+    assert rejected.status == "rejected"
+    assert rejected.deposit_status == "none"
+
+
+def test_reject_reservation_requires_ownership(db_session: Session, make_user, make_item) -> None:
+    """Failure path: a non-owner can't reject, 403 FORBIDDEN."""
+    from app.services.reservations import create_reservation, reject_reservation
+
+    owner = make_user(email="reject-owner2@example.com")
+    renter = make_user(email="reject-renter2@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(25, 2)
+    )
+
+    with pytest.raises(AppError) as exc_info:
+        reject_reservation(db_session, reservation_id=reservation.id, owner_id=renter.id)
+
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.code == "FORBIDDEN"
+
+
+def test_reject_reservation_requires_requested_status(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Failure path: rejecting an already-rejected reservation is 409
+    INVALID_TRANSITION.
+    """
+    from app.services.reservations import create_reservation, reject_reservation
+
+    owner = make_user(email="reject-owner3@example.com")
+    renter = make_user(email="reject-renter3@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(30, 2)
+    )
+    reject_reservation(db_session, reservation_id=reservation.id, owner_id=owner.id)
+
+    with pytest.raises(AppError) as exc_info:
+        reject_reservation(db_session, reservation_id=reservation.id, owner_id=owner.id)
+
+    assert exc_info.value.status_code == 409
+    assert exc_info.value.code == "INVALID_TRANSITION"
+
+
+def test_cancel_reservation_happy_path_from_requested_no_release(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Happy path: cancelling a merely-requested reservation creates no
+    transaction — nothing was ever held.
+    """
+    from app.services.reservations import cancel_reservation, create_reservation
+
+    owner = make_user(email="cancel-owner1@example.com")
+    renter = make_user(email="cancel-renter1@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(35, 2)
+    )
+
+    cancelled = cancel_reservation(db_session, reservation_id=reservation.id, renter_id=renter.id)
+
+    assert cancelled.status == "cancelled"
+    assert cancelled.deposit_status == "none"
+
+
+def test_cancel_reservation_happy_path_from_approved_creates_release(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Happy path: cancelling an approved reservation releases the held
+    deposit.
+    """
+    from app.services.reservations import (
+        approve_reservation,
+        cancel_reservation,
+        create_reservation,
+    )
+
+    owner = make_user(email="cancel-owner2@example.com")
+    renter = make_user(email="cancel-renter2@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(40, 2)
+    )
+    approve_reservation(db_session, reservation_id=reservation.id, owner_id=owner.id)
+
+    cancelled = cancel_reservation(db_session, reservation_id=reservation.id, renter_id=renter.id)
+
+    assert cancelled.status == "cancelled"
+    assert cancelled.deposit_status == "released"
+
+
+def test_cancel_reservation_requires_renter(db_session: Session, make_user, make_item) -> None:
+    """Failure path: the item owner can't cancel on the renter's behalf,
+    403 FORBIDDEN.
+    """
+    from app.services.reservations import cancel_reservation, create_reservation
+
+    owner = make_user(email="cancel-owner3@example.com")
+    renter = make_user(email="cancel-renter3@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(45, 2)
+    )
+
+    with pytest.raises(AppError) as exc_info:
+        cancel_reservation(db_session, reservation_id=reservation.id, renter_id=owner.id)
+
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.code == "FORBIDDEN"
+
+
+def test_cancel_reservation_requires_requested_or_approved_status(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Failure path: cancelling an already-cancelled reservation is 409
+    INVALID_TRANSITION.
+    """
+    from app.services.reservations import cancel_reservation, create_reservation
+
+    owner = make_user(email="cancel-owner4@example.com")
+    renter = make_user(email="cancel-renter4@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(50, 2)
+    )
+    cancel_reservation(db_session, reservation_id=reservation.id, renter_id=renter.id)
+
+    with pytest.raises(AppError) as exc_info:
+        cancel_reservation(db_session, reservation_id=reservation.id, renter_id=renter.id)
+
+    assert exc_info.value.status_code == 409
+    assert exc_info.value.code == "INVALID_TRANSITION"
