@@ -61,8 +61,8 @@ def list_items_endpoint(
         category: Exact category filter.
         min_price: Inclusive lower price bound, in centavos.
         max_price: Inclusive upper price bound, in centavos.
-        available_from: Accepted, not yet used for filtering (see plan).
-        available_to: Accepted, not yet used for filtering (see plan).
+        available_from: Inclusive lower bound; filters out items with blocking reservations in this range.
+        available_to: Inclusive upper bound; filters out items with blocking reservations in this range.
         sort: "recent" or "popular" (currently identical ordering).
         page: 1-indexed page number.
         limit: Items per page, max 50.
