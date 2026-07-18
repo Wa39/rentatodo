@@ -159,9 +159,13 @@ describe('AuthContext', () => {
   })
 
   it('rolls back the token if the profile fetch fails right after a successful login', async () => {
+    let rejectGetMe: (err: unknown) => void = () => {}
+    const getMePromise = new Promise<Response>((_resolve, reject) => {
+      rejectGetMe = reject
+    })
     vi.mocked(fetch)
       .mockResolvedValueOnce(jsonResponse({ access_token: 'tok123', token_type: 'bearer', expires_in: 86400 }, 200))
-      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockReturnValueOnce(getMePromise)
 
     render(
       <AuthProvider>
@@ -171,6 +175,15 @@ describe('AuthContext', () => {
 
     act(() => {
       screen.getByText('login').click()
+    })
+
+    // Deterministically proves the success path ran (token set, isAuthenticated
+    // true) before triggering the rejection — without this wait, a broken
+    // rollback could pass the final assertions by coincidence of timing.
+    await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('in'))
+
+    act(() => {
+      rejectGetMe(new TypeError('Failed to fetch'))
     })
 
     await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('out'))
