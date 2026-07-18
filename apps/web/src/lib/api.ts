@@ -7,6 +7,10 @@ export class ApiError extends Error {
   }
 }
 
+export function getErrorMessage(err: unknown, fallback: string): string {
+  return err instanceof ApiError ? err.message : fallback
+}
+
 interface LoginResult {
   access_token: string
   token_type: string
