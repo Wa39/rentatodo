@@ -89,6 +89,23 @@ npx expo start
 - Web: Playwright (once `apps/web` scaffold exists)
 - Mobile: Maestro (Expo confirmed by Zero)
 
+**Install Maestro (once, any OS):**
+```bash
+curl -Ls "https://get.maestro.mobile.dev" | bash
+```
+
+**Run a single flow:**
+```bash
+maestro test e2e/mobile/flows/auth/login.yaml
+```
+
+**Run the full mobile suite:**
+```bash
+maestro test e2e/mobile/flows/
+```
+
+Requires the API running locally (`uvicorn app.main:app --reload`) and Expo Go open on a device/simulator pointed at the dev server.
+
 ## What an agent MUST NOT do in this repo
 
 - Push directly to `develop` or `main`.

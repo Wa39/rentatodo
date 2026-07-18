@@ -1,0 +1,32 @@
+# Request a reservation — selects dates on the calendar and submits.
+# BLOCKED: requires seeded items (infra/seed.py TODO) and the real API running.
+# Run: maestro test e2e/mobile/flows/reservations/request.yaml
+
+appId: host.exp.Exponent
+---
+- launchApp
+- tapOn:
+    text: "Iniciar sesión"
+- tapOn:
+    placeholder: "correo@ejemplo.com"
+- inputText:
+    text: "renter@rentatodo.dev"
+- tapOn:
+    placeholder: "••••••••"
+- inputText:
+    text: "Rentatodo2026!"
+- tapOn:
+    text: "Iniciar sesión"
+- assertVisible: "RentaTodo"
+# TODO: tap first item card once seeded items exist
+# - tapOn:
+#     id: "item-card-0"
+# - assertVisible: "Solicitar"
+# - tapOn: <start date on calendar>
+# - tapOn: <end date on calendar>
+# - tapOn:
+#     text: "Confirmar solicitud"
+# - assertVisible: "Mis rentas"
+# - tapOn:
+#     text: "Mis rentas"
+# - assertVisible: "solicitado"
