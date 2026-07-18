@@ -14,7 +14,7 @@ export function CalendarPage() {
   const { requests } = useRequests()
   const [searchParams, setSearchParams] = useSearchParams()
   const requestedId = searchParams.get('item')
-  const selectedItem = requestedId ? items.find((i) => i.id === requestedId) : items[0]
+  const selectedItem = items.length === 0 ? undefined : requestedId ? items.find((i) => i.id === requestedId) : items[0]
 
   const dateRanges = useMemo(
     () => (selectedItem ? getItemDateStates(selectedItem.id, requests) : []),
@@ -31,6 +31,15 @@ export function CalendarPage() {
 
   function handleSelect(event: ChangeEvent<HTMLSelectElement>) {
     setSearchParams({ item: event.target.value })
+  }
+
+  if (items.length === 0) {
+    return (
+      <div>
+        <PageHeader title={t.calendar.title} subtitle={t.calendar.subtitle} />
+        <div className="p-four text-sm text-muted-foreground">{t.calendar.noItems}</div>
+      </div>
+    )
   }
 
   if (requestedId && !selectedItem) {

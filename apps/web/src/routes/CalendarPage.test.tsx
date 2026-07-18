@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { mockItems, mockRequests } from '@/lib/mockData'
 import { ItemsProvider } from '@/lib/ItemsContext'
 import { RequestsProvider } from '@/lib/RequestsContext'
@@ -49,5 +49,32 @@ describe('CalendarPage', () => {
     renderPage('/requests/calendar?item=does-not-exist')
     expect(screen.getByText("This item doesn't exist or is no longer yours.")).toBeInTheDocument()
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+  })
+
+  it('shows an empty-state message instead of crashing when there are no items at all', async () => {
+    vi.resetModules()
+    vi.doMock('@/lib/mockData', async () => {
+      const actual = await vi.importActual<typeof import('@/lib/mockData')>('@/lib/mockData')
+      return { ...actual, mockItems: [] }
+    })
+    const itemsModule = await import('@/lib/ItemsContext')
+    const requestsModule = await import('@/lib/RequestsContext')
+    const { CalendarPage: PatchedPage } = await import('./CalendarPage')
+
+    render(
+      <requestsModule.RequestsProvider>
+        <itemsModule.ItemsProvider>
+          <MemoryRouter initialEntries={['/requests/calendar']}>
+            <Routes>
+              <Route path="/requests/calendar" element={<PatchedPage />} />
+            </Routes>
+          </MemoryRouter>
+        </itemsModule.ItemsProvider>
+      </requestsModule.RequestsProvider>,
+    )
+
+    expect(screen.getByText("You don't have any items yet. Publish one to see its calendar.")).toBeInTheDocument()
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+    vi.doUnmock('@/lib/mockData')
   })
 })
