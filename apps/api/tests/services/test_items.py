@@ -309,3 +309,110 @@ def test_list_items_accepts_available_dates_without_excluding_anything(
     )
 
     assert total == 1
+
+
+def test_get_unavailable_dates_returns_blocking_reservation_ranges(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Happy path: a requested reservation shows up as an unavailable range."""
+    from app.schemas.reservation import CreateReservationRequest
+    from app.services.items import get_unavailable_dates
+    from app.services.reservations import create_reservation
+
+    owner = make_user(email="avail-owner1@example.com")
+    renter = make_user(email="avail-renter1@example.com")
+    item = make_item(owner_id=owner.id)
+    start = date.today() + timedelta(days=5)
+    end = date.today() + timedelta(days=7)
+    create_reservation(
+        db_session,
+        item_id=item.id,
+        renter_id=renter.id,
+        data=CreateReservationRequest(start_date=start, end_date=end),
+    )
+
+    ranges = get_unavailable_dates(db_session, item.id)
+
+    assert ranges == [{"start_date": start.isoformat(), "end_date": end.isoformat()}]
+
+
+def test_get_unavailable_dates_excludes_rejected_reservations(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Edge case: a rejected reservation frees its dates."""
+    from app.schemas.reservation import CreateReservationRequest
+    from app.services.items import get_unavailable_dates
+    from app.services.reservations import create_reservation, reject_reservation
+
+    owner = make_user(email="avail-owner2@example.com")
+    renter = make_user(email="avail-renter2@example.com")
+    item = make_item(owner_id=owner.id)
+    start = date.today() + timedelta(days=10)
+    end = date.today() + timedelta(days=12)
+    reservation = create_reservation(
+        db_session,
+        item_id=item.id,
+        renter_id=renter.id,
+        data=CreateReservationRequest(start_date=start, end_date=end),
+    )
+    reject_reservation(db_session, reservation_id=reservation.id, owner_id=owner.id)
+
+    ranges = get_unavailable_dates(db_session, item.id)
+
+    assert ranges == []
+
+
+def test_list_items_excludes_item_with_overlapping_reservation_in_available_range(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Happy path: an item with a blocking reservation overlapping the
+    requested available_from/available_to window is excluded.
+    """
+    from app.schemas.reservation import CreateReservationRequest
+    from app.services.items import list_items
+    from app.services.reservations import create_reservation
+
+    owner = make_user(email="avail-owner3@example.com")
+    renter = make_user(email="avail-renter3@example.com")
+    booked = make_item(owner_id=owner.id, name="Reservado")
+    free = make_item(owner_id=owner.id, name="Libre")
+    start = date.today() + timedelta(days=20)
+    end = date.today() + timedelta(days=22)
+    create_reservation(
+        db_session,
+        item_id=booked.id,
+        renter_id=renter.id,
+        data=CreateReservationRequest(start_date=start, end_date=end),
+    )
+
+    items, total = list_items(db_session, available_from=start, available_to=end)
+
+    assert total == 1
+    assert items[0].name == "Libre"
+
+
+def test_list_items_available_filter_open_ended_on_one_side_still_excludes_overlap(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Edge case: passing only available_from still excludes an item
+    whose blocking reservation starts after that date.
+    """
+    from app.schemas.reservation import CreateReservationRequest
+    from app.services.items import list_items
+    from app.services.reservations import create_reservation
+
+    owner = make_user(email="avail-owner4@example.com")
+    renter = make_user(email="avail-renter4@example.com")
+    booked = make_item(owner_id=owner.id, name="Reservado2")
+    start = date.today() + timedelta(days=30)
+    end = date.today() + timedelta(days=32)
+    create_reservation(
+        db_session,
+        item_id=booked.id,
+        renter_id=renter.id,
+        data=CreateReservationRequest(start_date=start, end_date=end),
+    )
+
+    items, total = list_items(db_session, available_from=start)
+
+    assert total == 0

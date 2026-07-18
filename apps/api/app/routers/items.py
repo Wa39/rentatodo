@@ -16,7 +16,7 @@ from app.schemas.item import (
     ItemListResponse,
     ItemResponse,
 )
-from app.services.items import create_item, get_item, list_items
+from app.services.items import create_item, get_item, get_unavailable_dates, list_items
 
 router = APIRouter()
 
@@ -93,8 +93,7 @@ def list_items_endpoint(
 
 @router.get("/items/{item_id}")
 def get_item_endpoint(item_id: UUID, db: Session = Depends(get_db)) -> ItemDetailResponse:
-    """Get an item's detail, including its (currently always empty)
-    unavailable date ranges.
+    """Get an item's detail, including its unavailable date ranges.
 
     Args:
         item_id: The item's id.
@@ -104,4 +103,6 @@ def get_item_endpoint(item_id: UUID, db: Session = Depends(get_db)) -> ItemDetai
         The item's detail representation.
     """
     item = get_item(db, item_id)
-    return ItemDetailResponse.model_validate(item)
+    response = ItemDetailResponse.model_validate(item)
+    response.unavailable_dates = get_unavailable_dates(db, item_id)
+    return response
