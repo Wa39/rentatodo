@@ -43,8 +43,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const result = await apiLogin(email, password)
     setToken(result.access_token)
     localStorage.setItem(TOKEN_KEY, result.access_token)
-    const profile = await apiGetMe(result.access_token)
-    setUser({ id: profile.id, name: profile.name, email: profile.email })
+    try {
+      const profile = await apiGetMe(result.access_token)
+      setUser({ id: profile.id, name: profile.name, email: profile.email })
+    } catch (err) {
+      logout()
+      throw err
+    }
   }
 
   async function register(name: string, email: string, password: string) {

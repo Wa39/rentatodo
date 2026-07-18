@@ -157,4 +157,25 @@ describe('AuthContext', () => {
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
     expect(localStorage.getItem('rentatodo_token')).toBe('still-valid-tok')
   })
+
+  it('rolls back the token if the profile fetch fails right after a successful login', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(jsonResponse({ access_token: 'tok123', token_type: 'bearer', expires_in: 86400 }, 200))
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    )
+
+    await expect(
+      act(async () => {
+        await screen.getByText('login').click()
+      }),
+    ).rejects.toThrow()
+
+    expect(screen.getByTestId('status')).toHaveTextContent('out')
+    expect(localStorage.getItem('rentatodo_token')).toBeNull()
+  })
 })
