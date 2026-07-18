@@ -822,7 +822,7 @@ git commit -m "feat(web): connect LoginPage to the real Auth API"
 
 ---
 
-### Task 4: Connect `RegisterPage` to the real API (auto-login on success)
+### Task 4: Connect `RegisterPage` to the real API (auto-login on success), add client-side password rules
 
 **Files:**
 - Modify: `apps/web/src/routes/RegisterPage.tsx`
@@ -832,7 +832,17 @@ git commit -m "feat(web): connect LoginPage to the real Auth API"
 **Interfaces:**
 - Consumes: `useAuth()` (new `register(name, email, password): Promise<void>` signature) from Task 2, `ApiError` from Task 1 (`@/lib/api`)
 
-- [ ] **Step 1: Add the new i18n string**
+**Password rules — scope note:** these are client-side UX guardrails only, not a
+security control (a client-side check can't stop a direct API call). The
+actual security floor is whatever `apps/api` enforces server-side
+(`minLength: 8`, per `RegisterRequest` in the contract) — this task does not
+touch `apps/api` or the contract. Two rules, both required to submit:
+at least 8 characters (the API already requires this; this task adds a
+same-page inline error instead of relying on the browser's native
+`minLength` tooltip), and no run of 5 or more consecutive digits (e.g.
+`"12345"` fails, `"1234"` passes).
+
+- [ ] **Step 1: Add the new i18n strings**
 
 In `apps/web/src/lib/i18n/en.ts`, update the `register` section (currently lines 24-30):
 
@@ -856,10 +866,12 @@ to:
     password: 'Password',
     submit: 'Create account',
     submitting: 'Creating account…',
+    passwordTooShort: 'Password must be at least 8 characters.',
+    passwordConsecutiveDigits: 'Password cannot contain 5 or more digits in a row.',
   },
 ```
 
-(The `errors.network` key was already added in Task 3 — this task reuses it, no further i18n additions needed.)
+(The `errors.network` key was already added in Task 3 — this task reuses it.)
 
 - [ ] **Step 2: Write the failing tests**
 
@@ -946,13 +958,59 @@ describe('RegisterPage', () => {
     await waitFor(() => expect(screen.getByText('email: already registered')).toBeInTheDocument())
     expect(screen.getByTestId('status')).toHaveTextContent('out')
   })
+
+  it('shows an inline error and blocks submission for a password under 8 characters', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.type(screen.getByLabelText('Name'), 'María Vargas')
+    await user.type(screen.getByLabelText('Email'), 'maria@example.com')
+    await user.type(screen.getByLabelText('Password'), 'short1')
+    await user.click(screen.getByRole('button', { name: 'Create account' }))
+
+    expect(screen.getByText('Password must be at least 8 characters.')).toBeInTheDocument()
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('shows an inline error and blocks submission for 5+ consecutive digits', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.type(screen.getByLabelText('Name'), 'María Vargas')
+    await user.type(screen.getByLabelText('Email'), 'maria@example.com')
+    await user.type(screen.getByLabelText('Password'), 'abc12345')
+    await user.click(screen.getByRole('button', { name: 'Create account' }))
+
+    expect(screen.getByText('Password cannot contain 5 or more digits in a row.')).toBeInTheDocument()
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('allows a password with up to 4 consecutive digits', async () => {
+    const user = userEvent.setup()
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(
+        jsonResponse({ id: 'u1', name: 'María Vargas', email: 'maria@example.com', created_at: '2026-01-01T00:00:00Z' }, 201),
+      )
+      .mockResolvedValueOnce(jsonResponse({ access_token: 'tok123', token_type: 'bearer', expires_in: 86400 }, 200))
+      .mockResolvedValueOnce(
+        jsonResponse({ id: 'u1', name: 'María Vargas', email: 'maria@example.com', created_at: '2026-01-01T00:00:00Z' }, 200),
+      )
+    renderPage()
+
+    await user.type(screen.getByLabelText('Name'), 'María Vargas')
+    await user.type(screen.getByLabelText('Email'), 'maria@example.com')
+    await user.type(screen.getByLabelText('Password'), 'abcd1234')
+    await user.click(screen.getByRole('button', { name: 'Create account' }))
+
+    await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('in'))
+  })
 })
 ```
 
 - [ ] **Step 3: Run the tests to verify they fail**
 
 Run: `cd apps/web && npx vitest run src/routes/RegisterPage.test.tsx`
-Expected: FAIL — `handleSubmit` still just navigates to `/login` without calling anything.
+Expected: FAIL — `handleSubmit` still just navigates to `/login` without calling anything, and no password-rule checks exist yet.
 
 - [ ] **Step 4: Rewrite the implementation**
 
@@ -968,6 +1026,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
+function getPasswordError(password: string, t: ReturnType<typeof useTranslation>): string | null {
+  if (password.length < 8) return t.register.passwordTooShort
+  if (/\d{5,}/.test(password)) return t.register.passwordConsecutiveDigits
+  return null
+}
+
 export function RegisterPage() {
   const { register } = useAuth()
   const navigate = useNavigate()
@@ -978,9 +1042,17 @@ export function RegisterPage() {
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
+  const passwordError = password.length > 0 ? getPasswordError(password, t) : null
+
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     setError(null)
+    if (getPasswordError(password, t)) {
+      // Don't also set `error` here — `passwordError` below already renders
+      // this exact message inline under the field; setting both would show
+      // the same text twice on screen.
+      return
+    }
     setSubmitting(true)
     try {
       await register(name, email, password)
@@ -1007,7 +1079,8 @@ export function RegisterPage() {
         </div>
         <div className="space-y-half">
           <Label htmlFor="password">{t.register.password}</Label>
-          <Input id="password" type="password" minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} required />
+          <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          {passwordError && <p className="text-xs text-destructive">{passwordError}</p>}
         </div>
         <Button type="submit" className="w-full" disabled={submitting}>
           {submitting ? t.register.submitting : t.register.submit}
@@ -1018,10 +1091,14 @@ export function RegisterPage() {
 }
 ```
 
+Two things worth noting about this code:
+- The `minLength={8}` HTML attribute on the password `<Input>` was deliberately dropped (it was present before this task). Keeping it alongside the new JS-level length check would mean two competing validation mechanisms — jsdom's support for HTML5 constraint-validation blocking form submission is inconsistent across versions, which would make the "under 8 characters" test below flaky for reasons unrelated to this feature. The JS check fully supersedes it (same 8-character floor, better message) and is deterministic in tests.
+- `passwordError` (live, computed on every render from the current `password` state) and `handleSubmit`'s own `getPasswordError(...)` call are two separate calls to the same pure function, not duplicated logic. `passwordError` drives the inline hint under the field; `handleSubmit`'s call is what actually blocks submission by returning early. `handleSubmit` deliberately does NOT call `setError(...)` for a password-rule violation — `passwordError` already renders that exact message inline, so also putting it in the top `error` banner would render the same text twice on screen (and break a `getByText` query expecting a single match, since Testing Library throws on multiple matches).
+
 - [ ] **Step 5: Run the tests to verify they pass**
 
 Run: `cd apps/web && npx vitest run src/routes/RegisterPage.test.tsx`
-Expected: PASS, 2/2.
+Expected: PASS, 5/5.
 
 - [ ] **Step 6: Run the full suite and the build**
 
