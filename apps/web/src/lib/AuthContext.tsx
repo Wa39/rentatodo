@@ -53,8 +53,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function register(name: string, email: string, password: string) {
-    await apiRegister(name, email, password)
-    await login(email, password)
+    const profile = await apiRegister(name, email, password)
+    const result = await apiLogin(email, password)
+    setToken(result.access_token)
+    localStorage.setItem(TOKEN_KEY, result.access_token)
+    setUser({ id: profile.id, name: profile.name, email: profile.email })
   }
 
   const value: AuthContextValue = {

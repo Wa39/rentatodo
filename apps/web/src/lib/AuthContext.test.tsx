@@ -63,15 +63,12 @@ describe('AuthContext', () => {
     expect(localStorage.getItem('rentatodo_token')).toBe('tok123')
   })
 
-  it('register() calls /auth/register then logs in, ending authenticated', async () => {
+  it('register() calls /auth/register then /auth/login, ending authenticated without an extra profile re-fetch', async () => {
     vi.mocked(fetch)
       .mockResolvedValueOnce(
         jsonResponse({ id: 'u1', name: 'María Vargas', email: 'maria@example.com', created_at: '2026-01-01T00:00:00Z' }, 201),
       )
       .mockResolvedValueOnce(jsonResponse({ access_token: 'tok123', token_type: 'bearer', expires_in: 86400 }, 200))
-      .mockResolvedValueOnce(
-        jsonResponse({ id: 'u1', name: 'María Vargas', email: 'maria@example.com', created_at: '2026-01-01T00:00:00Z' }, 200),
-      )
 
     render(
       <AuthProvider>
@@ -83,7 +80,8 @@ describe('AuthContext', () => {
     })
 
     await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('in'))
-    expect(fetch).toHaveBeenCalledTimes(3)
+    expect(screen.getByTestId('user-name')).toHaveTextContent('María Vargas')
+    expect(fetch).toHaveBeenCalledTimes(2)
   })
 
   it('logout() clears the token from state and localStorage', async () => {

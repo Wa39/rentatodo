@@ -49,9 +49,6 @@ describe('RegisterPage', () => {
         jsonResponse({ id: 'u1', name: 'María Vargas', email: 'maria@example.com', created_at: '2026-01-01T00:00:00Z' }, 201),
       )
       .mockResolvedValueOnce(jsonResponse({ access_token: 'tok123', token_type: 'bearer', expires_in: 86400 }, 200))
-      .mockResolvedValueOnce(
-        jsonResponse({ id: 'u1', name: 'María Vargas', email: 'maria@example.com', created_at: '2026-01-01T00:00:00Z' }, 200),
-      )
     renderPage()
 
     await user.type(screen.getByLabelText('Name'), 'María Vargas')
@@ -112,9 +109,6 @@ describe('RegisterPage', () => {
         jsonResponse({ id: 'u1', name: 'María Vargas', email: 'maria@example.com', created_at: '2026-01-01T00:00:00Z' }, 201),
       )
       .mockResolvedValueOnce(jsonResponse({ access_token: 'tok123', token_type: 'bearer', expires_in: 86400 }, 200))
-      .mockResolvedValueOnce(
-        jsonResponse({ id: 'u1', name: 'María Vargas', email: 'maria@example.com', created_at: '2026-01-01T00:00:00Z' }, 200),
-      )
     renderPage()
 
     await user.type(screen.getByLabelText('Name'), 'María Vargas')
