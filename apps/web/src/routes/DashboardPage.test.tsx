@@ -1,25 +1,44 @@
 // apps/web/src/routes/DashboardPage.test.tsx
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mockItems, mockRequests } from '@/lib/mockData'
+import { AuthProvider } from '@/lib/AuthContext'
 import { RequestsProvider } from '@/lib/RequestsContext'
 import { RESERVED_STATUSES } from '@/lib/availability'
 import { DashboardPage } from './DashboardPage'
 import { RequestsPage } from './RequestsPage'
 
+function jsonResponse(body: unknown, status: number) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: () => Promise.resolve(body),
+  } as Response
+}
+
 function renderDashboard() {
   render(
-    <RequestsProvider>
-      <MemoryRouter>
-        <DashboardPage />
-      </MemoryRouter>
-    </RequestsProvider>,
+    <AuthProvider>
+      <RequestsProvider>
+        <MemoryRouter>
+          <DashboardPage />
+        </MemoryRouter>
+      </RequestsProvider>
+    </AuthProvider>,
   )
 }
 
 describe('DashboardPage', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it('renders KPI cards derived from mock data', () => {
     renderDashboard()
     const activeItems = mockItems.filter((i) => i.is_active).length
@@ -51,7 +70,17 @@ describe('DashboardPage', () => {
   it('renders the page header with the title and welcome message', () => {
     renderDashboard()
     expect(screen.getByRole('heading', { name: 'Overview' })).toBeInTheDocument()
-    expect(screen.getByText('Welcome back, María')).toBeInTheDocument()
+  })
+
+  it("shows the authenticated user's first name in the welcome message, not the mock user", async () => {
+    localStorage.setItem('rentatodo_token', 'tok123')
+    vi.spyOn(global, 'fetch').mockResolvedValueOnce(
+      jsonResponse({ id: 'u1', name: 'Ana Torres', email: 'ana@example.com', created_at: '2026-01-01T00:00:00Z' }, 200),
+    )
+
+    renderDashboard()
+
+    await waitFor(() => expect(screen.getByText('Welcome back, Ana')).toBeInTheDocument())
   })
 
   it('"Active reservations" KPI matches RequestsPage\'s Active tab count, including returned', () => {
@@ -64,12 +93,14 @@ describe('DashboardPage', () => {
   it('approving a request on the Dashboard is reflected on the Requests page', async () => {
     const user = userEvent.setup()
     render(
-      <RequestsProvider>
-        <MemoryRouter>
-          <DashboardPage />
-          <RequestsPage />
-        </MemoryRouter>
-      </RequestsProvider>,
+      <AuthProvider>
+        <RequestsProvider>
+          <MemoryRouter>
+            <DashboardPage />
+            <RequestsPage />
+          </MemoryRouter>
+        </RequestsProvider>
+      </AuthProvider>,
     )
     const firstPending = mockRequests.filter((r) => r.status === 'requested')[0]
     const dashboardRow = screen.getAllByText(new RegExp(firstPending.renter_name))[0].closest('li')!
