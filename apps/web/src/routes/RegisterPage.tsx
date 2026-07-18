@@ -1,27 +1,55 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '@/lib/AuthContext'
+import { ApiError } from '@/lib/api'
 import { useTranslation } from '@/lib/i18n'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
+function getPasswordError(password: string, t: ReturnType<typeof useTranslation>): string | null {
+  if (password.length < 8) return t.register.passwordTooShort
+  if (/\d{5,}/.test(password)) return t.register.passwordConsecutiveDigits
+  return null
+}
+
 export function RegisterPage() {
+  const { register } = useAuth()
   const navigate = useNavigate()
   const t = useTranslation()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
-  function handleSubmit(event: FormEvent) {
+  const passwordError = password.length > 0 ? getPasswordError(password, t) : null
+
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    // Phase 1: no real POST /auth/register call yet — just routes to /login.
-    navigate('/login')
+    setError(null)
+    if (getPasswordError(password, t)) {
+      // Don't also set `error` here — `passwordError` below already renders
+      // this exact message inline under the field; setting both would show
+      // the same text twice on screen.
+      return
+    }
+    setSubmitting(true)
+    try {
+      await register(name, email, password)
+      navigate('/dashboard')
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t.errors.network)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
       <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-three rounded-lg border border-border bg-card p-four">
         <h1 className="font-display text-lg font-semibold text-foreground">{t.register.title}</h1>
+        {error && <p className="rounded-md bg-destructive/10 p-two text-sm text-destructive">{error}</p>}
         <div className="space-y-half">
           <Label htmlFor="name">{t.register.name}</Label>
           <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
@@ -32,10 +60,11 @@ export function RegisterPage() {
         </div>
         <div className="space-y-half">
           <Label htmlFor="password">{t.register.password}</Label>
-          <Input id="password" type="password" minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} required />
+          <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          {passwordError && <p className="text-xs text-destructive">{passwordError}</p>}
         </div>
-        <Button type="submit" className="w-full">
-          {t.register.submit}
+        <Button type="submit" className="w-full" disabled={submitting}>
+          {submitting ? t.register.submitting : t.register.submit}
         </Button>
       </form>
     </div>

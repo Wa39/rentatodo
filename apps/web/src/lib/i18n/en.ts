@@ -28,6 +28,9 @@ export const en = {
     email: 'Email',
     password: 'Password',
     submit: 'Create account',
+    submitting: 'Creating account…',
+    passwordTooShort: 'Password must be at least 8 characters.',
+    passwordConsecutiveDigits: 'Password cannot contain 5 or more digits in a row.',
   },
   statusBadge: {
     requested: 'Pending',
