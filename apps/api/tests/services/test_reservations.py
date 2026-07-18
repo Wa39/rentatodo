@@ -414,3 +414,115 @@ def test_cancel_reservation_requires_requested_or_approved_status(
 
     assert exc_info.value.status_code == 409
     assert exc_info.value.code == "INVALID_TRANSITION"
+
+
+def test_list_my_reservations_returns_only_callers_own(
+    db_session: Session, make_user, make_item, make_reservation
+) -> None:
+    """Happy path: renter A's list doesn't include renter B's reservations."""
+    from app.services.reservations import list_my_reservations
+
+    owner = make_user(email="list-owner1@example.com")
+    renter_a = make_user(email="list-renter1a@example.com")
+    renter_b = make_user(email="list-renter1b@example.com")
+    item = make_item(owner_id=owner.id)
+    make_reservation(item.id, renter_a.id, start_date=date(2027, 2, 1), end_date=date(2027, 2, 3))
+    make_reservation(item.id, renter_b.id, start_date=date(2027, 3, 1), end_date=date(2027, 3, 3))
+
+    reservations, total = list_my_reservations(db_session, renter_id=renter_a.id)
+
+    assert total == 1
+    assert reservations[0].renter_id == renter_a.id
+
+
+def test_list_my_reservations_filters_by_status(
+    db_session: Session, make_user, make_item, make_reservation
+) -> None:
+    """Happy path: status filter narrows the results."""
+    from app.services.reservations import list_my_reservations
+
+    owner = make_user(email="list-owner2@example.com")
+    renter = make_user(email="list-renter2@example.com")
+    item = make_item(owner_id=owner.id)
+    make_reservation(
+        item.id, renter.id, start_date=date(2027, 4, 1), end_date=date(2027, 4, 3),
+        status="requested",
+    )
+    make_reservation(
+        item.id, renter.id, start_date=date(2027, 5, 1), end_date=date(2027, 5, 3),
+        status="cancelled",
+    )
+
+    reservations, total = list_my_reservations(db_session, renter_id=renter.id, status="cancelled")
+
+    assert total == 1
+    assert reservations[0].status == "cancelled"
+
+
+def test_list_my_reservations_paginates(
+    db_session: Session, make_user, make_item, make_reservation
+) -> None:
+    """Happy path: limit caps the page size, total reflects all matches."""
+    from app.services.reservations import list_my_reservations
+
+    owner = make_user(email="list-owner3@example.com")
+    renter = make_user(email="list-renter3@example.com")
+    item = make_item(owner_id=owner.id)
+    for i in range(3):
+        make_reservation(
+            item.id, renter.id,
+            start_date=date(2027, 6, 1 + i * 10), end_date=date(2027, 6, 2 + i * 10),
+        )
+
+    page_1, total = list_my_reservations(db_session, renter_id=renter.id, page=1, limit=2)
+    page_2, _ = list_my_reservations(db_session, renter_id=renter.id, page=2, limit=2)
+
+    assert total == 3
+    assert len(page_1) == 2
+    assert len(page_2) == 1
+
+
+def test_list_my_requests_returns_requests_on_owned_items_only(
+    db_session: Session, make_user, make_item, make_reservation
+) -> None:
+    """Happy path: owner A's requests don't include reservations on
+    owner B's items.
+    """
+    from app.services.reservations import list_my_requests
+
+    owner_a = make_user(email="list-owner4a@example.com")
+    owner_b = make_user(email="list-owner4b@example.com")
+    renter = make_user(email="list-renter4@example.com")
+    item_a = make_item(owner_id=owner_a.id, name="Item A")
+    item_b = make_item(owner_id=owner_b.id, name="Item B")
+    make_reservation(item_a.id, renter.id, start_date=date(2027, 7, 1), end_date=date(2027, 7, 3))
+    make_reservation(item_b.id, renter.id, start_date=date(2027, 8, 1), end_date=date(2027, 8, 3))
+
+    reservations, total = list_my_requests(db_session, owner_id=owner_a.id)
+
+    assert total == 1
+    assert reservations[0].item_id == item_a.id
+
+
+def test_list_my_requests_filters_by_status(
+    db_session: Session, make_user, make_item, make_reservation
+) -> None:
+    """Happy path: status filter narrows the owner's incoming requests."""
+    from app.services.reservations import list_my_requests
+
+    owner = make_user(email="list-owner5@example.com")
+    renter = make_user(email="list-renter5@example.com")
+    item = make_item(owner_id=owner.id)
+    make_reservation(
+        item.id, renter.id, start_date=date(2027, 9, 1), end_date=date(2027, 9, 3),
+        status="requested",
+    )
+    make_reservation(
+        item.id, renter.id, start_date=date(2027, 10, 1), end_date=date(2027, 10, 3),
+        status="rejected",
+    )
+
+    reservations, total = list_my_requests(db_session, owner_id=owner.id, status="rejected")
+
+    assert total == 1
+    assert reservations[0].status == "rejected"

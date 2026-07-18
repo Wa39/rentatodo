@@ -5,9 +5,9 @@ prevention (Task 3), approve/reject/cancel (Task 4), and listing (Task 5).
 import uuid
 from datetime import date
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.exceptions import AppError
 from app.models.item import Item
@@ -233,3 +233,72 @@ def cancel_reservation(db: Session, reservation_id: uuid.UUID, renter_id: uuid.U
     db.commit()
     db.refresh(reservation)
     return reservation
+
+
+def list_my_reservations(
+    db: Session, renter_id: uuid.UUID, status: str | None = None, page: int = 1, limit: int = 20
+) -> tuple[list[Reservation], int]:
+    """List the authenticated user's reservations as a renter.
+
+    Args:
+        db: Database session.
+        renter_id: The authenticated caller's id.
+        status: Optional exact status filter.
+        page: 1-indexed page number.
+        limit: Reservations per page.
+
+    Returns:
+        A tuple of (reservations for the requested page, total matching
+        count across all pages).
+    """
+    query = (
+        select(Reservation)
+        .options(
+            joinedload(Reservation.item),
+            joinedload(Reservation.renter),
+            selectinload(Reservation.transactions),
+        )
+        .where(Reservation.renter_id == renter_id)
+    )
+    if status is not None:
+        query = query.where(Reservation.status == status)
+
+    total = db.scalar(select(func.count()).select_from(query.subquery()))
+    query = query.order_by(Reservation.created_at.desc()).offset((page - 1) * limit).limit(limit)
+    reservations = list(db.scalars(query).unique())
+    return reservations, total
+
+
+def list_my_requests(
+    db: Session, owner_id: uuid.UUID, status: str | None = None, page: int = 1, limit: int = 20
+) -> tuple[list[Reservation], int]:
+    """List reservation requests received on items the authenticated
+    user owns.
+
+    Args:
+        db: Database session.
+        owner_id: The authenticated caller's id.
+        status: Optional exact status filter.
+        page: 1-indexed page number.
+        limit: Reservations per page.
+
+    Returns:
+        A tuple of (reservations for the requested page, total matching
+        count across all pages).
+    """
+    query = (
+        select(Reservation)
+        .options(
+            joinedload(Reservation.item),
+            joinedload(Reservation.renter),
+            selectinload(Reservation.transactions),
+        )
+        .where(Reservation.item_id.in_(select(Item.id).where(Item.owner_id == owner_id)))
+    )
+    if status is not None:
+        query = query.where(Reservation.status == status)
+
+    total = db.scalar(select(func.count()).select_from(query.subquery()))
+    query = query.order_by(Reservation.created_at.desc()).offset((page - 1) * limit).limit(limit)
+    reservations = list(db.scalars(query).unique())
+    return reservations, total
