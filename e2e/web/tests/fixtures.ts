@@ -1,13 +1,18 @@
 import { test as base, expect } from '@playwright/test'
 
-const MOCK_TOKEN = 'e2e-test-token'
+export const TEST_CREDENTIALS = {
+  email: 'owner@rentatodo.dev',
+  password: 'Rentatodo2026!',
+} as const
 
-const MOCK_USER = {
+export const MOCK_USER = {
   id: '1',
   name: 'Ana Dueña',
-  email: 'owner@rentatodo.dev',
+  email: TEST_CREDENTIALS.email,
   created_at: '2024-01-01T00:00:00Z',
-}
+} as const
+
+const MOCK_TOKEN = 'e2e-test-token'
 
 export const test = base.extend({
   page: async ({ page }, use) => {

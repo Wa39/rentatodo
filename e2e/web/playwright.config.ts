@@ -1,4 +1,8 @@
 import { defineConfig, devices } from '@playwright/test'
+import path from 'path'
+
+export const BASE_URL = process.env.BASE_URL ?? 'http://localhost:5173'
+export const AUTH_FILE = path.join(__dirname, 'playwright/.auth/user.json')
 
 export default defineConfig({
   testDir: './tests',
@@ -7,7 +11,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: BASE_URL,
     trace: 'on-first-retry',
   },
   projects: [
@@ -16,15 +20,15 @@ export default defineConfig({
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
-        storageState: 'playwright/.auth/user.json',
+        storageState: AUTH_FILE,
       },
       dependencies: ['setup'],
     },
   ],
   webServer: {
     command: 'pnpm --filter @rentatodo/web dev',
-    url: 'http://localhost:5173',
+    url: BASE_URL,
     reuseExistingServer: !process.env.CI,
-    timeout: 30000,
+    timeout: 30_000,
   },
 })

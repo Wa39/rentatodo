@@ -6,7 +6,7 @@ test('items page shows heading and publish button', async ({ page }) => {
   await expect(page.getByRole('link', { name: /publish/i })).toBeVisible()
 })
 
-test('publish item page is accessible', async ({ page }) => {
+test('publish item form renders', async ({ page }) => {
   await page.goto('/items/publish')
-  await expect(page).toHaveURL('/items/publish')
+  await expect(page.getByRole('heading', { name: 'Publish item' })).toBeVisible()
 })
