@@ -11,13 +11,16 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
   projects: [
+    { name: 'setup', testMatch: '**/auth.setup.ts' },
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'playwright/.auth/user.json',
+      },
+      dependencies: ['setup'],
     },
   ],
-  // Start the Vite dev server automatically when running tests.
-  // Requires `pnpm install` from the repo root first.
   webServer: {
     command: 'pnpm --filter @rentatodo/web dev',
     url: 'http://localhost:5173',
