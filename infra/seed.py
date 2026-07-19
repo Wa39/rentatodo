@@ -1,4 +1,4 @@
-"""Seed the development database with test users and items.
+"""Seed the development database with test users, items, and reservations.
 
 Run from the repo root with the API virtual-env active:
 
@@ -6,18 +6,17 @@ Run from the repo root with the API virtual-env active:
     JWT_SECRET=dev-secret \
     python infra/seed.py
 
-Test credentials (both users use the same password):
+Test credentials (both users share the same password):
     owner@rentatodo.dev  / Rentatodo2026!
     renter@rentatodo.dev / Rentatodo2026!
 
 Items are seeded under owner@rentatodo.dev — one per CategoryEnum value.
-photo_url uses a public placeholder image (no S3 required to run the seed).
-
-TODO (add once Trucy merges Reservation model):
-    - Seed reservations in every ReservationStatusEnum state
+Reservations cover every ReservationStatusEnum state (one per item).
+photo_url uses a public placeholder image so no S3 is required.
 """
 
 import sys
+from datetime import date, timedelta
 
 sys.path.insert(0, "apps/api")
 
@@ -26,6 +25,7 @@ from sqlalchemy.orm import Session  # noqa: E402
 
 from app.database import engine  # noqa: E402
 from app.models.item import Item  # noqa: E402
+from app.models.reservation import Reservation, Transaction  # noqa: E402
 from app.models.user import User  # noqa: E402
 
 _PASSWORD = "Rentatodo2026!"
@@ -87,9 +87,16 @@ def _hash(password: str) -> str:
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 
+def _days(start: date, end: date) -> int:
+    """Inclusive day count between two dates."""
+    return (end - start).days + 1
+
+
 def seed() -> None:
+    today = date.today()
+
     with Session(engine) as session:
-        # --- Users ---
+        # ── Users ──────────────────────────────────────────────────────────
         existing_emails = {u.email for u in session.query(User.email).all()}
         new_users = [u for u in TEST_USERS if u["email"] not in existing_emails]
 
@@ -107,16 +114,16 @@ def seed() -> None:
         else:
             print("Users already seeded.")
 
-        # Reload all users so we have their IDs regardless of insert path.
         for user in session.query(User).all():
             users_by_email[user.email] = user
 
-        # --- Items ---
         owner = users_by_email.get("owner@rentatodo.dev")
-        if owner is None:
-            print("ERROR: owner user not found — cannot seed items.")
+        renter = users_by_email.get("renter@rentatodo.dev")
+        if owner is None or renter is None:
+            print("ERROR: users not found — cannot seed items or reservations.")
             return
 
+        # ── Items ───────────────────────────────────────────────────────────
         existing_item_names = {i.name for i in session.query(Item.name).all()}
         new_items = [i for i in TEST_ITEMS if i["name"] not in existing_item_names]
 
@@ -133,11 +140,108 @@ def seed() -> None:
                 for i in new_items
             ]
             session.add_all(items)
+            session.flush()
             print(f"Seeded {len(items)} item(s):")
             for i in new_items:
                 print(f"  [{i['category']}] {i['name']} — ${i['price_per_day'] / 100:.2f}/día")
         else:
             print("Items already seeded.")
+
+        # ── Reservations ────────────────────────────────────────────────────
+        if session.query(Reservation).count() > 0:
+            print("Reservations already seeded.")
+            session.commit()
+            return
+
+        items_by_name: dict[str, Item] = {i.name: i for i in session.query(Item).all()}
+
+        # One reservation per status, one per item — no double-booking possible.
+        # Dates are relative to today so the seed stays meaningful over time.
+        reservations_spec = [
+            {
+                "item_name": "Taladro percutor 18V",
+                "status": "requested",
+                "start": today + timedelta(days=7),
+                "end": today + timedelta(days=9),
+                "transactions": [],
+            },
+            {
+                "item_name": "Cámara Sony A7 III",
+                "status": "approved",
+                "start": today + timedelta(days=3),
+                "end": today + timedelta(days=4),
+                "transactions": ["hold"],
+            },
+            {
+                "item_name": "Carpa 4 personas Coleman",
+                "status": "delivered",
+                "start": today - timedelta(days=1),
+                "end": today + timedelta(days=3),
+                "transactions": ["hold"],
+            },
+            {
+                "item_name": "Bicicleta de montaña Trek",
+                "status": "returned",
+                "start": today - timedelta(days=10),
+                "end": today - timedelta(days=8),
+                "transactions": ["hold"],
+            },
+            {
+                "item_name": "Proyector Epson 3000 lúmenes",
+                "status": "closed",
+                "start": today - timedelta(days=20),
+                "end": today - timedelta(days=19),
+                "transactions": ["hold", "release"],
+            },
+            {
+                "item_name": "Aspiradora industrial Karcher",
+                "status": "rejected",
+                "start": today - timedelta(days=30),
+                "end": today - timedelta(days=29),
+                "transactions": [],
+            },
+            {
+                "item_name": "Karaoke profesional con 2 micrófonos",
+                "status": "cancelled",
+                "start": today - timedelta(days=25),
+                "end": today - timedelta(days=24),
+                "transactions": [],
+            },
+        ]
+
+        print("Seeding reservations:")
+        for spec in reservations_spec:
+            item = items_by_name.get(spec["item_name"])
+            if item is None:
+                print(f"  SKIP {spec['status']} — item '{spec['item_name']}' not found")
+                continue
+
+            days = _days(spec["start"], spec["end"])
+            deposit = item.price_per_day * days
+
+            reservation = Reservation(
+                item_id=item.id,
+                renter_id=renter.id,
+                start_date=spec["start"],
+                end_date=spec["end"],
+                status=spec["status"],
+                deposit_amount=deposit,
+            )
+            session.add(reservation)
+            session.flush()
+
+            for tx_type in spec["transactions"]:
+                session.add(Transaction(
+                    reservation_id=reservation.id,
+                    type=tx_type,
+                    amount=deposit,
+                ))
+
+            print(
+                f"  [{spec['status']:10}] {spec['item_name']} "
+                f"{spec['start']} → {spec['end']} "
+                f"(${deposit / 100:.2f}, {days}d)"
+            )
 
         session.commit()
 
