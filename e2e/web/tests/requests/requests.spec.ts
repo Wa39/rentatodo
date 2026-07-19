@@ -1,9 +1,10 @@
 import { test, expect } from '../fixtures'
 
-test('requests page shows status tabs', async ({ page }) => {
+test('requests page shows status filter buttons', async ({ page }) => {
   await page.goto('/requests')
   await expect(page.getByRole('heading', { name: 'Requests' })).toBeVisible()
-  await expect(page.getByRole('tab', { name: 'Pending' })).toBeVisible()
-  await expect(page.getByRole('tab', { name: 'Active' })).toBeVisible()
-  await expect(page.getByRole('tab', { name: 'History' })).toBeVisible()
+  // Tabs are plain <button> elements, not ARIA tabs
+  await expect(page.getByRole('button', { name: 'Pending' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Active' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'History' })).toBeVisible()
 })
