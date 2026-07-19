@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
-import { mockEarnings, mockItems, mockUser } from '@/lib/mockData'
+import { mockEarnings, mockItems } from '@/lib/mockData'
 import { formatCentavos } from '@/lib/format'
+import { useAuth } from '@/lib/AuthContext'
 import { useTranslation } from '@/lib/i18n'
 import { useRequests } from '@/lib/RequestsContext'
 import { RESERVED_STATUSES } from '@/lib/availability'
@@ -9,6 +10,7 @@ import { PageHeader } from '@/components/PageHeader'
 
 export function DashboardPage() {
   const t = useTranslation()
+  const { user } = useAuth()
   const { requests, setStatus } = useRequests()
   const activeItems = mockItems.filter((item) => item.is_active).length
   const pendingRequests = requests.filter((r) => r.status === 'requested')
@@ -19,7 +21,7 @@ export function DashboardPage() {
     <div>
       <PageHeader
         title={t.dashboard.title}
-        subtitle={t.dashboard.welcomeBack(mockUser.name.split(' ')[0])}
+        subtitle={t.dashboard.welcomeBack(user?.name.split(' ')[0] ?? '')}
         action={
           <Button asChild>
             <Link to="/items/publish">{t.dashboard.publishItem}</Link>

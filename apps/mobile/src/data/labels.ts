@@ -9,13 +9,15 @@ export const STATUS_META: Record<
   ReservationStatus,
   { label: string; color: string; bg: string; active: boolean }
 > = {
-  requested: { label: 'Solicitada', color: '#C97A15', bg: '#FBECD6', active: true },
-  approved: { label: 'Aprobada', color: '#2E7D4F', bg: '#DCEFE2', active: true },
-  delivered: { label: 'Entregada', color: '#2166A8', bg: '#DCEAF7', active: true },
-  returned: { label: 'Devuelta', color: '#0E7C7B', bg: '#DDEEED', active: true },
-  closed: { label: 'Cerrada', color: '#5E6B75', bg: '#E7EBEE', active: false },
-  rejected: { label: 'Rechazada', color: '#B3402E', bg: '#F7E0DB', active: false },
-  cancelled: { label: 'Cancelada', color: '#5E6B75', bg: '#E7EBEE', active: false },
+  // Badge colors from the reference dashboard design:
+  // requested=amber, approved=green, delivered=blue.
+  requested: { label: 'Solicitada', color: '#8F550F', bg: '#F9ECD6', active: true },
+  approved: { label: 'Aprobada', color: '#155C3B', bg: '#E2F0E7', active: true },
+  delivered: { label: 'Entregada', color: '#33608F', bg: '#E3EAF3', active: true },
+  returned: { label: 'Devuelta', color: '#1E7A4F', bg: '#DFF0E6', active: true },
+  closed: { label: 'Cerrada', color: '#5B655E', bg: '#ECEEEA', active: false },
+  rejected: { label: 'Rechazada', color: '#C24A32', bg: '#F7E1DA', active: false },
+  cancelled: { label: 'Cancelada', color: '#5B655E', bg: '#ECEEEA', active: false },
 };
 
 export const CATEGORY_LABELS: Record<Category, string> = {

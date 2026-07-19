@@ -1,0 +1,27 @@
+# Happy-path registration — uses a timestamped email to avoid duplicates.
+# Run: maestro test e2e/mobile/flows/auth/register.yaml
+
+appId: host.exp.Exponent
+---
+- launchApp
+- assertVisible: "RentaTodo"
+- tapOn:
+    text: "Crear cuenta"
+- assertVisible: "Solo se necesita nombre, correo y contraseña"
+- tapOn:
+    placeholder: "Nombre y apellido"
+- inputText:
+    text: "Test User"
+- tapOn:
+    placeholder: "correo@ejemplo.com"
+- inputText:
+    text: "test+${maestro.timestamp}@rentatodo.dev"
+- tapOn:
+    placeholder: "Mínimo 8 caracteres"
+- inputText:
+    text: "Rentatodo2026!"
+- tapOn:
+    text: "Crear cuenta"
+- assertVisible: "Inicio"
+- assertVisible: "Mis rentas"
+- assertVisible: "Perfil"

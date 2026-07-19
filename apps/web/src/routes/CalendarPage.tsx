@@ -14,7 +14,7 @@ export function CalendarPage() {
   const { requests } = useRequests()
   const [searchParams, setSearchParams] = useSearchParams()
   const requestedId = searchParams.get('item')
-  const selectedItem = requestedId ? items.find((i) => i.id === requestedId) : items[0]
+  const selectedItem = items.length === 0 ? undefined : requestedId ? items.find((i) => i.id === requestedId) : items[0]
 
   const dateRanges = useMemo(
     () => (selectedItem ? getItemDateStates(selectedItem.id, requests) : []),
@@ -31,6 +31,15 @@ export function CalendarPage() {
 
   function handleSelect(event: ChangeEvent<HTMLSelectElement>) {
     setSearchParams({ item: event.target.value })
+  }
+
+  if (items.length === 0) {
+    return (
+      <div>
+        <PageHeader title={t.calendar.title} subtitle={t.calendar.subtitle} />
+        <div className="p-four text-sm text-muted-foreground">{t.calendar.noItems}</div>
+      </div>
+    )
   }
 
   if (requestedId && !selectedItem) {
@@ -80,9 +89,13 @@ export function CalendarPage() {
             </span>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-four rounded-lg border border-border bg-card p-four">
-          <CalendarMonth monthStart={firstMonth} dateRanges={dateRanges} />
-          <CalendarMonth monthStart={secondMonth} dateRanges={dateRanges} />
+        <div className="flex w-fit gap-four rounded-lg border border-border bg-card p-four">
+          <div className="w-[280px]">
+            <CalendarMonth monthStart={firstMonth} dateRanges={dateRanges} />
+          </div>
+          <div className="w-[280px]">
+            <CalendarMonth monthStart={secondMonth} dateRanges={dateRanges} />
+          </div>
         </div>
 
         <div>
