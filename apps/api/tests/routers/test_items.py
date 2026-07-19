@@ -1,5 +1,7 @@
 """Integration tests for the Items endpoints."""
 
+from datetime import date, timedelta
+
 from fastapi.testclient import TestClient
 
 
@@ -141,6 +143,39 @@ def test_get_item_returns_404_for_missing_id(client: TestClient) -> None:
 
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "NOT_FOUND"
+
+
+def test_get_item_endpoint_returns_populated_unavailable_dates(client: TestClient) -> None:
+    """Happy path: once a reservation exists, unavailable_dates reflects it."""
+    owner_token = _register_and_login(client, "owner-avail@example.com")
+    create_response = client.post(
+        "/items",
+        headers={"Authorization": f"Bearer {owner_token}"},
+        json={
+            "name": "Carpa Disponible",
+            "description": "4 personas",
+            "category": "camping",
+            "price_per_day": 3000,
+            "photo_url": "https://example.com/photo.jpg",
+        },
+    )
+    item_id = create_response.json()["id"]
+    renter_token = _register_and_login(client, "renter-avail@example.com")
+    start = date.today() + timedelta(days=5)
+    end = date.today() + timedelta(days=7)
+    client.post(
+        f"/items/{item_id}/reservations",
+        headers={"Authorization": f"Bearer {renter_token}"},
+        json={"start_date": str(start), "end_date": str(end)},
+    )
+
+    response = client.get(f"/items/{item_id}")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["unavailable_dates"] == [
+        {"start_date": start.isoformat(), "end_date": end.isoformat()}
+    ]
 
 
 def test_update_item_happy_path_updates_only_sent_field(client: TestClient) -> None:
