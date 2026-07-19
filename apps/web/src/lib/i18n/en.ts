@@ -20,6 +20,9 @@ export const en = {
     email: 'Email',
     password: 'Password',
     submit: 'Sign in',
+    submitting: 'Signing in…',
+    noAccountPrompt: "Don't have an account?",
+    registerLink: 'Create one',
   },
   register: {
     title: 'Create account',
@@ -27,6 +30,11 @@ export const en = {
     email: 'Email',
     password: 'Password',
     submit: 'Create account',
+    submitting: 'Creating account…',
+    passwordTooShort: 'Password must be at least 8 characters.',
+    passwordConsecutiveDigits: 'Password cannot contain 5 or more digits in a row.',
+    hasAccountPrompt: 'Already have an account?',
+    loginLink: 'Sign in',
   },
   statusBadge: {
     requested: 'Pending',
@@ -41,6 +49,7 @@ export const en = {
     title: 'Calendar',
     subtitle: 'Availability by date, item by item.',
     itemNotFound: "This item doesn't exist or is no longer yours.",
+    noItems: "You don't have any items yet. Publish one to see its calendar.",
     weekdays: ['S', 'M', 'T', 'W', 'T', 'F', 'S'],
     months: [
       'January', 'February', 'March', 'April', 'May', 'June',
@@ -129,5 +138,8 @@ export const en = {
     requestSummary: (renterName: string, itemName: string) => `${renterName} requested ${itemName}`,
     reject: 'Reject',
     approve: 'Approve',
+  },
+  errors: {
+    network: "Couldn't reach the server. Check your connection and try again.",
   },
 } as const

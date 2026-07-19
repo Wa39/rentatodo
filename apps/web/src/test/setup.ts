@@ -1,4 +1,7 @@
 import '@testing-library/jest-dom/vitest'
+import { vi } from 'vitest'
+
+vi.stubEnv('VITE_API_URL', 'http://localhost:8000')
 
 // Compatibility shim: react-router's data router (createBrowserRouter) builds
 // a real `Request` on every navigation via @remix-run/router's

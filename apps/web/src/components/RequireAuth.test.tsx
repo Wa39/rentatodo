@@ -1,6 +1,6 @@
+import { beforeEach, describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { describe, expect, it } from 'vitest'
 import { AuthProvider } from '@/lib/AuthContext'
 import { RequireAuth } from './RequireAuth'
 
@@ -25,6 +25,10 @@ function renderAt(path: string) {
 }
 
 describe('RequireAuth', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
   it('redirects to /login when not authenticated', () => {
     renderAt('/dashboard')
     expect(screen.getByText('Login page')).toBeInTheDocument()
