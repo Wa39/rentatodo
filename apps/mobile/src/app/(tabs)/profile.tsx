@@ -25,7 +25,7 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.item}>
-          <Ionicons name="card-outline" size={19} color={Brand.teal} />
+          <Ionicons name="card-outline" size={19} color={Brand.primary} />
           <View style={styles.itemInfo}>
             <Text style={styles.itemTitle}>Método de pago</Text>
             <Text style={styles.itemSub}>Simulado (mock) · sin cargos reales</Text>
@@ -33,7 +33,7 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.item}>
-          <Ionicons name="settings-outline" size={19} color={Brand.teal} />
+          <Ionicons name="settings-outline" size={19} color={Brand.primary} />
           <View style={styles.itemInfo}>
             <Text style={styles.itemTitle}>Configuración</Text>
             <Text style={styles.itemSub}>Notificaciones dentro de la app (polling)</Text>
@@ -60,11 +60,11 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: Brand.tealSoft,
+    backgroundColor: Brand.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: { fontSize: 24, fontWeight: '800', color: Brand.teal },
+  avatarText: { fontSize: 24, fontWeight: '800', color: Brand.primary },
   name: { fontSize: 16, fontWeight: '800', color: Brand.ink },
   email: { fontSize: 12, color: Brand.muted },
   item: {

@@ -121,7 +121,7 @@ export function MonthCalendar({
         <Text style={styles.legendText}>Ocupada</Text>
         {onSelectDay && (
           <>
-            <View style={[styles.dot, { backgroundColor: Brand.teal }]} />
+            <View style={[styles.dot, { backgroundColor: Brand.primary }]} />
             <Text style={styles.legendText}>Selección</Text>
           </>
         )}
@@ -178,8 +178,8 @@ const styles = StyleSheet.create({
   pastText: { color: '#C4CCD2' },
   unavailable: { backgroundColor: '#EFF2F4' },
   unavailableText: { color: '#B9C2C9', textDecorationLine: 'line-through' },
-  inRange: { backgroundColor: Brand.tealSoft },
-  edge: { backgroundColor: Brand.teal },
+  inRange: { backgroundColor: Brand.primarySoft },
+  edge: { backgroundColor: Brand.primary },
   edgeText: { color: '#fff', fontWeight: '800' },
   legend: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
   dot: { width: 10, height: 10, borderRadius: 3 },

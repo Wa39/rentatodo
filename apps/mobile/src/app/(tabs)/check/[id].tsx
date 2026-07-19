@@ -108,12 +108,12 @@ export default function CheckScreen() {
         <View style={styles.pickRow}>
           {Platform.OS !== 'web' && (
             <Pressable style={styles.pickButton} onPress={pickFromCamera}>
-              <Ionicons name="camera-outline" size={18} color={Brand.teal} />
+              <Ionicons name="camera-outline" size={18} color={Brand.primary} />
               <Text style={styles.pickText}>Tomar foto</Text>
             </Pressable>
           )}
           <Pressable style={styles.pickButton} onPress={pickFromLibrary}>
-            <Ionicons name="image-outline" size={18} color={Brand.teal} />
+            <Ionicons name="image-outline" size={18} color={Brand.primary} />
             <Text style={styles.pickText}>
               {Platform.OS === 'web' ? 'Elegir archivo' : 'Elegir de galería'}
             </Text>
@@ -191,11 +191,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: Brand.tealSoft,
+    backgroundColor: Brand.primarySoft,
     borderRadius: 12,
     paddingVertical: 12,
   },
-  pickText: { fontSize: 13, fontWeight: '700', color: Brand.teal },
+  pickText: { fontSize: 13, fontWeight: '700', color: Brand.primary },
   label: { fontSize: 12, fontWeight: '700', color: Brand.ink, marginTop: 16, marginBottom: 6 },
   notes: {
     backgroundColor: Brand.card,
@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
   },
   error: { color: Brand.red, fontSize: 12, marginTop: 12, textAlign: 'center' },
   cta: {
-    backgroundColor: Brand.teal,
+    backgroundColor: Brand.primary,
     borderRadius: 14,
     padding: 14,
     alignItems: 'center',
