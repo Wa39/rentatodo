@@ -7,29 +7,33 @@
 
 ## Current status
 
-**Week:** 1 (Auth + Items) — all 9 of `CLAUDE_BACKEND.md`'s Week 1
-endpoints complete — Week 2 (Reservations, the contract's "vertical
-slice") is next.
-**Last updated:** 2026-07-17
-**Current focus:** All planned Week 1 work is merged to `develop` or in
-review. `User` + Auth (PR #8), CORS + validation handler (PR #14), and
-`Item` model + all 6 Item endpoints (`POST /items`, `GET /items`
-filtered/searchable, `GET /items/{item_id}`, PR #16; `PATCH /items/{id}`,
-`DELETE /items/{id}`, `GET /users/me/items`, PR #24) are done. PR #24 is
-open, all CI green, 83/83 tests passing, final whole-branch review clean
-— awaiting team approval.
+**Week:** 1 (Auth + Items) fully merged to `develop`. Week 2 (Reservations,
+the contract's "vertical slice") implementation complete — PR #28 open
+against `develop`, currently blocked on a merge conflict.
+**Last updated:** 2026-07-18
+**Current focus:** All of Week 1 is merged: `User` + Auth (PR #8), CORS +
+validation handler (PR #14), `Item` model + all 6 Item endpoints (PR #16),
+and the deferred `PATCH`/`DELETE /items/{id}`/`GET /users/me/items`
+follow-up (PR #24) — closing out all 9 of `CLAUDE_BACKEND.md`'s Week 1
+endpoints.
 
-PR #16 also picked up 3 fixes from the team's `apps/api` audit before
-merging (see Decisions log): removed the dead `Ping` scaffold
-model/migration, added `boto3` as a dependency, and added AWS/MiniStack
-settings + an S3 client (`app/s3.py`) — verified live against a running
-MiniStack container. Two audit items remain **blocked on a contract PR**
-that isn't ours to open: `POST /uploads/presign` isn't defined in
-`openapi.yaml` yet, and `CANNOT_RENT_OWN_ITEM` (403 vs 422) needs a
-contract decision. Wa owns that PR (it also needs to add `required` to
-the response schemas and `maxLength: 72` on the password field — both
-already flagged below). No blockers to start Reservations design now —
-branch off `develop`.
+Week 2: all 6 of `CLAUDE_BACKEND.md`'s Reservations endpoints (request,
+list-mine, list-requests, approve, reject, cancel) plus the `GET /items`
+availability wiring (`available_from`/`available_to` filters,
+`unavailable_dates`) are implemented on `feature/reservations`, built via
+a 7-task TDD plan executed subagent-driven, each task independently
+reviewed (spec + quality), plus a final whole-branch review (ready to
+merge, one trivial docstring fix applied). 116/116 tests passing against
+real Postgres. Double-booking prevention has two layers (app-level
+`SELECT ... FOR UPDATE` + a DB-level `EXCLUDE` constraint via
+`btree_gist`), both manually verified live against a running server.
+Pushed and PR #28 opened (https://github.com/Wa39/rentatodo/pull/28).
+
+`feature/reservations` was cut from `develop` before PR #24 merged, so
+once PR #24 landed, PR #28 diverged and picked up a real conflict (4
+files: `ROADMAP.md`, `app/routers/items.py`, `app/services/items.py`,
+both `tests/.../test_items.py`) — reviewer j0sMedina requested it be
+resolved before merging. Currently being reconciled.
 
 ## Done
 
@@ -49,23 +53,24 @@ branch off `develop`.
 - [x] PR #14 (`feature/cors-and-validation-handler` → `develop`) — `CORSMiddleware` (origins via new `CORS_ORIGINS` env var) + a `RequestValidationError` handler translating Pydantic validation failures into the contract's `{error: {code, message}}` shape — built for Zero's mobile-web onboarding, TDD, verified live against a running server. Merged 2026-07-16.
 - [x] PR #15 (`feature/mobile-category-other` → `develop`) — mobile `other`-category support + Expo lint/CI fix (opened on Zero's behalf), merged 2026-07-16. This also fixed the `mobile` CI job for everyone (added `declarations.d.ts`, the type declarations CI's clean checkout needs for `*.css`/`*.module.css` imports).
 - [x] PR #16 (`feature/item-model` → `develop`) — Items (above) plus 3 fixes from the team's `apps/api` audit, all bundled into the same PR before it merged: resolved a merge conflict in `app/main.py` (duplicate `CORSMiddleware`/validation-handler setup — PR #16's port was identical to #14's, kept develop's version); removed the dead `Ping` scaffold model + migration (`users` is now the migration chain's root); added `boto3` to `requirements.txt`; added AWS/MiniStack settings to `app/config.py` (`resolved_aws_endpoint_url` property, same pattern as `cors_origins_list`) and a new `app/s3.py` client, verified live against a running MiniStack container (created the bucket, round-tripped an object). 65/65 tests passing. Merged 2026-07-17.
-- [x] `PATCH /items/{id}`, `DELETE /items/{id}` (soft delete), `GET /users/me/items` — the 3 Items endpoints deferred from Days 4-5, closing out `CLAUDE_BACKEND.md`'s full 9-endpoint Week 1 grouping. Built on `feature/items-followup` via subagent-driven development: 3 TDD tasks (`UpdateItemRequest` schema; `update_item`/`delete_item`/`list_my_items` service functions; router wiring), each independently reviewed (spec + quality, both clean), plus a final whole-branch review (also clean, only cosmetic Minor findings — 2 stale docstrings and one spec-wording fix, applied directly). 83/83 tests passing. PR #24 open.
+- [x] PR #24 (`feature/items-followup` → `develop`) — `PATCH /items/{id}`, `DELETE /items/{id}` (soft delete), `GET /users/me/items`, the 3 Items endpoints deferred from Days 4-5, closing out `CLAUDE_BACKEND.md`'s full 9-endpoint Week 1 grouping. Built via subagent-driven development: 3 TDD tasks (`UpdateItemRequest` schema; `update_item`/`delete_item`/`list_my_items` service functions; router wiring), each independently reviewed (spec + quality, both clean), plus a final whole-branch review (also clean, only cosmetic Minor findings — 2 stale docstrings and one spec-wording fix, applied directly). 83/83 tests passing. Merged.
+- [x] `Reservation` + `Transaction` models, migration with `no_double_booking` EXCLUDE constraint (`btree_gist`) — all 6 Week 2 endpoints (`POST /items/{item_id}/reservations`, `GET /users/me/reservations`, `GET /users/me/requests`, `PATCH /reservations/{id}/approve|reject|cancel`) plus `GET /items` availability wiring — all 7 tasks of `docs/superpowers/plans/2026-07-17-reservations.md` implemented on `feature/reservations` via subagent-driven development, strict TDD, each task independently reviewed (spec + quality), final whole-branch review clean (one trivial docstring fix applied, one deliberate-and-documented deferral — see Decisions log). 116/116 tests passing against real Postgres. Pushed, PR #28 open against `develop`.
 
 ## In progress
 
-- PR #24 open, all CI green, final whole-branch review clean — awaiting team approval. Not blocking further backend work — Reservations can branch off `develop` directly.
+- PR #28 (`feature/reservations` → `develop`) open — reviewer (j0sMedina) requested changes: resolve the merge conflict against `develop` (branch predates PR #24). Being reconciled now.
 
 ## Next up (not started)
 
-- [ ] Get PR #24 reviewed and merged
-- [ ] **Blocked on Wa:** contract PR adding `POST /uploads/presign`, `required` on response schemas, and `maxLength: 72` on `RegisterRequest.password` — needs all 4 team approvals. Unblocks: the presign endpoint implementation below, and the `CANNOT_RENT_OWN_ITEM` decision.
+- [ ] Finish reconciling PR #28's merge conflict, push, get it reviewed and merged
+- [ ] **Blocked on Wa:** contract PR adding `POST /uploads/presign`, `required` on response schemas, and `maxLength: 72` on `RegisterRequest.password` — needs all 4 team approvals. Unblocks: the presign endpoint implementation below, and a possible `CANNOT_RENT_OWN_ITEM` status-code bump (403 vs 422, no client changes needed either way).
 - [ ] `POST /uploads/presign` implementation (`app/s3.py` and MiniStack config already in place) — blocked on the contract PR above defining the endpoint shape
-- [ ] Remaining real models: Reservation, Transaction, CheckEvidence, Report
-- [ ] Reservation engine: request, approve, reject, cancel + double-booking prevention
-- [ ] Check-in / check-out with photo evidence
-- [ ] Deposit lifecycle: HOLD / RELEASE / FREEZE transactions
-- [ ] Report problem endpoint
-- [ ] Full test suite covering the state machine transitions
+- [ ] Remaining real models: `CheckEvidence`, `Report` (`Reservation`/`Transaction` now done)
+- [ ] Check-in / check-out with photo evidence (Weeks 3-4)
+- [ ] Close reservation + deposit release, blocked-if-FREEZE (Weeks 3-4)
+- [ ] Report problem endpoint (Weeks 3-4)
+- [ ] `GET /reservations/{id}/transactions`, `GET /users/me/earnings` (Weeks 3-4)
+- [ ] Add `.with_for_update()` row lock to `approve_reservation`/`reject_reservation`/`cancel_reservation`'s reservation fetch, once the deposit ledger is load-bearing (not mock) — see Decisions log
 
 ## Decisions log
 
@@ -102,14 +107,20 @@ branch off `develop`.
 | 2026-07-16 | S3 client lives in its own `app/s3.py` (module-level singleton, same shape as `app/database.py`'s `engine`), not inside `app/dependencies/` | It's not a FastAPI dependency (nothing injects it into a request yet) — same reasoning as why `engine`/`SessionLocal` live in `database.py` and not `dependencies/` |
 | 2026-07-17 | `update_item` applies `UpdateItemRequest` fields via a per-field `is not None` check, not `data.model_dump(exclude_unset=True)` as the design spec originally said | Caught in final review: `exclude_unset=True` would let an explicit `{"name": null}` reach the `NOT NULL` `name` column. The `is not None` approach treats an explicit null the same as "omitted" — matches the schema's own docstring promise |
 | 2026-07-17 | `PATCH`/`DELETE /items/{id}` look up the item with no `is_active` filter | Owners can edit or re-delete an inactive item too — there's no reactivate-toggle in this contract version, so this is the only way to touch an already-deactivated item's data at all |
+| 2026-07-17 | `BLOCKING_STATUSES = ("requested", "approved", "delivered", "returned")` lives in `app/models/reservation.py`, imported by both `services/reservations.py` and `services/items.py` | Single source of truth for "does this reservation count against availability" — used identically by double-booking prevention, `unavailable_dates`, and the `available_from`/`available_to` filter. Avoids the three ever drifting apart |
+| 2026-07-17 | Double-booking prevention is two layers: app-level `SELECT ... FOR UPDATE` on the `Item` row (held through the insert) + a DB-level `EXCLUDE USING gist` constraint (`btree_gist`) as a safety net | Matches `CLAUDE_BACKEND.md` exactly — "even if application logic has a bug, the database physically prevents overlapping reservations." Verified both layers independently: a service-level test for the app check, a direct-INSERT-bypassing-the-service test for the DB constraint, plus manual live verification with two near-simultaneous requests |
+| 2026-07-17 | `deposit_amount = price_per_day * ((end_date - start_date).days + 1)` — inclusive day count | Neither the contract nor `CLAUDE_BACKEND.md` spells out the exact formula; `start_date`/`end_date` are documented as "First day"/"Last day of rental" (both rental days), and the EXCLUDE constraint's `daterange(start_date, end_date, '[]')` is inclusive too — picked explicitly to remove the ambiguity rather than leave it implicit |
+| 2026-07-17 | `CANNOT_RENT_OWN_ITEM` is raised as `422`, not the `403` `CLAUDE_BACKEND.md` documents | The merged `openapi.yaml` currently maps this case to a generic `422` (not yet updated by Wa's pending contract PR — see Open questions). Using the specific `CANNOT_RENT_OWN_ITEM` code at today's `422` status means a later status-code bump to `403` needs no client changes, since Zero confirmed mobile branches on `error.code`, not status |
+| 2026-07-17 | `approve_reservation`/`reject_reservation`/`cancel_reservation` do NOT take a row lock (`with_for_update()`) on the reservation fetch, unlike `create_reservation`'s lock on the item | Deliberate, not an oversight (documented inline in `services/reservations.py`): two concurrent `approve` calls on the same reservation could both pass the status check and each insert a `hold` transaction, but the deposit ledger is mock (no real money per `CLAUDE_BACKEND.md`) and `deposit_status` always reads the latest transaction, so the derived state stays correct regardless. Flagged in final review as a real gap worth a follow-up once the ledger is load-bearing (Weeks 3-4), not a merge-blocker now |
+| 2026-07-17 | Manual live-verification steps (starting a real `uvicorn` server against the shared local Postgres) must clean up any rows they create before the automated test suite runs again | Found the hard way this session: Task 7's live double-booking check left 3 users + 1 item + 1 reservation committed permanently (outside pytest's per-test rollback), which inflated owner-agnostic `list_items` count assertions and caused 7 spurious test failures on the next run. Diagnosed via `docker compose exec db psql` row counts, cleaned up, re-verified 116/116 clean — the code was never actually broken, purely environmental pollution |
 
 ## Open questions / blockers
 
 > Things I don't have an answer for yet — Claude Code should flag if
 > it needs one of these resolved before proceeding, rather than guessing.
 
-- [ ] **Blocked on Wa's upcoming contract PR** (see Next up). `CLAUDE_BACKEND.md` documents "renting your own item" as `403 CANNOT_RENT_OWN_ITEM`, but the merged `openapi.yaml` documents that same case as a generic `422` on `POST /items/{item_id}/reservations`. Zero confirmed mobile branches on `error.code`, not status, so mobile needs no changes either way — just needs the contract and API to agree before Reservations ships.
-- [ ] **Blocked on Wa's upcoming contract PR** (see Next up). `RegisterRequest.password` gets an implementation-side `max_length=72` (bcrypt's limit) that isn't documented in the merged `openapi.yaml` (which only has `minLength: 8`).
+- [ ] **Not blocking current work.** `CLAUDE_BACKEND.md` documents "renting your own item" as `403 CANNOT_RENT_OWN_ITEM`, but the merged `openapi.yaml` documents that same case as a generic `422` on `POST /items/{item_id}/reservations`. Implemented as `422 CANNOT_RENT_OWN_ITEM` (specific code, contract's current status) in `feature/reservations` — see Decisions log 2026-07-17. Still open only in the sense that Wa's contract PR could eventually bump this to `403`; no client changes needed either way.
+- [ ] `RegisterRequest.password` gets an implementation-side `max_length=72` (bcrypt's limit) that isn't documented in the merged `openapi.yaml` (which only has `minLength: 8`). Worth a small contract PR to add `maxLength: 72` so the documented contract matches what the API actually accepts.
 - [ ] **Not blocking current work.** Two `docker-compose.yml` files exist for local Postgres (`apps/api/docker-compose.yml` and `infra/docker-compose.yml`) with different credential sources — `infra/`'s is hardcoded (`rentatodo`/`rentatodo`) and doesn't match `apps/api/.env`'s actual password, so using the wrong one silently fails to connect. `apps/api/docker-compose.yml` is the one that works locally. Worth consolidating to one, whenever there's a slow moment — flagged to Zero already when explaining local setup.
 
 ## Session log
@@ -128,3 +139,5 @@ branch off `develop`.
 - **2026-07-16** — Long session. Confirmed PR #8 had merged since last session. Reviewed and approved PR #11/#12 (docs + CI, targeted `main` intentionally per Wa — release-branch process, not a mistake despite the unusual base). Silverk flagged mobile expected an `other` item category that wasn't in the frozen contract: added it (PR #13, merged), corrected an earlier PR #13 comment claiming mobile didn't reference categories (it does, in `types.ts`/`labels.ts` — Zero was right), opened PR #15 on Zero's behalf for his mobile fix + an Expo-lint CI fix. Found two real API gaps while relaying local-setup info to Zero: no CORS (blocked Expo web) and no `RequestValidationError` handler (wrong error shape on 422s) — built both via TDD, verified live against a running server, PR #14 (open). Brainstormed the `Item` design (reconciled against `CLAUDE_BACKEND.md`: DB-level price CHECK, two indexes, full-text-search approach), wrote the design spec and a 5-task TDD implementation plan, executed via subagent-driven development with per-task spec+quality review — found and fixed two real bugs along the way, both verified live against Postgres: `unaccent()` isn't `IMMUTABLE` (added a wrapper function) and unsanitized search tokens broke `to_tsquery`'s syntax on ordinary punctuation (added token sanitization, moved the guard into the service layer). Final whole-branch review: ready to merge. 57/57 tests passing. Opened PR #16. Also recovered and folded in a roadmap update from the previous session that had been drafted but never committed (see note above). Next: get PR #14/#15/#16 reviewed and merged, then start Reservations (Week 2, the contract's "vertical slice") — same brainstorm → spec → TDD-plan → subagent-driven-implementation process.
 - **2026-07-16 (later same day)** — PR #14 and #15 merged since the last update; confirmed all 5 open PRs' CI/mergeability, only #16 and Wa's #20 had real issues (everything else just needed review). Fixed #16: merged `develop` in, resolved a one-line merge conflict in `app/main.py` (duplicate `CORSMiddleware`/validation-handler setup — kept develop's side), pushed — CI went green (the red `mobile` check had been a stale run from before #15's fix landed). Team then sent over an `apps/api` audit with 5 findings; did the 3 that were unblocked: deleted the dead `Ping` model + migration, added `boto3`, added AWS/MiniStack settings + `app/s3.py` client (verified live against MiniStack). Left the other 2 findings (`POST /uploads/presign`, `CANNOT_RENT_OWN_ITEM` 403-vs-422) blocked on a contract PR that's Wa's to open. Pushed to `feature/item-model`. **PR #16 merged while writing this up** (2026-07-17T04:36:35Z) — GitHub auto-deleted the branch; a stray push after the merge recreated it as an orphaned branch, which was then deleted again once noticed. This roadmap update itself lives on a fresh `docs/roadmap-items-merged` branch off `develop` instead. Next: start Reservations design (Week 2) — same brainstorm → spec → TDD-plan → subagent-driven-implementation process used for Items.
 - **2026-07-17** — Jose supplied the actual path to `CLAUDE_BACKEND.md` (`C:\Users\Jose\Downloads\documentos\CLAUDE_BACKEND.MD`), read it in full for the first time this session — confirmed it's the same content already reconciled into past decisions, plus new detail for Reservations (exclusion-constraint SQL, full state machine, error-code table). Scoped Reservations to `CLAUDE_BACKEND.md`'s own Week 2 grouping (6 endpoints) rather than the full 12-endpoint vertical slice, matching the Items precedent — but decided to first close out the 3 Items endpoints deferred from Days 4-5, since `CLAUDE_BACKEND.md` counts them as part of Week 1. Brainstormed, wrote the design spec and a 3-task TDD plan (`docs/superpowers/specs/2026-07-16-items-followup-design.md`, `docs/superpowers/plans/2026-07-16-items-followup.md`) on a fresh `feature/items-followup` branch (off `develop`, now including #16/#14/#15). Executed via subagent-driven development — 3 tasks (`UpdateItemRequest` schema; `update_item`/`delete_item`/`list_my_items`; router wiring), each independently reviewed clean, plus a final whole-branch review (clean, only cosmetic Minors — fixed directly). 83/83 tests passing. Pushed, opened PR #24. Also decided: handle `CANNOT_RENT_OWN_ITEM` per the repo's frozen contract (422) once Reservations starts, using the specific error code (not generic `VALIDATION_ERROR`) so a later status-code bump to 403 needs no client changes — Zero confirmed mobile decides by `error.code`, not status. Consolidated this update with the prior session's still-open roadmap PR (#23: PR #14/#15/#16 merged, ping/boto3/S3-client audit fixes) into this same commit on `feature/items-followup` rather than landing two competing ROADMAP.md PRs — closed #23 as superseded and deleted its branch. Wrapping up here. Next: get PR #24 merged, then start Reservations (Week 2) design — same process.
+- **2026-07-17** — Executed the 7-task Reservations (Week 2) implementation plan on `feature/reservations` via subagent-driven development, strict TDD per task. Tasks 1-6 built the full `Reservation`/`Transaction` model (`no_double_booking` EXCLUDE constraint, `BLOCKING_STATUSES`), schemas, service layer (create/approve/reject/cancel, deposit hold/release transactions, list-my-reservations/requests), and the reservations router (6 endpoints). Task 7 wired the one cross-domain piece: `GET /items` now actually filters on `available_from`/`available_to` against blocking reservations (previously accepted-and-ignored), and `GET /items/{item_id}` now returns real `unavailable_dates` instead of an always-empty stub — both via a new `get_unavailable_dates` service function, both consuming `BLOCKING_STATUSES` from the reservation domain (one-directional dependency, as designed). 116/116 tests passing against real Postgres. Manually verified double-booking prevention live: fired two concurrent `POST /items/{item_id}/reservations` for the same item and overlapping dates against a running `uvicorn` server backed by the real `api-db-1` Postgres container — first request got `201`, second got `409 DATES_UNAVAILABLE`, confirming the DB-level EXCLUDE constraint (not just an application-level check) enforces the no-double-booking rule under concurrency. Also spot-checked live that `GET /items/{item_id}` returns the new reservation's range in `unavailable_dates` and that `GET /items?available_from=...&available_to=...` correctly excludes the now-booked item. The live-verification step left rows committed in the shared local Postgres (outside pytest's rollback), which briefly broke 7 unrelated `list_items` tests on the next run — diagnosed and cleaned up, see Decisions log. Dispatched a final whole-branch review (Opus): ready to merge, no Critical/Important blockers — the one Important finding (no row lock in `approve`/`reject`/`cancel`) was independently assessed as an acceptable, documented deferral given the mock deposit ledger, not a merge-blocker. Applied the review's two Minor fixes directly (stale `ItemDetailResponse` docstring, inline comment documenting the deliberate lock omission), commit `b54b57e`. Final regression: 116/116 passing. Pushed `feature/reservations` and opened PR #28 against `develop`. Next: get PR #28 reviewed and merged; Weeks 3-4 (check-in/out, close, report, transactions history, earnings) are a follow-up piece of work.
+- **2026-07-18** — PR #24 (items-followup) merged to `develop` while PR #28 (Reservations) was still open, exactly the reconciliation flagged as a risk in PR #28's own description. Reviewer j0sMedina requested changes: resolve the resulting merge conflict. Merged `origin/develop` into `feature/reservations`; real conflicts in `ROADMAP.md`, `app/routers/items.py`, `app/services/items.py`, `tests/routers/test_items.py`, `tests/services/test_items.py` — all additive (both sides added distinct endpoints/tests), resolved by keeping both sides' content side by side, no logic changes. Everything else (the large batch of `apps/web` files from PR #26) merged cleanly with no conflicts.
