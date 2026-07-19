@@ -1,0 +1,43 @@
+# Rentals history — past tab happy path.
+# Verifies that seeded past reservations appear in "Mis rentas > Pasadas".
+#
+# Prerequisites:
+#   - API running: uvicorn app.main:app --reload (apps/api/)
+#   - DB seeded: python infra/seed.py
+#   - Expo Go open on device/simulator pointed at dev server
+#
+# Seeded past reservations visible in this tab:
+#   Proyector Epson 3000 lúmenes → Cerrada   (closed)
+#   Aspiradora industrial Karcher → Rechazada (rejected)
+#   Karaoke profesional con 2 micrófonos → Cancelada (cancelled)
+#
+# Run: maestro test e2e/mobile/flows/rentals/history.yaml
+
+appId: host.exp.Exponent
+---
+- launchApp
+- tapOn:
+    text: "Iniciar sesión"
+- tapOn:
+    placeholder: "correo@ejemplo.com"
+- inputText:
+    text: "renter@rentatodo.dev"
+- tapOn:
+    placeholder: "••••••••"
+- inputText:
+    text: "Rentatodo2026!"
+- tapOn:
+    text: "Iniciar sesión"
+- assertVisible: "RentaTodo"
+
+# Navigate to the rentals tab
+- tapOn:
+    text: "Mis rentas"
+- assertVisible: "Activas"
+
+# Switch to history tab
+- tapOn:
+    text: "Pasadas"
+
+# Verify at least one past reservation badge is shown
+- assertVisible: "Cerrada"
