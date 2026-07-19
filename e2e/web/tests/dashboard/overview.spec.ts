@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from '../fixtures'
 
 test('dashboard overview shows KPI cards', async ({ page }) => {
   await page.goto('/dashboard')
