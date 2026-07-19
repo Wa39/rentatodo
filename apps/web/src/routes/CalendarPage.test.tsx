@@ -51,6 +51,15 @@ describe('CalendarPage', () => {
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
   })
 
+  it('renders each month at a fixed compact width instead of stretching full-width', () => {
+    renderPage()
+    const monthHeadings = screen.getAllByText(/2026$/)
+    expect(monthHeadings).toHaveLength(2)
+    for (const heading of monthHeadings) {
+      expect(heading.parentElement?.parentElement).toHaveClass('w-[280px]')
+    }
+  })
+
   it('shows an empty-state message instead of crashing when there are no items at all', async () => {
     vi.resetModules()
     vi.doMock('@/lib/mockData', async () => {

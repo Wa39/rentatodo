@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { CalendarMonth } from './CalendarMonth'
 
@@ -27,7 +27,15 @@ describe('CalendarMonth', () => {
     expect(screen.getByText('18')).toHaveClass('bg-destructive')
     expect(screen.getByText('17')).not.toHaveClass('bg-destructive')
     expect(screen.getByText('22')).toHaveClass('bg-warning')
-    expect(screen.getByText('14')).toHaveClass('ring-primary')
-    expect(screen.getByText('13')).not.toHaveClass('ring-primary')
+  })
+
+  it('shows a dot on today and no dot on other days', () => {
+    render(<CalendarMonth monthStart={new Date(2026, 6, 1)} dateRanges={[]} />)
+
+    const todayCell = screen.getByText('14').closest('div')!
+    expect(within(todayCell).getByTestId('today-dot')).toBeInTheDocument()
+
+    const otherCell = screen.getByText('13').closest('div')!
+    expect(within(otherCell).queryByTestId('today-dot')).not.toBeInTheDocument()
   })
 })
