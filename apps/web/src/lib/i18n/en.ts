@@ -69,7 +69,6 @@ export const en = {
     calendar: 'Calendar',
     delete: 'Delete',
     perDay: '/day',
-    reactivate: 'Reactivate',
   },
   categories: {
     tools: 'Tools',

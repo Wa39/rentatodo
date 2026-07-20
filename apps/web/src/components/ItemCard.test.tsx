@@ -66,22 +66,20 @@ describe('ItemCard', () => {
     expect(onDelete).toHaveBeenCalledWith(item)
   })
 
-  it('shows Reactivate and Edit only for an inactive item', async () => {
-    const user = userEvent.setup()
-    const onReactivate = vi.fn()
+  it('shows only Edit for an inactive item, with no Delete, Calendar, or Reactivate button', () => {
     const item = mockItems.find((i) => !i.is_active)!
     render(
       <RequestsProvider>
         <MemoryRouter>
-          <ItemCard item={item} onEdit={vi.fn()} onDelete={vi.fn()} onReactivate={onReactivate} />
+          <ItemCard item={item} onEdit={vi.fn()} onDelete={vi.fn()} />
         </MemoryRouter>
       </RequestsProvider>,
     )
     expect(screen.getByText('Inactive · not visible in search')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Calendar' })).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Reactivate' }))
-    expect(onReactivate).toHaveBeenCalledWith(item)
+    expect(screen.queryByRole('button', { name: 'Reactivate' })).not.toBeInTheDocument()
   })
 
   it('hides all action buttons when readOnly', () => {
