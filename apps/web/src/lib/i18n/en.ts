@@ -84,6 +84,7 @@ export const en = {
     title: 'My items',
     subtitle: (active: number, inactive: number) => `${active} active · ${inactive} inactive`,
     searchPlaceholder: 'Search by name or category…',
+    loadError: "Couldn't load your items. Try refreshing the page.",
   },
   publish: {
     title: 'Publish item',

@@ -1,38 +1,75 @@
-import { createContext, useContext, useState, type ReactNode } from 'react'
-import { mockItems } from './mockData'
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import {
+  apiCreateItem,
+  apiDeleteItem,
+  apiListMyItems,
+  apiUpdateItem,
+  getErrorMessage,
+  type CreateItemPayload,
+  type UpdateItemPayload,
+} from './api'
+import { useAuth } from './AuthContext'
+import { useTranslation } from './i18n'
 import type { Item } from './types'
 
 interface ItemsContextValue {
   items: Item[]
-  addItem: (item: Omit<Item, 'id' | 'created_at' | 'is_active'>) => void
-  updateItem: (id: string, updates: Partial<Omit<Item, 'id'>>) => void
-  setItemActive: (id: string, isActive: boolean) => void
+  loading: boolean
+  error: string | null
+  addItem: (data: CreateItemPayload) => Promise<void>
+  updateItem: (id: string, data: UpdateItemPayload) => Promise<void>
+  deleteItem: (id: string) => Promise<void>
 }
 
 const ItemsContext = createContext<ItemsContextValue | undefined>(undefined)
 
 export function ItemsProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<Item[]>(mockItems)
+  const { token } = useAuth()
+  const t = useTranslation()
+  const [items, setItems] = useState<Item[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  function addItem(item: Omit<Item, 'id' | 'created_at' | 'is_active'>) {
-    const newItem: Item = {
-      ...item,
-      id: crypto.randomUUID(),
-      is_active: true,
-      created_at: new Date().toISOString(),
+  async function refetch(currentToken: string) {
+    setLoading(true)
+    setError(null)
+    try {
+      setItems(await apiListMyItems(currentToken))
+    } catch (err) {
+      setError(getErrorMessage(err, t.items.loadError))
+    } finally {
+      setLoading(false)
     }
-    setItems((current) => [newItem, ...current])
   }
 
-  function updateItem(id: string, updates: Partial<Omit<Item, 'id'>>) {
-    setItems((current) => current.map((item) => (item.id === id ? { ...item, ...updates } : item)))
+  useEffect(() => {
+    if (!token) {
+      setItems([])
+      return
+    }
+    refetch(token)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token])
+
+  async function addItem(data: CreateItemPayload) {
+    if (!token) throw new Error('Not authenticated')
+    await apiCreateItem(token, data)
+    await refetch(token)
   }
 
-  function setItemActive(id: string, isActive: boolean) {
-    setItems((current) => current.map((item) => (item.id === id ? { ...item, is_active: isActive } : item)))
+  async function updateItem(id: string, data: UpdateItemPayload) {
+    if (!token) throw new Error('Not authenticated')
+    await apiUpdateItem(token, id, data)
+    await refetch(token)
   }
 
-  const value: ItemsContextValue = { items, addItem, updateItem, setItemActive }
+  async function deleteItem(id: string) {
+    if (!token) throw new Error('Not authenticated')
+    await apiDeleteItem(token, id)
+    await refetch(token)
+  }
+
+  const value: ItemsContextValue = { items, loading, error, addItem, updateItem, deleteItem }
   return <ItemsContext.Provider value={value}>{children}</ItemsContext.Provider>
 }
 
