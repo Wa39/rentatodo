@@ -121,7 +121,7 @@ resolved before merging. Currently being reconciled.
 
 - [ ] **Not blocking current work.** `CLAUDE_BACKEND.md` documents "renting your own item" as `403 CANNOT_RENT_OWN_ITEM`, but the merged `openapi.yaml` documents that same case as a generic `422` on `POST /items/{item_id}/reservations`. Implemented as `422 CANNOT_RENT_OWN_ITEM` (specific code, contract's current status) in `feature/reservations` — see Decisions log 2026-07-17. Still open only in the sense that Wa's contract PR could eventually bump this to `403`; no client changes needed either way.
 - [ ] `RegisterRequest.password` gets an implementation-side `max_length=72` (bcrypt's limit) that isn't documented in the merged `openapi.yaml` (which only has `minLength: 8`). Worth a small contract PR to add `maxLength: 72` so the documented contract matches what the API actually accepts.
-- [ ] **Not blocking current work.** Two `docker-compose.yml` files exist for local Postgres (`apps/api/docker-compose.yml` and `infra/docker-compose.yml`) with different credential sources — `infra/`'s is hardcoded (`rentatodo`/`rentatodo`) and doesn't match `apps/api/.env`'s actual password, so using the wrong one silently fails to connect. `apps/api/docker-compose.yml` is the one that works locally. Worth consolidating to one, whenever there's a slow moment — flagged to Zero already when explaining local setup.
+- [x] **Resolved in PR #36.** `apps/api/docker-compose.yml` removed — `infra/docker-compose.yml` is now the single source of truth. `apps/api/.env.example` credentials aligned to `rentatodo:rentatodo` to match.
 
 ## Session log
 
