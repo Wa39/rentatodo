@@ -114,12 +114,12 @@ export default function ReportProblemScreen() {
         <View style={styles.pickRow}>
           {Platform.OS !== 'web' && (
             <Pressable style={styles.pickButton} onPress={pickFromCamera}>
-              <Ionicons name="camera-outline" size={18} color={Brand.teal} />
+              <Ionicons name="camera-outline" size={18} color={Brand.primary} />
               <Text style={styles.pickText}>Tomar foto</Text>
             </Pressable>
           )}
           <Pressable style={styles.pickButton} onPress={pickFromLibrary}>
-            <Ionicons name="image-outline" size={18} color={Brand.teal} />
+            <Ionicons name="image-outline" size={18} color={Brand.primary} />
             <Text style={styles.pickText}>
               {Platform.OS === 'web' ? 'Elegir archivo' : 'Elegir de galería'}
             </Text>
@@ -199,11 +199,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: Brand.tealSoft,
+    backgroundColor: Brand.primarySoft,
     borderRadius: 12,
     paddingVertical: 12,
   },
-  pickText: { fontSize: 13, fontWeight: '700', color: Brand.teal },
+  pickText: { fontSize: 13, fontWeight: '700', color: Brand.primary },
   error: { color: Brand.red, fontSize: 12, marginTop: 12, textAlign: 'center' },
   cta: {
     backgroundColor: Brand.red,
