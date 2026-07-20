@@ -30,7 +30,7 @@ export function CalendarMonth({
           return (
             <div
               key={dateStr}
-              className={`flex aspect-square items-center justify-center rounded-md text-sm font-medium ${
+              className={`relative flex aspect-square items-center justify-center rounded-md text-sm font-medium ${
                 !day.inCurrentMonth
                   ? 'text-muted-foreground opacity-30'
                   : state === 'reserved'
@@ -38,9 +38,16 @@ export function CalendarMonth({
                     : state === 'pending'
                       ? 'bg-warning font-bold text-warning-ink'
                       : 'bg-muted text-info'
-              } ${day.isToday ? 'ring-2 ring-inset ring-primary' : ''}`}
+              }`}
             >
               {day.date.getDate()}
+              {day.isToday && (
+                <span
+                  data-testid="today-dot"
+                  aria-hidden="true"
+                  className="absolute bottom-1 h-1.5 w-1.5 rounded-full bg-primary ring-2 ring-background"
+                />
+              )}
             </div>
           )
         })}

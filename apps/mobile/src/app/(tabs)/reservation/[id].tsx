@@ -113,7 +113,7 @@ export default function ReservationDetailScreen() {
           href={{ pathname: '/item/[id]', params: { id: reservation.item_id } }}
           asChild>
           <Pressable style={styles.linkRow}>
-            <Ionicons name="cube-outline" size={18} color={Brand.teal} />
+            <Ionicons name="cube-outline" size={18} color={Brand.primary} />
             <Text style={styles.linkText}>Ver artículo</Text>
             <Ionicons name="chevron-forward" size={16} color={Brand.muted} />
           </Pressable>
@@ -236,11 +236,11 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 12,
-    backgroundColor: Brand.tealSoft,
+    backgroundColor: Brand.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  initial: { fontSize: 20, fontWeight: '800', color: Brand.teal, opacity: 0.55 },
+  initial: { fontSize: 20, fontWeight: '800', color: Brand.primary, opacity: 0.55 },
   headerInfo: { flex: 1, minWidth: 0 },
   name: { fontSize: 14, fontWeight: '700', color: Brand.ink },
   dates: { fontSize: 11.5, color: Brand.muted, marginTop: 2 },
@@ -281,7 +281,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: Brand.teal,
+    backgroundColor: Brand.primary,
     borderRadius: 14,
     padding: 14,
     marginTop: 14,

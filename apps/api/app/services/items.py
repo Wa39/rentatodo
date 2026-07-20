@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.exceptions import AppError
 from app.models.item import Item
+from app.models.reservation import BLOCKING_STATUSES, Reservation
 from app.schemas.item import CreateItemRequest, UpdateItemRequest
 
 
@@ -145,9 +146,12 @@ def list_items(
         category: Exact category match.
         min_price: Inclusive lower bound on price_per_day.
         max_price: Inclusive upper bound on price_per_day.
-        available_from: Accepted and validated, but doesn't exclude
-            anything yet — no Reservation table exists to check against.
-        available_to: Same as available_from.
+        available_from: Inclusive lower bound. If given (with or
+            without available_to), excludes any item with a blocking
+            reservation overlapping [available_from, available_to].
+        available_to: Inclusive upper bound. Same exclusion as
+            available_from — either can be sent alone as an open-ended
+            bound on the other side.
         sort: "recent" or "popular". Both currently sort by created_at
             DESC — "popular" has no real metric until Reservations exists.
         page: 1-indexed page number.
@@ -169,6 +173,18 @@ def list_items(
         query = query.where(Item.price_per_day >= min_price)
     if max_price is not None:
         query = query.where(Item.price_per_day <= max_price)
+    if available_from is not None or available_to is not None:
+        range_start = available_from or date.min
+        range_end = available_to or date.max
+        query = query.where(
+            ~Item.id.in_(
+                select(Reservation.item_id).where(
+                    Reservation.status.in_(BLOCKING_STATUSES),
+                    Reservation.start_date <= range_end,
+                    Reservation.end_date >= range_start,
+                )
+            )
+        )
 
     total = db.scalar(select(func.count()).select_from(query.subquery()))
 
@@ -177,6 +193,30 @@ def list_items(
 
     items = list(db.scalars(query).unique())
     return items, total
+
+
+def get_unavailable_dates(db: Session, item_id: uuid.UUID) -> list[dict[str, str]]:
+    """List every date range this item is unavailable for, derived from
+    its active (blocking) reservations.
+
+    Args:
+        db: Database session.
+        item_id: The item's id.
+
+    Returns:
+        A list of {"start_date": "...", "end_date": "..."} dicts
+        (ISO 8601), ordered by start_date. Empty if the item has no
+        blocking reservations.
+    """
+    rows = db.execute(
+        select(Reservation.start_date, Reservation.end_date)
+        .where(Reservation.item_id == item_id, Reservation.status.in_(BLOCKING_STATUSES))
+        .order_by(Reservation.start_date)
+    ).all()
+    return [
+        {"start_date": row.start_date.isoformat(), "end_date": row.end_date.isoformat()}
+        for row in rows
+    ]
 
 
 def update_item(
