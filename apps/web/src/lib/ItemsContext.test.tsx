@@ -1,5 +1,7 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
+import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { getErrorMessage } from './api'
 import { AuthProvider, useAuth } from './AuthContext'
 import { ItemsProvider, useItems } from './ItemsContext'
 
@@ -68,6 +70,42 @@ function Probe() {
       <button onClick={() => updateItem('i1', { name: 'Renamed' }).catch(() => {})}>update</button>
       <button onClick={() => deleteItem('i1').catch(() => {})}>delete</button>
       <button onClick={logout}>logout</button>
+    </div>
+  )
+}
+
+function MutationOutcomeProbe({ action }: { action: 'add' | 'update' | 'delete' }) {
+  const { addItem, updateItem, deleteItem } = useItems()
+  const [outcome, setOutcome] = useState<'idle' | 'resolved' | 'rejected'>('idle')
+  const [message, setMessage] = useState('')
+
+  function run() {
+    const promise =
+      action === 'add'
+        ? addItem({
+            name: 'New Item',
+            description: 'desc',
+            category: 'tools',
+            price_per_day: 500,
+            photo_url: 'https://example.com/new.jpg',
+          })
+        : action === 'update'
+          ? updateItem('i1', { name: 'Renamed' })
+          : deleteItem('i1')
+
+    promise
+      .then(() => setOutcome('resolved'))
+      .catch((err) => {
+        setOutcome('rejected')
+        setMessage(getErrorMessage(err, 'FALLBACK_MESSAGE'))
+      })
+  }
+
+  return (
+    <div>
+      <span data-testid="outcome">{outcome}</span>
+      <span data-testid="message">{message}</span>
+      <button onClick={run}>run</button>
     </div>
   )
 }
@@ -226,6 +264,93 @@ describe('ItemsContext', () => {
     act(() => screen.getByText('delete').click())
 
     await waitFor(() => expect(screen.getByText('Taladro Bosch Professional · inactive')).toBeInTheDocument())
+  })
+
+  it('discards a stale in-flight response from a mutation-triggered refetch if the token changes before it resolves', async () => {
+    let resolveMutationRefetch: (r: Response) => void = () => {}
+    const mutationRefetchPromise = new Promise<Response>((resolve) => {
+      resolveMutationRefetch = resolve
+    })
+    let itemsCallCount = 0
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.endsWith('/users/me')) return Promise.resolve(jsonResponse(PROFILE, 200))
+      if (url.endsWith('/items/i1')) return Promise.resolve(jsonResponse({ ...ITEM, is_active: false }, 200))
+      if (url.endsWith('/users/me/items')) {
+        itemsCallCount += 1
+        if (itemsCallCount === 1) return Promise.resolve(jsonResponse([ITEM], 200))
+        return mutationRefetchPromise
+      }
+      throw new Error(`Unhandled fetch call: ${url}`)
+    })
+
+    renderWithToken()
+    await waitFor(() => expect(screen.getByTestId('count')).toHaveTextContent('1'))
+
+    // Trigger deleteItem: its own DELETE call resolves immediately, then it
+    // kicks off a refetch() whose GET /users/me/items we keep hanging.
+    act(() => screen.getByText('delete').click())
+    await waitFor(() => expect(itemsCallCount).toBe(2))
+
+    // Log out while the mutation's own refetch is still in flight for the
+    // OLD token — this must clear the list for the new (null) token.
+    act(() => screen.getByText('logout').click())
+    expect(screen.getByTestId('count')).toHaveTextContent('0')
+
+    // Now let the stale mutation-refetch response for the OLD token resolve.
+    // It must NOT clobber the post-logout state with the old user's items.
+    await act(async () => {
+      resolveMutationRefetch(jsonResponse([ITEM], 200))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(screen.getByTestId('count')).toHaveTextContent('0')
+  })
+
+  it('rejects updateItem when its post-mutation refetch fails, even though the PATCH itself succeeded', async () => {
+    let itemsCallCount = 0
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.endsWith('/users/me')) return Promise.resolve(jsonResponse(PROFILE, 200))
+      if (url.endsWith('/items/i1')) return Promise.resolve(jsonResponse({ ...ITEM, name: 'Renamed' }, 200))
+      if (url.endsWith('/users/me/items')) {
+        itemsCallCount += 1
+        if (itemsCallCount === 1) return Promise.resolve(jsonResponse([ITEM], 200))
+        return Promise.resolve(jsonResponse({ error: { code: 'SERVER_ERROR', message: 'boom' } }, 500))
+      }
+      throw new Error(`Unhandled fetch call: ${url}`)
+    })
+
+    localStorage.setItem('rentatodo_token', 'tok123')
+    render(
+      <AuthProvider>
+        <ItemsProvider>
+          <MutationOutcomeProbe action="update" />
+        </ItemsProvider>
+      </AuthProvider>,
+    )
+
+    await waitFor(() => expect(itemsCallCount).toBe(1))
+
+    act(() => screen.getByText('run').click())
+
+    await waitFor(() => expect(screen.getByTestId('outcome')).toHaveTextContent('rejected'))
+  })
+
+  it('throws an ApiError (not a generic Error) when a mutation is attempted without a token, so getErrorMessage surfaces the real message', async () => {
+    render(
+      <AuthProvider>
+        <ItemsProvider>
+          <MutationOutcomeProbe action="add" />
+        </ItemsProvider>
+      </AuthProvider>,
+    )
+
+    act(() => screen.getByText('run').click())
+
+    await waitFor(() => expect(screen.getByTestId('outcome')).toHaveTextContent('rejected'))
+    expect(screen.getByTestId('message')).toHaveTextContent('Not authenticated')
   })
 
   it('throws when useItems is called outside a provider', () => {
