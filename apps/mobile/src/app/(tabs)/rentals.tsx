@@ -71,7 +71,7 @@ const styles = StyleSheet.create({
   },
   tab: { paddingVertical: 8 },
   tabText: { fontSize: 14, fontWeight: '700', color: Brand.muted },
-  tabActive: { color: Brand.teal },
-  tabLine: { height: 2.5, backgroundColor: Brand.teal, borderRadius: 2, marginTop: 6 },
+  tabActive: { color: Brand.primary },
+  tabLine: { height: 2.5, backgroundColor: Brand.primary, borderRadius: 2, marginTop: 6 },
   empty: { fontSize: 13, color: Brand.muted, paddingVertical: 24, textAlign: 'center' },
 });

@@ -3,12 +3,12 @@ import { Calendar, DollarSign, LayoutGrid, MessageSquare, Package, Plus } from '
 import { useAuth } from '@/lib/AuthContext'
 import { useTranslation } from '@/lib/i18n'
 import { formatCentavos, getInitials } from '@/lib/format'
-import { mockEarnings, mockUser } from '@/lib/mockData'
+import { mockEarnings } from '@/lib/mockData'
 import { useRequests } from '@/lib/RequestsContext'
 import { Button } from '@/components/ui/button'
 
 export function DashboardLayout() {
-  const { logout } = useAuth()
+  const { logout, user } = useAuth()
   const location = useLocation()
   const t = useTranslation()
   const { requests } = useRequests()
@@ -97,10 +97,10 @@ export function DashboardLayout() {
 
         <div className="mt-four flex items-center gap-two border-t border-sidebar-border pt-three">
           <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-warning text-xs font-bold text-warning-ink">
-            {getInitials(mockUser.name)}
+            {getInitials(user?.name ?? '')}
           </div>
           <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-semibold text-white">{mockUser.name}</div>
+            <div className="truncate text-sm font-semibold text-white">{user?.name}</div>
             <div className="text-xs text-sidebar-foreground/60">{t.nav.ownerRole}</div>
           </div>
         </div>

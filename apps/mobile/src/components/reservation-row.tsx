@@ -46,14 +46,14 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 10,
-    backgroundColor: Brand.tealSoft,
+    backgroundColor: Brand.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
   initial: {
     fontSize: 18,
     fontWeight: '800',
-    color: Brand.teal,
+    color: Brand.primary,
     opacity: 0.55,
   },
   info: {

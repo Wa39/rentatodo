@@ -76,11 +76,34 @@ jobs:
 
       - run: npx expo lint
 
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '9.15.0'
+          run_install: false
+
+      - run: pnpm install --frozen-lockfile
+        working-directory: .
+
+      - run: pnpm tsc -b --noEmit
+
+      - run: pnpm test
+
   # ci-gate is the required check registered in the branch ruleset.
   # It passes only when all app jobs above pass.
-  # Add a "web" job to the needs list once apps/web is scaffolded.
   ci-gate:
-    needs: [api, mobile]
+    needs: [api, mobile, web]
     runs-on: ubuntu-latest
     steps:
       - run: echo "ci-gate passed"

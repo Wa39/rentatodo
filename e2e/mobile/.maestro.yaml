@@ -1,0 +1,5 @@
+# Maestro global config for the mobile E2E suite.
+# Docs: https://maestro.mobile.dev
+
+appId: host.exp.Exponent  # Expo Go; replace with bundle ID once EAS Build is set up
+---
