@@ -2,7 +2,9 @@ import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { PageHeader } from '@/components/PageHeader'
 import { ItemCard } from '@/components/ItemCard'
+import { AuthErrorBanner } from '@/components/AuthErrorBanner'
 import { useItems } from '@/lib/ItemsContext'
+import { getErrorMessage } from '@/lib/api'
 import type { Category, Item } from '@/lib/types'
 import { useTranslation } from '@/lib/i18n'
 import { Button } from '@/components/ui/button'
@@ -16,11 +18,13 @@ const BLANK_FORM = { name: '', description: '', category: CATEGORIES[0], priceDo
 
 export function ItemsPage() {
   const t = useTranslation()
-  const { items, updateItem, setItemActive } = useItems()
+  const { items, loading, error, updateItem, deleteItem } = useItems()
   const [open, setOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(BLANK_FORM)
   const [query, setQuery] = useState('')
+  const [dialogSubmitting, setDialogSubmitting] = useState(false)
+  const [dialogError, setDialogError] = useState<string | null>(null)
 
   const activeCount = items.filter((i) => i.is_active).length
   const inactiveCount = items.length - activeCount
@@ -40,36 +44,42 @@ export function ItemsPage() {
       priceDollars: String(item.price_per_day / 100),
       photoUrl: item.photo_url,
     })
+    setDialogError(null)
     setOpen(true)
   }
 
-  function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    const priceCentavos = Math.round(Number(form.priceDollars) * 100)
-    if (editingId) {
-      updateItem(editingId, {
+    if (!editingId) return
+    setDialogSubmitting(true)
+    setDialogError(null)
+    try {
+      const priceCentavos = Math.round(Number(form.priceDollars) * 100)
+      await updateItem(editingId, {
         name: form.name,
         description: form.description,
         category: form.category,
         price_per_day: priceCentavos,
         photo_url: form.photoUrl,
       })
+      setOpen(false)
+      setEditingId(null)
+      setForm(BLANK_FORM)
+    } catch (err) {
+      setDialogError(getErrorMessage(err, t.errors.network))
+    } finally {
+      setDialogSubmitting(false)
     }
-    setOpen(false)
-    setEditingId(null)
-    setForm(BLANK_FORM)
   }
 
-  function handleDelete(item: Item) {
-    // Phase 1: no real DELETE /items/{id} call yet — mirrors the API's soft
-    // delete (is_active: false), never removes the row.
+  async function handleDelete(item: Item) {
     const confirmed = window.confirm(`Delete "${item.name}"? It will stop appearing in public search.`)
     if (!confirmed) return
-    setItemActive(item.id, false)
-  }
-
-  function handleReactivate(item: Item) {
-    setItemActive(item.id, true)
+    try {
+      await deleteItem(item.id)
+    } catch (err) {
+      window.alert(getErrorMessage(err, t.errors.network))
+    }
   }
 
   return (
@@ -84,6 +94,7 @@ export function ItemsPage() {
         }
       />
       <div className="space-y-three p-four">
+        <AuthErrorBanner message={error} />
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -97,6 +108,7 @@ export function ItemsPage() {
               <DialogTitle>Edit item</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-two">
+              <AuthErrorBanner message={dialogError} />
               <div className="space-y-half">
                 <Label htmlFor="item-name">Name</Label>
                 <Input id="item-name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} required />
@@ -147,18 +159,22 @@ export function ItemsPage() {
                   required
                 />
               </div>
-              <Button type="submit" className="w-full">
-                Save item
+              <Button type="submit" className="w-full" disabled={dialogSubmitting}>
+                {dialogSubmitting ? 'Saving…' : 'Save item'}
               </Button>
             </form>
           </DialogContent>
         </Dialog>
 
-        <div className="grid grid-cols-4 gap-three">
-          {filteredItems.map((item) => (
-            <ItemCard key={item.id} item={item} onEdit={openEditDialog} onDelete={handleDelete} onReactivate={handleReactivate} />
-          ))}
-        </div>
+        {loading ? (
+          <p className="text-sm text-muted-foreground">{t.items.loading}</p>
+        ) : (
+          <div className="grid grid-cols-4 gap-three">
+            {filteredItems.map((item) => (
+              <ItemCard key={item.id} item={item} onEdit={openEditDialog} onDelete={handleDelete} />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
