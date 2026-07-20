@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
 import path from 'path'
 
-export const BASE_URL = process.env.BASE_URL ?? 'http://localhost:5173'
+export const BASE_URL = process.env.BASE_URL ?? 'http://localhost:8081'
 export const AUTH_FILE = path.join(__dirname, 'playwright/.auth/user.json')
 
 export default defineConfig({
