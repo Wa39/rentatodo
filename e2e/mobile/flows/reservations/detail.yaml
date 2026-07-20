@@ -1,0 +1,46 @@
+# Reservation detail — happy path.
+# Verifies the detail screen for an approved reservation from the rentals list.
+#
+# Prerequisites:
+#   - API running: uvicorn app.main:app --reload (apps/api/)
+#   - DB seeded: python infra/seed.py
+#   - Expo Go open on device/simulator pointed at dev server
+#
+# Item used: "Cámara Sony A7 III" (status: approved, seeded by infra/seed.py)
+# Approved reservations show the check-in button and the cancel button.
+#
+# Run: maestro test e2e/mobile/flows/reservations/detail.yaml
+
+appId: host.exp.Exponent
+---
+- launchApp
+- tapOn:
+    text: "Iniciar sesión"
+- tapOn:
+    placeholder: "correo@ejemplo.com"
+- inputText:
+    text: "renter@rentatodo.dev"
+- tapOn:
+    placeholder: "••••••••"
+- inputText:
+    text: "Rentatodo2026!"
+- tapOn:
+    text: "Iniciar sesión"
+- assertVisible: "RentaTodo"
+
+# Navigate to the rentals tab and open an approved reservation
+- tapOn:
+    text: "Mis rentas"
+- assertVisible: "Activas"
+- tapOn:
+    text: "Cámara Sony A7 III"
+
+# Detail screen assertions
+- assertVisible: "Reserva"
+- assertVisible: "Cámara Sony A7 III"
+- assertVisible: "Aprobada"
+- assertVisible: "Estado"
+- assertVisible: "Depósito"
+- assertVisible: "Ver artículo"
+- assertVisible: "Recibí el artículo (check-in)"
+- assertVisible: "Cancelar reserva"
