@@ -98,6 +98,7 @@ export const en = {
     previewEmptyDescription: 'The description you write will show up here.',
     cancel: 'Cancel',
     submit: 'Publish item',
+    submitting: 'Publishing…',
   },
   requests: {
     title: 'Requests',
