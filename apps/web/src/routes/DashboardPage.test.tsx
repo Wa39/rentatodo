@@ -3,8 +3,9 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { mockItems, mockRequests } from '@/lib/mockData'
+import { mockRequests } from '@/lib/mockData'
 import { AuthProvider } from '@/lib/AuthContext'
+import { ItemsProvider } from '@/lib/ItemsContext'
 import { RequestsProvider } from '@/lib/RequestsContext'
 import { RESERVED_STATUSES } from '@/lib/availability'
 import { DashboardPage } from './DashboardPage'
@@ -18,14 +19,68 @@ function jsonResponse(body: unknown, status: number) {
   } as Response
 }
 
+function mockFetchRoutes(routes: Record<string, Array<() => Response>>) {
+  const sortedPaths = Object.keys(routes).sort((a, b) => b.length - a.length)
+  vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+    const url = String(input)
+    const path = sortedPaths.find((candidate) => url.endsWith(candidate))
+    const next = path ? routes[path].shift() : undefined
+    if (!next) throw new Error(`Unhandled fetch call: ${url}`)
+    return Promise.resolve(next())
+  })
+}
+
+const PROFILE = { id: 'u1', name: 'María Vargas', email: 'maria@example.com', created_at: '2026-01-01T00:00:00Z' }
+
+const ITEMS = [
+  {
+    id: 'i1',
+    name: 'Taladro',
+    description: 'd',
+    category: 'tools',
+    price_per_day: 1000,
+    photo_url: 'https://example.com/p.jpg',
+    is_active: true,
+    owner_id: 'u1',
+    owner_name: 'María Vargas',
+    created_at: '2026-01-01T00:00:00Z',
+  },
+  {
+    id: 'i2',
+    name: 'Carpa',
+    description: 'd',
+    category: 'camping',
+    price_per_day: 1500,
+    photo_url: 'https://example.com/p2.jpg',
+    is_active: true,
+    owner_id: 'u1',
+    owner_name: 'María Vargas',
+    created_at: '2026-01-01T00:00:00Z',
+  },
+  {
+    id: 'i3',
+    name: 'Cámara vieja',
+    description: 'd',
+    category: 'photography',
+    price_per_day: 2000,
+    photo_url: 'https://example.com/p3.jpg',
+    is_active: false,
+    owner_id: 'u1',
+    owner_name: 'María Vargas',
+    created_at: '2026-01-01T00:00:00Z',
+  },
+]
+
 function renderDashboard() {
   render(
     <AuthProvider>
-      <RequestsProvider>
-        <MemoryRouter>
-          <DashboardPage />
-        </MemoryRouter>
-      </RequestsProvider>
+      <ItemsProvider>
+        <RequestsProvider>
+          <MemoryRouter>
+            <DashboardPage />
+          </MemoryRouter>
+        </RequestsProvider>
+      </ItemsProvider>
     </AuthProvider>,
   )
 }
@@ -33,22 +88,33 @@ function renderDashboard() {
 describe('DashboardPage', () => {
   beforeEach(() => {
     localStorage.clear()
+    vi.spyOn(global, 'fetch')
   })
 
   afterEach(() => {
     vi.restoreAllMocks()
   })
 
-  it('renders KPI cards derived from mock data', () => {
+  it('renders the Active items KPI from fetched items, not a static mock array', async () => {
+    localStorage.setItem('rentatodo_token', 'tok123')
+    mockFetchRoutes({
+      '/users/me': [() => jsonResponse(PROFILE, 200)],
+      '/users/me/items': [() => jsonResponse(ITEMS, 200)],
+    })
     renderDashboard()
-    const activeItems = mockItems.filter((i) => i.is_active).length
     const pending = mockRequests.filter((r) => r.status === 'requested').length
 
     const activeItemsCard = screen.getByText('Active items').closest('div')!
-    expect(within(activeItemsCard).getByText(String(activeItems))).toBeInTheDocument()
+    await waitFor(() => expect(within(activeItemsCard).getByText('2')).toBeInTheDocument())
 
     const pendingCard = screen.getByText('Pending requests').closest('div')!
     expect(within(pendingCard).getByText(String(pending))).toBeInTheDocument()
+  })
+
+  it('shows 0 active items when there is no token yet', () => {
+    renderDashboard()
+    const activeItemsCard = screen.getByText('Active items').closest('div')!
+    expect(within(activeItemsCard).getByText('0')).toBeInTheDocument()
   })
 
   it('renders the "Earned this month" KPI card with the dark-inverted treatment', () => {
@@ -74,9 +140,12 @@ describe('DashboardPage', () => {
 
   it("shows the authenticated user's first name in the welcome message, not the mock user", async () => {
     localStorage.setItem('rentatodo_token', 'tok123')
-    vi.spyOn(global, 'fetch').mockResolvedValueOnce(
-      jsonResponse({ id: 'u1', name: 'Ana Torres', email: 'ana@example.com', created_at: '2026-01-01T00:00:00Z' }, 200),
-    )
+    mockFetchRoutes({
+      '/users/me': [
+        () => jsonResponse({ id: 'u1', name: 'Ana Torres', email: 'ana@example.com', created_at: '2026-01-01T00:00:00Z' }, 200),
+      ],
+      '/users/me/items': [() => jsonResponse([], 200)],
+    })
 
     renderDashboard()
 
@@ -94,12 +163,14 @@ describe('DashboardPage', () => {
     const user = userEvent.setup()
     render(
       <AuthProvider>
-        <RequestsProvider>
-          <MemoryRouter>
-            <DashboardPage />
-            <RequestsPage />
-          </MemoryRouter>
-        </RequestsProvider>
+        <ItemsProvider>
+          <RequestsProvider>
+            <MemoryRouter>
+              <DashboardPage />
+              <RequestsPage />
+            </MemoryRouter>
+          </RequestsProvider>
+        </ItemsProvider>
       </AuthProvider>,
     )
     const firstPending = mockRequests.filter((r) => r.status === 'requested')[0]
