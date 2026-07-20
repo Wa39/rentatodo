@@ -10,7 +10,7 @@ import { useTranslation } from '@/lib/i18n'
 
 export function CalendarPage() {
   const t = useTranslation()
-  const { items } = useItems()
+  const { items, loading } = useItems()
   const { requests } = useRequests()
   const [searchParams, setSearchParams] = useSearchParams()
   const requestedId = searchParams.get('item')
@@ -31,6 +31,15 @@ export function CalendarPage() {
 
   function handleSelect(event: ChangeEvent<HTMLSelectElement>) {
     setSearchParams({ item: event.target.value })
+  }
+
+  if (loading) {
+    return (
+      <div>
+        <PageHeader title={t.calendar.title} subtitle={t.calendar.subtitle} />
+        <div className="p-four text-sm text-muted-foreground">{t.items.loading}</div>
+      </div>
+    )
   }
 
   if (items.length === 0) {
