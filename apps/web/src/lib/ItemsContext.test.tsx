@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { AuthProvider } from './AuthContext'
+import { AuthProvider, useAuth } from './AuthContext'
 import { ItemsProvider, useItems } from './ItemsContext'
 
 function jsonResponse(body: unknown, status: number) {
@@ -39,6 +39,7 @@ const ITEM = {
 
 function Probe() {
   const { items, loading, error, addItem, updateItem, deleteItem } = useItems()
+  const { logout } = useAuth()
   return (
     <div>
       <span data-testid="loading">{loading ? 'loading' : 'idle'}</span>
@@ -66,6 +67,7 @@ function Probe() {
       </button>
       <button onClick={() => updateItem('i1', { name: 'Renamed' }).catch(() => {})}>update</button>
       <button onClick={() => deleteItem('i1').catch(() => {})}>delete</button>
+      <button onClick={logout}>logout</button>
     </div>
   )
 }
@@ -132,6 +134,40 @@ describe('ItemsContext', () => {
     expect(screen.getByTestId('loading')).toHaveTextContent('loading')
     act(() => resolveItems(jsonResponse([ITEM], 200)))
     await waitFor(() => expect(screen.getByTestId('loading')).toHaveTextContent('idle'))
+  })
+
+  it('discards a stale in-flight response if the token changes before it resolves', async () => {
+    let resolveItems: (r: Response) => void = () => {}
+    const itemsPromise = new Promise<Response>((resolve) => {
+      resolveItems = resolve
+    })
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.endsWith('/users/me')) return Promise.resolve(jsonResponse(PROFILE, 200))
+      if (url.endsWith('/users/me/items')) return itemsPromise
+      throw new Error(`Unhandled fetch call: ${url}`)
+    })
+
+    renderWithToken()
+
+    expect(screen.getByTestId('loading')).toHaveTextContent('loading')
+
+    // Log out while the GET /users/me/items request for the old token is
+    // still in flight — this changes `token` and re-runs the mount effect.
+    act(() => screen.getByText('logout').click())
+
+    // The logout should immediately clear items (correct, current state).
+    expect(screen.getByTestId('count')).toHaveTextContent('0')
+
+    // Now let the stale, in-flight response for the OLD token resolve.
+    // It must NOT clobber the post-logout state with the old user's items.
+    await act(async () => {
+      resolveItems(jsonResponse([ITEM], 200))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(screen.getByTestId('count')).toHaveTextContent('0')
   })
 
   it('sets an error message when the initial fetch fails, without throwing', async () => {

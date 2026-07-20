@@ -30,24 +30,32 @@ export function ItemsProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  async function refetch(currentToken: string) {
+  async function refetch(currentToken: string, isCancelled: () => boolean = () => false) {
     setLoading(true)
     setError(null)
     try {
-      setItems(await apiListMyItems(currentToken))
+      const fetched = await apiListMyItems(currentToken)
+      if (isCancelled()) return
+      setItems(fetched)
     } catch (err) {
+      if (isCancelled()) return
       setError(getErrorMessage(err, t.items.loadError))
     } finally {
-      setLoading(false)
+      if (!isCancelled()) setLoading(false)
     }
   }
 
   useEffect(() => {
+    let cancelled = false
     if (!token) {
       setItems([])
+      setLoading(false)
       return
     }
-    refetch(token)
+    refetch(token, () => cancelled)
+    return () => {
+      cancelled = true
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token])
 
