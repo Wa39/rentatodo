@@ -12,6 +12,7 @@ interface AuthUser {
 interface AuthContextValue {
   isAuthenticated: boolean
   user: AuthUser | null
+  token: string | null
   login: (email: string, password: string) => Promise<void>
   register: (name: string, email: string, password: string) => Promise<void>
   logout: () => void
@@ -63,6 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value: AuthContextValue = {
     isAuthenticated: token !== null,
     user,
+    token,
     login,
     register,
     logout,
