@@ -35,7 +35,7 @@ class PresignResponse(BaseModel):
     """
 
     upload_url: str = Field(
-        ..., description="Short-lived pre-signed S3 PUT URL. PUT the file here directly."
+        ..., description="Short-lived pre-signed S3 PUT URL. PUT the file here directly. The PUT must send the same Content-Type header as this request's content_type, or the signature will not validate."
     )
     public_url: str = Field(
         ..., description="Permanent public URL to store as photo_url after a successful upload."
