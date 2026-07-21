@@ -189,6 +189,42 @@ describe('AuthContext', () => {
     expect(localStorage.getItem('rentatodo_token')).toBeNull()
   })
 
+  it('discards a stale mount-effect profile response if logout() fires before it resolves', async () => {
+    localStorage.setItem('rentatodo_token', 'existing-tok')
+    let resolveGetMe: (r: Response) => void = () => {}
+    const getMePromise = new Promise<Response>((resolve) => {
+      resolveGetMe = resolve
+    })
+    vi.mocked(fetch).mockReturnValueOnce(getMePromise)
+
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    )
+
+    // Authenticated synchronously from the stored token, profile fetch still in flight.
+    expect(screen.getByTestId('status')).toHaveTextContent('in')
+
+    // Log out while the mount effect's /users/me call for the old token is still in flight.
+    act(() => screen.getByText('logout').click())
+
+    expect(screen.getByTestId('status')).toHaveTextContent('out')
+
+    // Now let the stale, in-flight response resolve — with a DIFFERENT user's profile.
+    // It must NOT clobber the post-logout state.
+    await act(async () => {
+      resolveGetMe(
+        jsonResponse({ id: 'u2', name: 'Someone Else', email: 'someone@example.com', created_at: '2026-01-01T00:00:00Z' }, 200),
+      )
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(screen.getByTestId('status')).toHaveTextContent('out')
+    expect(screen.getByTestId('user-name')).toBeEmptyDOMElement()
+  })
+
   it('exposes the current token on the context value', async () => {
     vi.mocked(fetch)
       .mockResolvedValueOnce(jsonResponse({ access_token: 'tok123', token_type: 'bearer', expires_in: 86400 }, 200))

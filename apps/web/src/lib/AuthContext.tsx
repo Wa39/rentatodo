@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { apiGetMe, apiLogin, apiRegister, ApiError } from './api'
 
 const TOKEN_KEY = 'rentatodo_token'
@@ -23,6 +23,15 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY))
   const [user, setUser] = useState<AuthUser | null>(null)
+  // Tracks the token that is currently "live". The mount effect's profile
+  // fetch checks this ref before applying its result, so a response for a
+  // token that is no longer current (e.g. logout() or a fresh login()/
+  // register() happened while the request was in flight) is discarded.
+  const tokenRef = useRef(token)
+
+  useEffect(() => {
+    tokenRef.current = token
+  }, [token])
 
   function logout() {
     setToken(null)
@@ -32,9 +41,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!token) return
-    apiGetMe(token)
-      .then((profile) => setUser({ id: profile.id, name: profile.name, email: profile.email }))
+    const mountToken = token
+    apiGetMe(mountToken)
+      .then((profile) => {
+        if (tokenRef.current !== mountToken) return
+        setUser({ id: profile.id, name: profile.name, email: profile.email })
+      })
       .catch((err) => {
+        if (tokenRef.current !== mountToken) return
         if (err instanceof ApiError) logout()
       })
     // eslint-disable-next-line react-hooks/exhaustive-deps
