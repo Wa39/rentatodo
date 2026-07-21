@@ -8,11 +8,12 @@ import { useRequests } from '@/lib/RequestsContext'
 import { RESERVED_STATUSES } from '@/lib/availability'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/PageHeader'
+import { AuthErrorBanner } from '@/components/AuthErrorBanner'
 
 export function DashboardPage() {
   const t = useTranslation()
   const { user } = useAuth()
-  const { items } = useItems()
+  const { items, error } = useItems()
   const { requests, setStatus } = useRequests()
   const activeItems = items.filter((item) => item.is_active).length
   const pendingRequests = requests.filter((r) => r.status === 'requested')
@@ -31,6 +32,7 @@ export function DashboardPage() {
         }
       />
       <div className="p-four space-y-four">
+        <AuthErrorBanner message={error} />
         <div className="grid grid-cols-4 gap-three">
           <div className="rounded-lg border border-border bg-card p-three">
             <p className="text-xs font-medium text-muted-foreground">{t.dashboard.kpiActiveItems}</p>

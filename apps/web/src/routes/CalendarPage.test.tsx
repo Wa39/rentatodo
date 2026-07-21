@@ -147,4 +147,15 @@ describe('CalendarPage', () => {
     await waitFor(() => expect(screen.getByText("You don't have any items yet. Publish one to see its calendar.")).toBeInTheDocument())
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
   })
+
+  it('shows the fetch error instead of the misleading empty-state message when items fail to load', async () => {
+    mockFetchRoutes({
+      '/users/me': [() => jsonResponse(PROFILE, 200)],
+      '/users/me/items': [() => jsonResponse({ error: { code: 'SERVER_ERROR', message: 'Server exploded' } }, 500)],
+    })
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Server exploded')).toBeInTheDocument())
+    expect(screen.queryByText("You don't have any items yet. Publish one to see its calendar.")).not.toBeInTheDocument()
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+  })
 })

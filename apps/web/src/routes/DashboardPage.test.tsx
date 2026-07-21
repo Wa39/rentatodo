@@ -152,6 +152,19 @@ describe('DashboardPage', () => {
     await waitFor(() => expect(screen.getByText('Welcome back, Ana')).toBeInTheDocument())
   })
 
+  it('shows the items-fetch error without hiding the rest of the dashboard', async () => {
+    localStorage.setItem('rentatodo_token', 'tok123')
+    mockFetchRoutes({
+      '/users/me': [() => jsonResponse(PROFILE, 200)],
+      '/users/me/items': [() => jsonResponse({ error: { code: 'SERVER_ERROR', message: 'Server exploded' } }, 500)],
+    })
+    renderDashboard()
+    await waitFor(() => expect(screen.getByText('Server exploded')).toBeInTheDocument())
+    const activeItemsCard = screen.getByText('Active items').closest('div')!
+    expect(within(activeItemsCard).getByText('0')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Overview' })).toBeInTheDocument()
+  })
+
   it('"Active reservations" KPI matches RequestsPage\'s Active tab count, including returned', () => {
     renderDashboard()
     const expectedActive = mockRequests.filter((r) => RESERVED_STATUSES.includes(r.status)).length
