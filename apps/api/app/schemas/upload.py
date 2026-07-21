@@ -21,7 +21,7 @@ class PresignRequest(BaseModel):
     filename: str = Field(
         ...,
         min_length=1,
-        description="Original filename. Informational only — never used to build the S3 key.",
+        description="Original filename provided by the client. Not used to derive the S3 key in this implementation — the key is built from the authenticated user's id and a generated identifier instead.",
     )
     content_type: ContentTypeEnum = Field(..., description="MIME type of the file to upload.")
 
