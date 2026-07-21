@@ -166,6 +166,41 @@ describe('ItemsPage', () => {
     )
   })
 
+  it('keeps the edit dialog open if the user tries to close it while the save is still in flight', async () => {
+    let resolvePatch: (value: Response) => void = () => {}
+    const pendingPatch = new Promise<Response>((resolve) => {
+      resolvePatch = resolve
+    })
+    const meItemsQueue = [() => jsonResponse(ITEMS, 200), () => jsonResponse(ITEMS, 200)]
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.endsWith('/users/me')) return Promise.resolve(jsonResponse(PROFILE, 200))
+      if (url.endsWith('/users/me/items')) {
+        const next = meItemsQueue.shift()
+        if (next) return Promise.resolve(next())
+        throw new Error('Unexpected extra /users/me/items call')
+      }
+      if (url.endsWith('/items/i1')) return pendingPatch
+      throw new Error(`Unhandled fetch call: ${url}`)
+    })
+    const user = userEvent.setup({ delay: null })
+    renderPage()
+    const item = ITEMS[0]
+    await waitFor(() => expect(screen.getByText(item.name)).toBeInTheDocument())
+    const card = screen.getByTestId(`item-card-${item.id}`)
+    await user.click(within(card).getByRole('button', { name: 'Edit' }))
+    expect(screen.getByLabelText('Name')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Save item' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Saving…' })).toBeInTheDocument())
+
+    await user.keyboard('{Escape}')
+    expect(screen.getByLabelText('Name')).toBeInTheDocument()
+
+    resolvePatch(jsonResponse(ITEMS[0], 200))
+    await waitFor(() => expect(screen.queryByLabelText('Name')).not.toBeInTheDocument())
+  })
+
   it('does not call the API when the delete confirmation is dismissed', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(false)
     mockFetchRoutes({

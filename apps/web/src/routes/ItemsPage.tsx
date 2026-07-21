@@ -102,7 +102,7 @@ export function ItemsPage() {
           aria-label={t.items.searchPlaceholder}
         />
 
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(next) => { if (!dialogSubmitting) setOpen(next) }}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Edit item</DialogTitle>
