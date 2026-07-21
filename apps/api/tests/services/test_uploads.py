@@ -89,3 +89,15 @@ def test_generate_presign_public_url_uses_virtual_hosted_style_without_endpoint(
         "https://rentatodo-items-wa.s3.us-east-1.amazonaws.com/uploads/"
     )
     assert result.public_url.endswith(".jpg")
+
+
+def test_generate_presign_raises_key_error_for_unmapped_content_type(
+    fake_presigned_url: list,
+) -> None:
+    """An unmapped content_type (e.g. image/gif) raises KeyError. This is
+    intentional: the router's PresignRequest enum blocks all invalid types
+    at the API boundary, so this loud failure signals enum/dict drift during
+    maintenance, not a recoverable client error.
+    """
+    with pytest.raises(KeyError):
+        uploads.generate_presign(user_id=uuid.uuid4(), content_type="image/gif")
