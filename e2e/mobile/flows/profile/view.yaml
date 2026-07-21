@@ -1,0 +1,41 @@
+# Profile screen — happy path.
+# Verifies the renter's profile screen shows their account info and menu items.
+#
+# Prerequisites:
+#   - API running: uvicorn app.main:app --reload (apps/api/)
+#   - DB seeded: python infra/seed.py
+#   - Expo Go open on device/simulator pointed at dev server
+#
+# User: renter@rentatodo.dev / "Bob Arrendatario" (seeded by infra/seed.py)
+#
+# Run: maestro test e2e/mobile/flows/profile/view.yaml
+
+appId: host.exp.Exponent
+---
+- launchApp
+- tapOn:
+    text: "Iniciar sesión"
+- tapOn:
+    placeholder: "correo@ejemplo.com"
+- inputText:
+    text: "renter@rentatodo.dev"
+- tapOn:
+    placeholder: "••••••••"
+- inputText:
+    text: "Rentatodo2026!"
+- tapOn:
+    text: "Iniciar sesión"
+- assertVisible: "RentaTodo"
+
+# Navigate to profile tab
+- tapOn:
+    text: "Perfil"
+
+# Assert account header
+- assertVisible: "Bob Arrendatario"
+- assertVisible: "renter@rentatodo.dev"
+
+# Assert menu items
+- assertVisible: "Método de pago"
+- assertVisible: "Configuración"
+- assertVisible: "Cerrar sesión"
