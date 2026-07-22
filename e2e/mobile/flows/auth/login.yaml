@@ -1,5 +1,5 @@
-# Happy-path login with seeded owner account.
-# Seed credentials: owner@rentatodo.dev / Rentatodo2026!
+# Happy-path login with seeded renter account.
+# Seed credentials: renter@rentatodo.dev / Rentatodo2026!
 # Run: maestro test e2e/mobile/flows/auth/login.yaml
 
 appId: host.exp.Exponent  # Expo Go; replace with bundle ID for standalone builds
