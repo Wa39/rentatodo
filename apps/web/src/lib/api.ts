@@ -1,3 +1,5 @@
+import type { Category, Item } from './types'
+
 export class ApiError extends Error {
   code: string
 
@@ -24,6 +26,16 @@ interface UserProfile {
   created_at: string
 }
 
+export interface CreateItemPayload {
+  name: string
+  description: string
+  category: Category
+  price_per_day: number
+  photo_url: string
+}
+
+export type UpdateItemPayload = Partial<CreateItemPayload>
+
 async function request<T>(path: string, options: RequestInit): Promise<T> {
   const baseUrl = import.meta.env.VITE_API_URL
   const response = await fetch(`${baseUrl}${path}`, {
@@ -47,4 +59,28 @@ export function apiRegister(name: string, email: string, password: string): Prom
 
 export function apiGetMe(token: string): Promise<UserProfile> {
   return request('/users/me', { method: 'GET', headers: { Authorization: `Bearer ${token}` } })
+}
+
+export function apiCreateItem(token: string, data: CreateItemPayload): Promise<Item> {
+  return request('/items', {
+    method: 'POST',
+    body: JSON.stringify(data),
+    headers: { Authorization: `Bearer ${token}` },
+  })
+}
+
+export function apiListMyItems(token: string): Promise<Item[]> {
+  return request('/users/me/items', { method: 'GET', headers: { Authorization: `Bearer ${token}` } })
+}
+
+export function apiUpdateItem(token: string, id: string, data: UpdateItemPayload): Promise<Item> {
+  return request(`/items/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+    headers: { Authorization: `Bearer ${token}` },
+  })
+}
+
+export function apiDeleteItem(token: string, id: string): Promise<Item> {
+  return request(`/items/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
 }

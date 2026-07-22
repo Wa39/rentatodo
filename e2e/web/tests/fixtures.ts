@@ -22,6 +22,11 @@ export const test = base.extend({
     await page.route('**/users/me', (route) =>
       route.fulfill({ json: MOCK_USER })
     )
+    // ItemsContext (PR #40) calls this on mount — return empty list so the
+    // items page renders without a real API server.
+    await page.route('**/users/me/items', (route) =>
+      route.fulfill({ json: [] })
+    )
     await use(page)
   },
 })

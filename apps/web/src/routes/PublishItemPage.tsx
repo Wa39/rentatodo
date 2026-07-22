@@ -2,8 +2,10 @@ import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PageHeader } from '@/components/PageHeader'
 import { useItems } from '@/lib/ItemsContext'
+import { useAuth } from '@/lib/AuthContext'
 import { ItemCard } from '@/components/ItemCard'
-import { mockUser } from '@/lib/mockData'
+import { AuthErrorBanner } from '@/components/AuthErrorBanner'
+import { getErrorMessage } from '@/lib/api'
 import type { Category, Item } from '@/lib/types'
 import { useTranslation } from '@/lib/i18n'
 import { Button } from '@/components/ui/button'
@@ -16,11 +18,14 @@ export function PublishItemPage() {
   const t = useTranslation()
   const navigate = useNavigate()
   const { addItem } = useItems()
+  const { user } = useAuth()
   const [name, setName] = useState('')
   const [category, setCategory] = useState<Category>(CATEGORIES[0])
   const [priceDollars, setPriceDollars] = useState('')
   const [description, setDescription] = useState('')
   const [photoUrl, setPhotoUrl] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const previewItem: Item = {
     id: 'preview',
@@ -30,23 +35,29 @@ export function PublishItemPage() {
     price_per_day: Math.round(Number(priceDollars || '0') * 100),
     photo_url: photoUrl,
     is_active: true,
-    owner_id: mockUser.id,
-    owner_name: mockUser.name,
+    owner_id: user?.id ?? '',
+    owner_name: user?.name ?? '',
     created_at: new Date().toISOString(),
   }
 
-  function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    addItem({
-      name,
-      description,
-      category,
-      price_per_day: Math.round(Number(priceDollars || '0') * 100),
-      photo_url: photoUrl,
-      owner_id: mockUser.id,
-      owner_name: mockUser.name,
-    })
-    navigate('/items')
+    setSubmitting(true)
+    setError(null)
+    try {
+      await addItem({
+        name,
+        description,
+        category,
+        price_per_day: Math.round(Number(priceDollars || '0') * 100),
+        photo_url: photoUrl,
+      })
+      navigate('/items')
+    } catch (err) {
+      setError(getErrorMessage(err, t.errors.network))
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   function handleCancel() {
@@ -58,6 +69,7 @@ export function PublishItemPage() {
       <PageHeader title={t.publish.title} subtitle={t.publish.subtitle} />
       <div className="grid grid-cols-2 gap-four p-four">
         <form onSubmit={handleSubmit} className="space-y-three rounded-lg border border-border bg-card p-four">
+          <AuthErrorBanner message={error} />
           <div className="space-y-half">
             <Label htmlFor="publish-name">{t.publish.name}</Label>
             <Input id="publish-name" value={name} onChange={(e) => setName(e.target.value)} required />
@@ -107,10 +119,10 @@ export function PublishItemPage() {
             <Input id="publish-photo" type="url" value={photoUrl} onChange={(e) => setPhotoUrl(e.target.value)} required />
           </div>
           <div className="flex gap-two">
-            <Button type="submit" className="flex-1">
-              {t.publish.submit}
+            <Button type="submit" className="flex-1" disabled={submitting}>
+              {submitting ? t.publish.submitting : t.publish.submit}
             </Button>
-            <Button type="button" variant="outline" className="flex-1" onClick={handleCancel}>
+            <Button type="button" variant="outline" className="flex-1" onClick={handleCancel} disabled={submitting}>
               {t.publish.cancel}
             </Button>
           </div>

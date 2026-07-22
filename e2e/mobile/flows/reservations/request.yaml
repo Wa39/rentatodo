@@ -1,5 +1,16 @@
-# Request a reservation — selects dates on the calendar and submits.
-# BLOCKED: requires seeded items (infra/seed.py TODO) and the real API running.
+# Request a reservation — happy path.
+# Renter selects dates on the item calendar and submits a request.
+#
+# Prerequisites:
+#   - API running: uvicorn app.main:app --reload (apps/api/)
+#   - DB seeded: python infra/seed.py
+#   - Expo Go open on device/simulator pointed at dev server
+#
+# Item used: "Karaoke profesional con 2 micrófonos" (category: other)
+# Its seeded reservation is cancelled — no date conflicts.
+# Dates chosen: 22nd → 24th of the current month (3 days, always future
+# relative to today=19). If the 22nd is unavailable, shift the dates forward.
+#
 # Run: maestro test e2e/mobile/flows/reservations/request.yaml
 
 appId: host.exp.Exponent
@@ -18,15 +29,22 @@ appId: host.exp.Exponent
 - tapOn:
     text: "Iniciar sesión"
 - assertVisible: "RentaTodo"
-# TODO: tap first item card once seeded items exist
-# - tapOn:
-#     id: "item-card-0"
-# - assertVisible: "Solicitar"
-# - tapOn: <start date on calendar>
-# - tapOn: <end date on calendar>
-# - tapOn:
-#     text: "Confirmar solicitud"
-# - assertVisible: "Mis rentas"
-# - tapOn:
-#     text: "Mis rentas"
-# - assertVisible: "solicitado"
+
+# Navigate to item detail via name (seeded by infra/seed.py)
+- tapOn:
+    text: "Karaoke profesional con 2 micrófonos"
+- assertVisible: "Solicitar alquiler"
+
+# Select date range on the calendar (first tap = start, second = end)
+- tapOn:
+    text: "22"
+- tapOn:
+    text: "24"
+
+# Submit the request
+- tapOn:
+    text: "Solicitar alquiler"
+
+# App navigates to /rentals after a successful request
+- assertVisible: "Mis rentas"
+- assertVisible: "Solicitada"
