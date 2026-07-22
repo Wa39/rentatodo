@@ -1,0 +1,52 @@
+# Check-out flow — navigation happy path.
+# Verifies the renter can reach the check-out screen from a delivered reservation.
+#
+# Prerequisites:
+#   - API running: uvicorn app.main:app --reload (apps/api/)
+#   - DB seeded: python infra/seed.py
+#   - Expo Go open on device/simulator pointed at dev server
+#
+# Item used: "Carpa 4 personas Coleman" (status: delivered, seeded by infra/seed.py)
+# Delivered reservations show the "Devolver el artículo (check-out)" button on detail.
+#
+# Limitation: photo submission is not tested — the camera/gallery picker is a
+# native OS dialog that Maestro cannot interact with.
+#
+# Run: maestro test e2e/mobile/flows/reservations/checkout.yaml
+
+appId: host.exp.Exponent
+---
+- launchApp
+- tapOn:
+    text: "Iniciar sesión"
+- tapOn:
+    placeholder: "correo@ejemplo.com"
+- inputText:
+    text: "renter@rentatodo.dev"
+- tapOn:
+    placeholder: "••••••••"
+- inputText:
+    text: "Rentatodo2026!"
+- tapOn:
+    text: "Iniciar sesión"
+- assertVisible: "RentaTodo"
+
+# Navigate to reservation detail via rentals list
+- tapOn:
+    text: "Mis rentas"
+- tapOn:
+    text: "Carpa 4 personas Coleman"
+- assertVisible: "Reserva"
+- assertVisible: "Entregada"
+- assertVisible: "Devolver el artículo (check-out)"
+
+# Open the check-out screen
+- tapOn:
+    text: "Devolver el artículo (check-out)"
+
+# Assert check-out screen elements
+- assertVisible: "Check-out · Devolver artículo"
+- assertVisible: "Una sola foto como evidencia"
+- assertVisible: "Tomar foto"
+- assertVisible: "Notas sobre el estado (opcional)"
+- assertVisible: "Confirmar devolución"

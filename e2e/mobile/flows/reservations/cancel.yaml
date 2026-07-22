@@ -1,0 +1,54 @@
+# Cancel reservation — confirmation dialog happy path.
+# Verifies the renter can reach the cancel confirmation step.
+# The final "Sí, cancelar" is NOT tapped to preserve the seeded reservation
+# across test runs — the flow asserts the dialog renders and stops there.
+#
+# Prerequisites:
+#   - API running: uvicorn app.main:app --reload (apps/api/)
+#   - DB seeded: python infra/seed.py
+#   - Expo Go open on device/simulator pointed at dev server
+#
+# Item used: "Taladro percutor 18V" (status: requested, seeded by infra/seed.py)
+# Requested reservations show the "Cancelar reserva" button on detail.
+#
+# Run: maestro test e2e/mobile/flows/reservations/cancel.yaml
+
+appId: host.exp.Exponent
+---
+- launchApp
+- tapOn:
+    text: "Iniciar sesión"
+- tapOn:
+    placeholder: "correo@ejemplo.com"
+- inputText:
+    text: "renter@rentatodo.dev"
+- tapOn:
+    placeholder: "••••••••"
+- inputText:
+    text: "Rentatodo2026!"
+- tapOn:
+    text: "Iniciar sesión"
+- assertVisible: "RentaTodo"
+
+# Navigate to reservation detail via rentals list
+- tapOn:
+    text: "Mis rentas"
+- tapOn:
+    text: "Taladro percutor 18V"
+- assertVisible: "Reserva"
+- assertVisible: "Solicitada"
+- assertVisible: "Cancelar reserva"
+
+# Open the confirmation dialog
+- tapOn:
+    text: "Cancelar reserva"
+
+# Assert two-step confirmation renders
+- assertVisible: "¿Cancelar esta reserva?"
+- assertVisible: "Volver"
+- assertVisible: "Sí, cancelar"
+
+# Dismiss without cancelling — preserves seeded data for subsequent runs
+- tapOn:
+    text: "Volver"
+- assertVisible: "Cancelar reserva"
