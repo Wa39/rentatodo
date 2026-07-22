@@ -29,6 +29,6 @@ export default defineConfig({
     command: 'pnpm --filter @rentatodo/web dev',
     url: BASE_URL,
     reuseExistingServer: !process.env.CI,
-    timeout: 30_000,
+    timeout: 60_000,
   },
 })
