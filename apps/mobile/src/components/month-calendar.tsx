@@ -54,7 +54,7 @@ export function MonthCalendar({
     <View style={styles.cal}>
       <View style={styles.titleRow}>
         {onNavigateMonth ? (
-          <Pressable onPress={() => onNavigateMonth(-1)} hitSlop={8} style={styles.navButton}>
+          <Pressable onPress={() => onNavigateMonth(-1)} hitSlop={8} style={styles.navButton} accessibilityLabel="Mes anterior">
             <Ionicons name="chevron-back" size={16} color={Brand.ink} />
           </Pressable>
         ) : (
@@ -64,7 +64,7 @@ export function MonthCalendar({
           {MONTHS[month - 1]} {year}
         </Text>
         {onNavigateMonth ? (
-          <Pressable onPress={() => onNavigateMonth(1)} hitSlop={8} style={styles.navButton}>
+          <Pressable onPress={() => onNavigateMonth(1)} hitSlop={8} style={styles.navButton} accessibilityLabel="Siguiente mes">
             <Ionicons name="chevron-forward" size={16} color={Brand.ink} />
           </Pressable>
         ) : (

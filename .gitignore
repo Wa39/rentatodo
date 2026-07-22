@@ -34,6 +34,11 @@ yarn-error.log*
 coverage/
 .nyc_output/
 
+# Playwright auth state and reports
+e2e/web/playwright/.auth/
+e2e/web/playwright-report/
+e2e/web/test-results/
+
 # Python virtual environments
 venv/
 .venv/

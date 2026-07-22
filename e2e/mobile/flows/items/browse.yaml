@@ -1,5 +1,5 @@
 # Browse items on home screen — search + filter segments.
-# Requires at least one seeded item (pending infra/seed.py expansion).
+# Requires 7 seeded items (infra/seed.py).
 # Run: maestro test e2e/mobile/flows/items/browse.yaml
 
 appId: host.exp.Exponent
@@ -20,4 +20,4 @@ appId: host.exp.Exponent
     placeholder: "Buscar artículos…"
 - inputText:
     text: "bicicleta"
-- assertVisible: "bicicleta"
+- assertVisible: "Bicicleta de montaña Trek"
