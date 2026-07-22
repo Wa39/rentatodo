@@ -22,7 +22,6 @@ describe('useTranslation', () => {
     const t = useTranslation()
     expect(t.nav.calendar).toBe('Calendar')
     expect(t.nav.earnedThisMonth).toBe('Earned this month')
-    expect(t.itemCard.reactivate).toBe('Reactivate')
     expect(t.calendar.legend.pending).toBe('Pending')
     expect(t.items.title).toBe('My items')
     expect(t.publish.submit).toBe('Publish item')

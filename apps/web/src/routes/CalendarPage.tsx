@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { PageHeader } from '@/components/PageHeader'
 import { CalendarMonth } from '@/components/CalendarMonth'
 import { StatusBadge } from '@/components/StatusBadge'
+import { AuthErrorBanner } from '@/components/AuthErrorBanner'
 import { getItemDateStates } from '@/lib/availability'
 import { useItems } from '@/lib/ItemsContext'
 import { useRequests } from '@/lib/RequestsContext'
@@ -10,7 +11,7 @@ import { useTranslation } from '@/lib/i18n'
 
 export function CalendarPage() {
   const t = useTranslation()
-  const { items } = useItems()
+  const { items, loading, error } = useItems()
   const { requests } = useRequests()
   const [searchParams, setSearchParams] = useSearchParams()
   const requestedId = searchParams.get('item')
@@ -31,6 +32,26 @@ export function CalendarPage() {
 
   function handleSelect(event: ChangeEvent<HTMLSelectElement>) {
     setSearchParams({ item: event.target.value })
+  }
+
+  if (loading) {
+    return (
+      <div>
+        <PageHeader title={t.calendar.title} subtitle={t.calendar.subtitle} />
+        <div className="p-four text-sm text-muted-foreground">{t.items.loading}</div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div>
+        <PageHeader title={t.calendar.title} subtitle={t.calendar.subtitle} />
+        <div className="p-four">
+          <AuthErrorBanner message={error} />
+        </div>
+      </div>
+    )
   }
 
   if (items.length === 0) {
