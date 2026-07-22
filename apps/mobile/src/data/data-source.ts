@@ -1,7 +1,7 @@
 import { ApiDataSource } from '@/data/api/api-data-source';
 import { getApiUrl } from '@/data/api/http';
 import { MockDataSource } from '@/data/mock-data-source';
-import type { Item, ItemDetail, Reservation } from '@/data/types';
+import type { Item, ItemDetail, Report, Reservation } from '@/data/types';
 
 /**
  * App data layer, shaped like the frozen contract (packages/contracts/openapi.yaml):
@@ -25,6 +25,11 @@ export interface DataSource {
   checkInReservation(reservationId: string, photoUrl: string, notes?: string): Promise<Reservation>;
   /** POST /reservations/{id}/checkout — renter only; delivered → returned. Photo required. */
   checkOutReservation(reservationId: string, photoUrl: string, notes?: string): Promise<Reservation>;
+  /**
+   * POST /reservations/{id}/report — only from delivered|returned; one per
+   * reservation. Freezes the deposit; reservation status does NOT change.
+   */
+  reportProblem(reservationId: string, reason: string, photoUrl: string): Promise<Report>;
 }
 
 export const dataSource: DataSource = getApiUrl() ? new ApiDataSource() : new MockDataSource();

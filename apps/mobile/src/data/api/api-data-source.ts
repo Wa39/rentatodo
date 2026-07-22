@@ -1,6 +1,6 @@
 import { ApiRequestError, apiFetch } from '@/data/api/http';
 import type { DataSource } from '@/data/data-source';
-import type { Item, ItemDetail, Reservation } from '@/data/types';
+import type { Item, ItemDetail, Report, Reservation } from '@/data/types';
 
 /** Contract ItemListResponse. */
 type ItemListResponse = {
@@ -76,6 +76,13 @@ export class ApiDataSource implements DataSource {
     return apiFetch<Reservation>(`/reservations/${reservationId}/checkout`, {
       method: 'POST',
       body: JSON.stringify({ photo_url: photoUrl, ...(notes ? { notes } : {}) }),
+    });
+  }
+
+  reportProblem(reservationId: string, reason: string, photoUrl: string): Promise<Report> {
+    return apiFetch<Report>(`/reservations/${reservationId}/report`, {
+      method: 'POST',
+      body: JSON.stringify({ reason, photo_url: photoUrl }),
     });
   }
 }
