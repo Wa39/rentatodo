@@ -10,11 +10,10 @@ interface ItemCardProps {
   item: Item
   onEdit?: (item: Item) => void
   onDelete?: (item: Item) => void
-  onReactivate?: (item: Item) => void
   readOnly?: boolean
 }
 
-export function ItemCard({ item, onEdit, onDelete, onReactivate, readOnly = false }: ItemCardProps) {
+export function ItemCard({ item, onEdit, onDelete, readOnly = false }: ItemCardProps) {
   const t = useTranslation()
   const { requests } = useRequests()
   const dateRanges = getItemDateStates(item.id, requests)
@@ -68,9 +67,6 @@ export function ItemCard({ item, onEdit, onDelete, onReactivate, readOnly = fals
         )}
         {!readOnly && !item.is_active && (
           <div className="flex gap-two pt-one">
-            <Button size="sm" className="flex-1" onClick={() => onReactivate?.(item)}>
-              {t.itemCard.reactivate}
-            </Button>
             <Button size="sm" variant="outline" className="flex-1" onClick={() => onEdit?.(item)}>
               {t.itemCard.edit}
             </Button>

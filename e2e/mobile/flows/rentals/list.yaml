@@ -1,0 +1,41 @@
+# Rentals list — active tab happy path.
+# Verifies that seeded active reservations appear in "Mis rentas > Activas".
+#
+# Prerequisites:
+#   - API running: uvicorn app.main:app --reload (apps/api/)
+#   - DB seeded: python infra/seed.py
+#   - Expo Go open on device/simulator pointed at dev server
+#
+# Seeded active reservations visible in this tab:
+#   Cámara Sony A7 III      → Aprobada   (approved)
+#   Carpa 4 personas Coleman → Entregada  (delivered)
+#   Bicicleta de montaña Trek → Devuelta  (returned)
+#   Taladro percutor 18V    → Solicitada  (requested)
+#
+# Run: maestro test e2e/mobile/flows/rentals/list.yaml
+
+appId: host.exp.Exponent
+---
+- launchApp
+- tapOn:
+    text: "Iniciar sesión"
+- tapOn:
+    placeholder: "correo@ejemplo.com"
+- inputText:
+    text: "renter@rentatodo.dev"
+- tapOn:
+    placeholder: "••••••••"
+- inputText:
+    text: "Rentatodo2026!"
+- tapOn:
+    text: "Iniciar sesión"
+- assertVisible: "RentaTodo"
+
+# Navigate to the rentals tab
+- tapOn:
+    text: "Mis rentas"
+- assertVisible: "Activas"
+- assertVisible: "Pasadas"
+
+# Verify at least one active reservation badge is shown
+- assertVisible: "Aprobada"

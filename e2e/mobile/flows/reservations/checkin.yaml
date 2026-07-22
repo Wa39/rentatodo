@@ -1,0 +1,52 @@
+# Check-in flow — navigation happy path.
+# Verifies the renter can reach the check-in screen from an approved reservation.
+#
+# Prerequisites:
+#   - API running: uvicorn app.main:app --reload (apps/api/)
+#   - DB seeded: python infra/seed.py
+#   - Expo Go open on device/simulator pointed at dev server
+#
+# Item used: "Cámara Sony A7 III" (status: approved, seeded by infra/seed.py)
+# Approved reservations show the "Recibí el artículo (check-in)" button on detail.
+#
+# Limitation: photo submission is not tested here because the camera/gallery
+# picker is a native OS dialog that Maestro cannot interact with. The flow
+# asserts the full check-in UI is present and the CTA is rendered.
+#
+# Run: maestro test e2e/mobile/flows/reservations/checkin.yaml
+
+appId: host.exp.Exponent
+---
+- launchApp
+- tapOn:
+    text: "Iniciar sesión"
+- tapOn:
+    placeholder: "correo@ejemplo.com"
+- inputText:
+    text: "renter@rentatodo.dev"
+- tapOn:
+    placeholder: "••••••••"
+- inputText:
+    text: "Rentatodo2026!"
+- tapOn:
+    text: "Iniciar sesión"
+- assertVisible: "RentaTodo"
+
+# Navigate to reservation detail via rentals list
+- tapOn:
+    text: "Mis rentas"
+- tapOn:
+    text: "Cámara Sony A7 III"
+- assertVisible: "Reserva"
+- assertVisible: "Recibí el artículo (check-in)"
+
+# Open the check-in screen
+- tapOn:
+    text: "Recibí el artículo (check-in)"
+
+# Assert check-in screen elements
+- assertVisible: "Check-in · Recibir artículo"
+- assertVisible: "Una sola foto como evidencia"
+- assertVisible: "Tomar foto"
+- assertVisible: "Notas sobre el estado (opcional)"
+- assertVisible: "Confirmar recepción"

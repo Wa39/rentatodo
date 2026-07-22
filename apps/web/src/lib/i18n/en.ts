@@ -69,7 +69,6 @@ export const en = {
     calendar: 'Calendar',
     delete: 'Delete',
     perDay: '/day',
-    reactivate: 'Reactivate',
   },
   categories: {
     tools: 'Tools',
@@ -84,6 +83,8 @@ export const en = {
     title: 'My items',
     subtitle: (active: number, inactive: number) => `${active} active · ${inactive} inactive`,
     searchPlaceholder: 'Search by name or category…',
+    loadError: "Couldn't load your items. Try refreshing the page.",
+    loading: 'Loading your items…',
   },
   publish: {
     title: 'Publish item',
@@ -98,6 +99,7 @@ export const en = {
     previewEmptyDescription: 'The description you write will show up here.',
     cancel: 'Cancel',
     submit: 'Publish item',
+    submitting: 'Publishing…',
   },
   requests: {
     title: 'Requests',
