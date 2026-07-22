@@ -41,6 +41,8 @@ export const ERROR_MESSAGES: Record<string, string> = {
   DUPLICATE_RESERVATION: 'Ya existe una solicitud idéntica pendiente.',
   CANNOT_RENT_OWN_ITEM: 'No se puede alquilar un artículo propio.',
   INVALID_TRANSITION: 'La reserva ya no permite esta acción.',
+  REPORT_EXISTS: 'Esta reserva ya tiene un reporte activo.',
+  FORBIDDEN: 'No tiene permisos para esta acción.',
 };
 
 /** Spanish labels for the contract's deposit_status. */
