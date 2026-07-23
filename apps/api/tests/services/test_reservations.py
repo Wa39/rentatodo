@@ -7,6 +7,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 from app.exceptions import AppError
+from app.schemas.check_evidence import CheckInOutRequest
 from app.schemas.reservation import CreateReservationRequest
 
 
@@ -595,3 +596,190 @@ def test_assert_participant_rejects_third_party(db_session: Session, make_user, 
 
     assert exc_info.value.status_code == 403
     assert exc_info.value.code == "FORBIDDEN"
+
+
+def test_checkin_reservation_happy_path(db_session: Session, make_user, make_item) -> None:
+    """Happy path: checking in an approved reservation moves it to
+    delivered and records CheckEvidence.
+    """
+    from app.services.reservations import (
+        approve_reservation,
+        checkin_reservation,
+        create_reservation,
+    )
+
+    owner = make_user(email="checkin-owner1@example.com")
+    renter = make_user(email="checkin-renter1@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(5, 2)
+    )
+    approve_reservation(db_session, reservation_id=reservation.id, owner_id=owner.id)
+
+    checked_in = checkin_reservation(
+        db_session,
+        reservation_id=reservation.id,
+        renter_id=renter.id,
+        data=CheckInOutRequest(photo_url="https://example.com/checkin.jpg"),
+    )
+
+    assert checked_in.status == "delivered"
+
+
+def test_checkin_reservation_requires_renter(db_session: Session, make_user, make_item) -> None:
+    """Failure path: the item's owner can't check in on the renter's
+    behalf, 403 FORBIDDEN.
+    """
+    from app.services.reservations import (
+        approve_reservation,
+        checkin_reservation,
+        create_reservation,
+    )
+
+    owner = make_user(email="checkin-owner2@example.com")
+    renter = make_user(email="checkin-renter2@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(5, 2)
+    )
+    approve_reservation(db_session, reservation_id=reservation.id, owner_id=owner.id)
+
+    with pytest.raises(AppError) as exc_info:
+        checkin_reservation(
+            db_session,
+            reservation_id=reservation.id,
+            renter_id=owner.id,
+            data=CheckInOutRequest(photo_url="https://example.com/checkin.jpg"),
+        )
+
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.code == "FORBIDDEN"
+
+
+def test_checkin_reservation_requires_approved_status(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Failure path: checking in a still-requested reservation is 409
+    INVALID_TRANSITION.
+    """
+    from app.services.reservations import checkin_reservation, create_reservation
+
+    owner = make_user(email="checkin-owner3@example.com")
+    renter = make_user(email="checkin-renter3@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(5, 2)
+    )
+
+    with pytest.raises(AppError) as exc_info:
+        checkin_reservation(
+            db_session,
+            reservation_id=reservation.id,
+            renter_id=renter.id,
+            data=CheckInOutRequest(photo_url="https://example.com/checkin.jpg"),
+        )
+
+    assert exc_info.value.status_code == 409
+    assert exc_info.value.code == "INVALID_TRANSITION"
+
+
+def test_checkout_reservation_happy_path(db_session: Session, make_user, make_item) -> None:
+    """Happy path: checking out a delivered reservation moves it to returned."""
+    from app.services.reservations import (
+        approve_reservation,
+        checkin_reservation,
+        checkout_reservation,
+        create_reservation,
+    )
+
+    owner = make_user(email="checkout-owner1@example.com")
+    renter = make_user(email="checkout-renter1@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(5, 2)
+    )
+    approve_reservation(db_session, reservation_id=reservation.id, owner_id=owner.id)
+    checkin_reservation(
+        db_session,
+        reservation_id=reservation.id,
+        renter_id=renter.id,
+        data=CheckInOutRequest(photo_url="https://example.com/checkin.jpg"),
+    )
+
+    checked_out = checkout_reservation(
+        db_session,
+        reservation_id=reservation.id,
+        renter_id=renter.id,
+        data=CheckInOutRequest(photo_url="https://example.com/checkout.jpg"),
+    )
+
+    assert checked_out.status == "returned"
+
+
+def test_checkout_reservation_requires_renter(db_session: Session, make_user, make_item) -> None:
+    """Failure path: the item's owner can't check out on the renter's
+    behalf, 403 FORBIDDEN.
+    """
+    from app.services.reservations import (
+        approve_reservation,
+        checkin_reservation,
+        checkout_reservation,
+        create_reservation,
+    )
+
+    owner = make_user(email="checkout-owner2@example.com")
+    renter = make_user(email="checkout-renter2@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(5, 2)
+    )
+    approve_reservation(db_session, reservation_id=reservation.id, owner_id=owner.id)
+    checkin_reservation(
+        db_session,
+        reservation_id=reservation.id,
+        renter_id=renter.id,
+        data=CheckInOutRequest(photo_url="https://example.com/checkin.jpg"),
+    )
+
+    with pytest.raises(AppError) as exc_info:
+        checkout_reservation(
+            db_session,
+            reservation_id=reservation.id,
+            renter_id=owner.id,
+            data=CheckInOutRequest(photo_url="https://example.com/checkout.jpg"),
+        )
+
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.code == "FORBIDDEN"
+
+
+def test_checkout_reservation_requires_delivered_status(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Failure path: checking out a still-approved reservation is 409
+    INVALID_TRANSITION.
+    """
+    from app.services.reservations import (
+        approve_reservation,
+        checkout_reservation,
+        create_reservation,
+    )
+
+    owner = make_user(email="checkout-owner3@example.com")
+    renter = make_user(email="checkout-renter3@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(5, 2)
+    )
+    approve_reservation(db_session, reservation_id=reservation.id, owner_id=owner.id)
+
+    with pytest.raises(AppError) as exc_info:
+        checkout_reservation(
+            db_session,
+            reservation_id=reservation.id,
+            renter_id=renter.id,
+            data=CheckInOutRequest(photo_url="https://example.com/checkout.jpg"),
+        )
+
+    assert exc_info.value.status_code == 409
+    assert exc_info.value.code == "INVALID_TRANSITION"

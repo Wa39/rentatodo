@@ -10,8 +10,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.exceptions import AppError
+from app.models.check_evidence import CheckEvidence
 from app.models.item import Item
 from app.models.reservation import BLOCKING_STATUSES, Reservation, Transaction
+from app.schemas.check_evidence import CheckInOutRequest
 from app.schemas.reservation import CreateReservationRequest
 
 
@@ -159,6 +161,90 @@ def _assert_participant(reservation: Reservation, user_id: uuid.UUID) -> None:
     """
     if user_id != reservation.renter_id and user_id != reservation.item.owner_id:
         raise AppError(403, "FORBIDDEN", "You are not a party to this reservation")
+
+
+def checkin_reservation(
+    db: Session, reservation_id: uuid.UUID, renter_id: uuid.UUID, data: CheckInOutRequest
+) -> Reservation:
+    """Renter checks in an approved reservation, recording photo evidence.
+
+    Args:
+        db: Database session.
+        reservation_id: The reservation to check in.
+        renter_id: The authenticated caller's id — must be the
+            reservation's renter.
+        data: The check-in photo_url and optional notes.
+
+    Returns:
+        The reservation, now "delivered".
+
+    Raises:
+        AppError: 404 NOT_FOUND if the reservation doesn't exist. 403
+            FORBIDDEN if the caller isn't its renter. 409
+            INVALID_TRANSITION if the reservation isn't "approved".
+    """
+    reservation = _get_reservation_or_404(db, reservation_id)
+    if reservation.renter_id != renter_id:
+        raise AppError(403, "FORBIDDEN", "You are not the renter for this reservation")
+    if reservation.status != "approved":
+        raise AppError(
+            409, "INVALID_TRANSITION", "Only an approved reservation can be checked in"
+        )
+
+    reservation.status = "delivered"
+    db.add(
+        CheckEvidence(
+            reservation_id=reservation.id,
+            type="check_in",
+            photo_url=data.photo_url,
+            notes=data.notes,
+        )
+    )
+    db.commit()
+    db.refresh(reservation)
+    return reservation
+
+
+def checkout_reservation(
+    db: Session, reservation_id: uuid.UUID, renter_id: uuid.UUID, data: CheckInOutRequest
+) -> Reservation:
+    """Renter checks out a delivered reservation, recording photo evidence.
+
+    Args:
+        db: Database session.
+        reservation_id: The reservation to check out.
+        renter_id: The authenticated caller's id — must be the
+            reservation's renter.
+        data: The check-out photo_url and optional notes.
+
+    Returns:
+        The reservation, now "returned".
+
+    Raises:
+        AppError: 404 NOT_FOUND if the reservation doesn't exist. 403
+            FORBIDDEN if the caller isn't its renter. 409
+            INVALID_TRANSITION if the reservation isn't "delivered".
+    """
+    reservation = _get_reservation_or_404(db, reservation_id)
+    if reservation.renter_id != renter_id:
+        raise AppError(403, "FORBIDDEN", "You are not the renter for this reservation")
+    if reservation.status != "delivered":
+        raise AppError(
+            409, "INVALID_TRANSITION", "Only a delivered reservation can be checked out"
+        )
+
+    reservation.status = "returned"
+    db.add(
+        CheckEvidence(
+            reservation_id=reservation.id,
+            type="check_out",
+            photo_url=data.photo_url,
+            notes=data.notes,
+        )
+    )
+    db.commit()
+    db.refresh(reservation)
+    return reservation
 
 
 def approve_reservation(db: Session, reservation_id: uuid.UUID, owner_id: uuid.UUID) -> Reservation:

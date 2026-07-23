@@ -285,3 +285,106 @@ def test_cancel_endpoint_forbidden_for_non_renter(client: TestClient) -> None:
 
     assert response.status_code == 403
     assert response.json()["error"]["code"] == "FORBIDDEN"
+
+
+def test_checkin_endpoint_happy_path(client: TestClient) -> None:
+    """Happy path: the renter checks in an approved reservation."""
+    owner_token = _register_and_login(client, "resrouter-owner-checkin1@example.com")
+    item_id = _create_item(client, owner_token)
+    renter_token = _register_and_login(client, "resrouter-renter-checkin1@example.com")
+    create_response = client.post(
+        f"/items/{item_id}/reservations",
+        headers={"Authorization": f"Bearer {renter_token}"},
+        json={
+            "start_date": str(date.today() + timedelta(days=25)),
+            "end_date": str(date.today() + timedelta(days=26)),
+        },
+    )
+    reservation_id = create_response.json()["id"]
+    client.patch(
+        f"/reservations/{reservation_id}/approve",
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+
+    response = client.post(
+        f"/reservations/{reservation_id}/checkin",
+        headers={"Authorization": f"Bearer {renter_token}"},
+        json={"photo_url": "https://example.com/checkin.jpg"},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["status"] == "delivered"
+
+
+def test_checkin_endpoint_forbidden_for_owner(client: TestClient) -> None:
+    """Failure path: the item's owner can't check in, 403 FORBIDDEN."""
+    owner_token = _register_and_login(client, "resrouter-owner-checkin2@example.com")
+    item_id = _create_item(client, owner_token)
+    renter_token = _register_and_login(client, "resrouter-renter-checkin2@example.com")
+    create_response = client.post(
+        f"/items/{item_id}/reservations",
+        headers={"Authorization": f"Bearer {renter_token}"},
+        json={
+            "start_date": str(date.today() + timedelta(days=27)),
+            "end_date": str(date.today() + timedelta(days=28)),
+        },
+    )
+    reservation_id = create_response.json()["id"]
+    client.patch(
+        f"/reservations/{reservation_id}/approve",
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+
+    response = client.post(
+        f"/reservations/{reservation_id}/checkin",
+        headers={"Authorization": f"Bearer {owner_token}"},
+        json={"photo_url": "https://example.com/checkin.jpg"},
+    )
+
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "FORBIDDEN"
+
+
+def test_checkout_endpoint_happy_path(client: TestClient) -> None:
+    """Happy path: the renter checks out a delivered reservation."""
+    owner_token = _register_and_login(client, "resrouter-owner-checkout1@example.com")
+    item_id = _create_item(client, owner_token)
+    renter_token = _register_and_login(client, "resrouter-renter-checkout1@example.com")
+    create_response = client.post(
+        f"/items/{item_id}/reservations",
+        headers={"Authorization": f"Bearer {renter_token}"},
+        json={
+            "start_date": str(date.today() + timedelta(days=29)),
+            "end_date": str(date.today() + timedelta(days=30)),
+        },
+    )
+    reservation_id = create_response.json()["id"]
+    client.patch(
+        f"/reservations/{reservation_id}/approve",
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+    client.post(
+        f"/reservations/{reservation_id}/checkin",
+        headers={"Authorization": f"Bearer {renter_token}"},
+        json={"photo_url": "https://example.com/checkin.jpg"},
+    )
+
+    response = client.post(
+        f"/reservations/{reservation_id}/checkout",
+        headers={"Authorization": f"Bearer {renter_token}"},
+        json={"photo_url": "https://example.com/checkout.jpg"},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["status"] == "returned"
+
+
+def test_checkout_endpoint_requires_authentication(client: TestClient) -> None:
+    """Failure path: no Authorization header returns 401 UNAUTHORIZED."""
+    response = client.post(
+        "/reservations/00000000-0000-0000-0000-000000000000/checkout",
+        json={"photo_url": "https://example.com/checkout.jpg"},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "UNAUTHORIZED"

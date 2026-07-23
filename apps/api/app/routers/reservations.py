@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.dependencies.auth import get_current_user
 from app.models.user import User
+from app.schemas.check_evidence import CheckInOutRequest
 from app.schemas.reservation import (
     CreateReservationRequest,
     ReservationListResponse,
@@ -17,6 +18,8 @@ from app.schemas.reservation import (
 from app.services.reservations import (
     approve_reservation,
     cancel_reservation,
+    checkin_reservation,
+    checkout_reservation,
     create_reservation,
     list_my_requests,
     list_my_reservations,
@@ -116,6 +119,56 @@ def list_my_requests_endpoint(
         limit=limit,
         total=total,
     )
+
+
+@router.post("/reservations/{reservation_id}/checkin", status_code=201)
+def checkin_reservation_endpoint(
+    reservation_id: UUID,
+    data: CheckInOutRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ReservationResponse:
+    """Renter checks in an approved reservation with photo evidence.
+
+    Args:
+        reservation_id: The reservation to check in.
+        data: The check-in photo_url and optional notes.
+        current_user: Resolved by get_current_user — must be the
+            reservation's renter.
+        db: Database session injected by FastAPI.
+
+    Returns:
+        The reservation's public representation, now "delivered".
+    """
+    reservation = checkin_reservation(
+        db, reservation_id=reservation_id, renter_id=current_user.id, data=data
+    )
+    return ReservationResponse.model_validate(reservation)
+
+
+@router.post("/reservations/{reservation_id}/checkout", status_code=201)
+def checkout_reservation_endpoint(
+    reservation_id: UUID,
+    data: CheckInOutRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ReservationResponse:
+    """Renter checks out a delivered reservation with photo evidence.
+
+    Args:
+        reservation_id: The reservation to check out.
+        data: The check-out photo_url and optional notes.
+        current_user: Resolved by get_current_user — must be the
+            reservation's renter.
+        db: Database session injected by FastAPI.
+
+    Returns:
+        The reservation's public representation, now "returned".
+    """
+    reservation = checkout_reservation(
+        db, reservation_id=reservation_id, renter_id=current_user.id, data=data
+    )
+    return ReservationResponse.model_validate(reservation)
 
 
 @router.patch("/reservations/{reservation_id}/approve")
