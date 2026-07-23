@@ -118,7 +118,7 @@ export const mockRequests: Reservation[] = [
     item_id: mockItems[1].id,
     item_name: mockItems[1].name,
     item_photo_url: mockItems[1].photo_url,
-    renter_id: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+    renter_id: 'e0e0e0e0-e0e0-4e0e-8e0e-e0e0e0e0e0e0',
     renter_name: 'Pablo Díaz',
     start_date: '2026-07-05',
     end_date: '2026-07-06',

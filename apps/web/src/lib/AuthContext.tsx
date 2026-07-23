@@ -33,6 +33,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     tokenRef.current = token
   }, [token])
 
+  useEffect(() => {
+    function handleTokenExpired() {
+      logout()
+    }
+    window.addEventListener('rentatodo:token-expired', handleTokenExpired)
+    return () => window.removeEventListener('rentatodo:token-expired', handleTokenExpired)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   function logout() {
     setToken(null)
     setUser(null)
@@ -69,10 +78,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function register(name: string, email: string, password: string) {
     const profile = await apiRegister(name, email, password)
-    const result = await apiLogin(email, password)
-    setToken(result.access_token)
-    localStorage.setItem(TOKEN_KEY, result.access_token)
-    setUser({ id: profile.id, name: profile.name, email: profile.email })
+    try {
+      const result = await apiLogin(email, password)
+      setToken(result.access_token)
+      localStorage.setItem(TOKEN_KEY, result.access_token)
+      setUser({ id: profile.id, name: profile.name, email: profile.email })
+    } catch {
+      throw new ApiError('LOGIN_AFTER_REGISTER_FAILED', 'Account created. Please sign in.')
+    }
   }
 
   const value: AuthContextValue = {

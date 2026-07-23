@@ -7,8 +7,8 @@ describe('useTranslation', () => {
     expect(t.login.submit).toBe('Sign in')
   })
 
-  it('returns the English dictionary when locale is explicitly "en"', () => {
-    const t = useTranslation('en')
+  it('returns the English dictionary', () => {
+    const t = useTranslation()
     expect(t.nav.overview).toBe('Overview')
   })
 
