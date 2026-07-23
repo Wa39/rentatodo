@@ -42,6 +42,7 @@ export function PhotoUploadField({ id, label, value, onChange, onUploadingChange
       const publicUrl = await uploadPhoto(token, file)
       onChange(publicUrl)
     } catch (err) {
+      setPreview(value)
       const knownMessages: Record<string, string> = {
         INVALID_FILE_TYPE: t.publish.photoInvalidType,
         FILE_TOO_LARGE: t.publish.photoTooLarge,

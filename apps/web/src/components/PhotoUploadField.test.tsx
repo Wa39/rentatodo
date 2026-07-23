@@ -78,6 +78,7 @@ describe('PhotoUploadField', () => {
     await waitFor(() => expect(screen.getByText('Please choose a JPEG, PNG, or WEBP image.')).toBeInTheDocument())
     expect(onChange).not.toHaveBeenCalled()
     expect(fetch).not.toHaveBeenCalled()
+    expect(screen.queryByRole('img')).not.toBeInTheDocument()
   })
 
   it('reports uploading state via onUploadingChange while the upload is in flight', async () => {
