@@ -783,3 +783,149 @@ def test_checkout_reservation_requires_delivered_status(
 
     assert exc_info.value.status_code == 409
     assert exc_info.value.code == "INVALID_TRANSITION"
+
+
+def test_close_reservation_happy_path(db_session: Session, make_user, make_item) -> None:
+    """Happy path: closing a returned reservation releases the deposit."""
+    from app.services.reservations import (
+        approve_reservation,
+        checkin_reservation,
+        checkout_reservation,
+        close_reservation,
+        create_reservation,
+    )
+
+    owner = make_user(email="close-owner1@example.com")
+    renter = make_user(email="close-renter1@example.com")
+    item = make_item(owner_id=owner.id, price_per_day=5000)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(5, 3)
+    )
+    approve_reservation(db_session, reservation_id=reservation.id, owner_id=owner.id)
+    checkin_reservation(
+        db_session,
+        reservation_id=reservation.id,
+        renter_id=renter.id,
+        data=CheckInOutRequest(photo_url="https://example.com/in.jpg"),
+    )
+    checkout_reservation(
+        db_session,
+        reservation_id=reservation.id,
+        renter_id=renter.id,
+        data=CheckInOutRequest(photo_url="https://example.com/out.jpg"),
+    )
+
+    closed = close_reservation(db_session, reservation_id=reservation.id, owner_id=owner.id)
+
+    assert closed.status == "closed"
+    assert closed.deposit_status == "released"
+
+
+def test_close_reservation_requires_ownership(db_session: Session, make_user, make_item) -> None:
+    """Failure path: a non-owner can't close, 403 FORBIDDEN."""
+    from app.services.reservations import (
+        approve_reservation,
+        checkin_reservation,
+        checkout_reservation,
+        close_reservation,
+        create_reservation,
+    )
+
+    owner = make_user(email="close-owner2@example.com")
+    renter = make_user(email="close-renter2@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(5, 3)
+    )
+    approve_reservation(db_session, reservation_id=reservation.id, owner_id=owner.id)
+    checkin_reservation(
+        db_session,
+        reservation_id=reservation.id,
+        renter_id=renter.id,
+        data=CheckInOutRequest(photo_url="https://example.com/in.jpg"),
+    )
+    checkout_reservation(
+        db_session,
+        reservation_id=reservation.id,
+        renter_id=renter.id,
+        data=CheckInOutRequest(photo_url="https://example.com/out.jpg"),
+    )
+
+    with pytest.raises(AppError) as exc_info:
+        close_reservation(db_session, reservation_id=reservation.id, owner_id=renter.id)
+
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.code == "FORBIDDEN"
+
+
+def test_close_reservation_requires_returned_status(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Failure path: closing a still-requested reservation is 409
+    INVALID_TRANSITION.
+    """
+    from app.services.reservations import close_reservation, create_reservation
+
+    owner = make_user(email="close-owner3@example.com")
+    renter = make_user(email="close-renter3@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(5, 3)
+    )
+
+    with pytest.raises(AppError) as exc_info:
+        close_reservation(db_session, reservation_id=reservation.id, owner_id=owner.id)
+
+    assert exc_info.value.status_code == 409
+    assert exc_info.value.code == "INVALID_TRANSITION"
+
+
+def test_close_reservation_blocked_by_active_freeze(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Failure path: a returned reservation with an active freeze (open
+    problem report) can't be closed, 409 FREEZE_ACTIVE. The freeze
+    transaction is inserted directly here — report_problem (Task 6)
+    doesn't exist yet, and close_reservation's check only reads
+    deposit_status, never the reports table (see design spec).
+    """
+    from app.models.reservation import Transaction
+    from app.services.reservations import (
+        approve_reservation,
+        checkin_reservation,
+        checkout_reservation,
+        close_reservation,
+        create_reservation,
+    )
+
+    owner = make_user(email="close-owner4@example.com")
+    renter = make_user(email="close-renter4@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(5, 3)
+    )
+    approve_reservation(db_session, reservation_id=reservation.id, owner_id=owner.id)
+    checkin_reservation(
+        db_session,
+        reservation_id=reservation.id,
+        renter_id=renter.id,
+        data=CheckInOutRequest(photo_url="https://example.com/in.jpg"),
+    )
+    checkout_reservation(
+        db_session,
+        reservation_id=reservation.id,
+        renter_id=renter.id,
+        data=CheckInOutRequest(photo_url="https://example.com/out.jpg"),
+    )
+    db_session.add(
+        Transaction(
+            reservation_id=reservation.id, type="freeze", amount=reservation.deposit_amount
+        )
+    )
+    db_session.commit()
+
+    with pytest.raises(AppError) as exc_info:
+        close_reservation(db_session, reservation_id=reservation.id, owner_id=owner.id)
+
+    assert exc_info.value.status_code == 409
+    assert exc_info.value.code == "FREEZE_ACTIVE"

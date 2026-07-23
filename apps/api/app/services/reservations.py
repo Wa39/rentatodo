@@ -247,6 +247,43 @@ def checkout_reservation(
     return reservation
 
 
+def close_reservation(db: Session, reservation_id: uuid.UUID, owner_id: uuid.UUID) -> Reservation:
+    """Owner closes a returned reservation, releasing the deposit.
+
+    Args:
+        db: Database session.
+        reservation_id: The reservation to close.
+        owner_id: The authenticated caller's id — must be the item's owner.
+
+    Returns:
+        The closed Reservation, with a "release" Transaction inserted.
+
+    Raises:
+        AppError: 404 NOT_FOUND if the reservation doesn't exist. 403
+            FORBIDDEN if the caller isn't the item's owner. 409
+            INVALID_TRANSITION if the reservation isn't "returned". 409
+            FREEZE_ACTIVE if an open problem report exists (deposit is
+            frozen).
+    """
+    reservation = _get_reservation_or_404(db, reservation_id)
+    if reservation.item.owner_id != owner_id:
+        raise AppError(403, "FORBIDDEN", "You do not own this item")
+    if reservation.status != "returned":
+        raise AppError(409, "INVALID_TRANSITION", "Only a returned reservation can be closed")
+    if reservation.deposit_status == "frozen":
+        raise AppError(
+            409, "FREEZE_ACTIVE", "Cannot close a reservation with an open problem report"
+        )
+
+    reservation.status = "closed"
+    db.add(
+        Transaction(reservation_id=reservation.id, type="release", amount=reservation.deposit_amount)
+    )
+    db.commit()
+    db.refresh(reservation)
+    return reservation
+
+
 def approve_reservation(db: Session, reservation_id: uuid.UUID, owner_id: uuid.UUID) -> Reservation:
     """Owner approves a requested reservation.
 

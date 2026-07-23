@@ -20,6 +20,7 @@ from app.services.reservations import (
     cancel_reservation,
     checkin_reservation,
     checkout_reservation,
+    close_reservation,
     create_reservation,
     list_my_requests,
     list_my_reservations,
@@ -168,6 +169,26 @@ def checkout_reservation_endpoint(
     reservation = checkout_reservation(
         db, reservation_id=reservation_id, renter_id=current_user.id, data=data
     )
+    return ReservationResponse.model_validate(reservation)
+
+
+@router.patch("/reservations/{reservation_id}/close")
+def close_reservation_endpoint(
+    reservation_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ReservationResponse:
+    """Owner closes a returned reservation, releasing the deposit.
+
+    Args:
+        reservation_id: The reservation to close.
+        current_user: Resolved by get_current_user — must be the item's owner.
+        db: Database session injected by FastAPI.
+
+    Returns:
+        The closed reservation's public representation.
+    """
+    reservation = close_reservation(db, reservation_id=reservation_id, owner_id=current_user.id)
     return ReservationResponse.model_validate(reservation)
 
 

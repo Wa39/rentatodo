@@ -388,3 +388,83 @@ def test_checkout_endpoint_requires_authentication(client: TestClient) -> None:
 
     assert response.status_code == 401
     assert response.json()["error"]["code"] == "UNAUTHORIZED"
+
+
+def test_close_endpoint_happy_path(client: TestClient) -> None:
+    """Happy path: the owner closes a returned reservation, deposit
+    becomes released.
+    """
+    owner_token = _register_and_login(client, "resrouter-owner-close1@example.com")
+    item_id = _create_item(client, owner_token)
+    renter_token = _register_and_login(client, "resrouter-renter-close1@example.com")
+    create_response = client.post(
+        f"/items/{item_id}/reservations",
+        headers={"Authorization": f"Bearer {renter_token}"},
+        json={
+            "start_date": str(date.today() + timedelta(days=31)),
+            "end_date": str(date.today() + timedelta(days=32)),
+        },
+    )
+    reservation_id = create_response.json()["id"]
+    client.patch(
+        f"/reservations/{reservation_id}/approve",
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+    client.post(
+        f"/reservations/{reservation_id}/checkin",
+        headers={"Authorization": f"Bearer {renter_token}"},
+        json={"photo_url": "https://example.com/checkin.jpg"},
+    )
+    client.post(
+        f"/reservations/{reservation_id}/checkout",
+        headers={"Authorization": f"Bearer {renter_token}"},
+        json={"photo_url": "https://example.com/checkout.jpg"},
+    )
+
+    response = client.patch(
+        f"/reservations/{reservation_id}/close",
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "closed"
+    assert body["deposit_status"] == "released"
+
+
+def test_close_endpoint_forbidden_for_renter(client: TestClient) -> None:
+    """Failure path: the renter can't close, 403 FORBIDDEN."""
+    owner_token = _register_and_login(client, "resrouter-owner-close2@example.com")
+    item_id = _create_item(client, owner_token)
+    renter_token = _register_and_login(client, "resrouter-renter-close2@example.com")
+    create_response = client.post(
+        f"/items/{item_id}/reservations",
+        headers={"Authorization": f"Bearer {renter_token}"},
+        json={
+            "start_date": str(date.today() + timedelta(days=33)),
+            "end_date": str(date.today() + timedelta(days=34)),
+        },
+    )
+    reservation_id = create_response.json()["id"]
+    client.patch(
+        f"/reservations/{reservation_id}/approve",
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+    client.post(
+        f"/reservations/{reservation_id}/checkin",
+        headers={"Authorization": f"Bearer {renter_token}"},
+        json={"photo_url": "https://example.com/checkin.jpg"},
+    )
+    client.post(
+        f"/reservations/{reservation_id}/checkout",
+        headers={"Authorization": f"Bearer {renter_token}"},
+        json={"photo_url": "https://example.com/checkout.jpg"},
+    )
+
+    response = client.patch(
+        f"/reservations/{reservation_id}/close",
+        headers={"Authorization": f"Bearer {renter_token}"},
+    )
+
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "FORBIDDEN"
