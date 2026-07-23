@@ -7,6 +7,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 from app.exceptions import AppError
+from app.schemas.check_evidence import CheckInOutRequest
 from app.schemas.reservation import CreateReservationRequest
 
 
@@ -526,3 +527,529 @@ def test_list_my_requests_filters_by_status(
 
     assert total == 1
     assert reservations[0].status == "rejected"
+
+
+def test_get_reservation_or_404_locks_the_row(db_session: Session, make_user, make_item) -> None:
+    """The lookup used by every mutating endpoint takes a row lock
+    (FOR UPDATE), so two concurrent calls on the same reservation can't
+    both pass a status check before either commits.
+    """
+    from sqlalchemy import event
+
+    from app.services import reservations
+    from app.services.reservations import create_reservation
+
+    owner = make_user(email="lock-owner1@example.com")
+    renter = make_user(email="lock-renter1@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(5, 2)
+    )
+
+    captured_sql = []
+
+    def _capture(conn, cursor, statement, parameters, context, executemany):
+        captured_sql.append(statement)
+
+    event.listen(db_session.get_bind(), "before_cursor_execute", _capture)
+    try:
+        reservations._get_reservation_or_404(db_session, reservation.id)
+    finally:
+        event.remove(db_session.get_bind(), "before_cursor_execute", _capture)
+
+    assert any("FOR UPDATE" in sql.upper() for sql in captured_sql)
+
+
+def test_assert_participant_allows_renter_and_owner(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Happy path: both the renter and the item's owner satisfy the check."""
+    from app.services.reservations import _assert_participant, create_reservation
+
+    owner = make_user(email="participant-owner1@example.com")
+    renter = make_user(email="participant-renter1@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(5, 2)
+    )
+
+    _assert_participant(reservation, renter.id)
+    _assert_participant(reservation, owner.id)
+
+
+def test_assert_participant_rejects_third_party(db_session: Session, make_user, make_item) -> None:
+    """Failure path: a user who is neither the renter nor the owner is
+    403 FORBIDDEN.
+    """
+    from app.services.reservations import _assert_participant, create_reservation
+
+    owner = make_user(email="participant-owner2@example.com")
+    renter = make_user(email="participant-renter2@example.com")
+    stranger = make_user(email="participant-stranger2@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(5, 2)
+    )
+
+    with pytest.raises(AppError) as exc_info:
+        _assert_participant(reservation, stranger.id)
+
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.code == "FORBIDDEN"
+
+
+def test_checkin_reservation_happy_path(db_session: Session, make_user, make_item) -> None:
+    """Happy path: checking in an approved reservation moves it to
+    delivered and records CheckEvidence.
+    """
+    from app.services.reservations import (
+        approve_reservation,
+        checkin_reservation,
+        create_reservation,
+    )
+
+    owner = make_user(email="checkin-owner1@example.com")
+    renter = make_user(email="checkin-renter1@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(5, 2)
+    )
+    approve_reservation(db_session, reservation_id=reservation.id, owner_id=owner.id)
+
+    checked_in = checkin_reservation(
+        db_session,
+        reservation_id=reservation.id,
+        renter_id=renter.id,
+        data=CheckInOutRequest(photo_url="https://example.com/checkin.jpg"),
+    )
+
+    assert checked_in.status == "delivered"
+
+
+def test_checkin_reservation_requires_renter(db_session: Session, make_user, make_item) -> None:
+    """Failure path: the item's owner can't check in on the renter's
+    behalf, 403 FORBIDDEN.
+    """
+    from app.services.reservations import (
+        approve_reservation,
+        checkin_reservation,
+        create_reservation,
+    )
+
+    owner = make_user(email="checkin-owner2@example.com")
+    renter = make_user(email="checkin-renter2@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(5, 2)
+    )
+    approve_reservation(db_session, reservation_id=reservation.id, owner_id=owner.id)
+
+    with pytest.raises(AppError) as exc_info:
+        checkin_reservation(
+            db_session,
+            reservation_id=reservation.id,
+            renter_id=owner.id,
+            data=CheckInOutRequest(photo_url="https://example.com/checkin.jpg"),
+        )
+
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.code == "FORBIDDEN"
+
+
+def test_checkin_reservation_requires_approved_status(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Failure path: checking in a still-requested reservation is 409
+    INVALID_TRANSITION.
+    """
+    from app.services.reservations import checkin_reservation, create_reservation
+
+    owner = make_user(email="checkin-owner3@example.com")
+    renter = make_user(email="checkin-renter3@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(5, 2)
+    )
+
+    with pytest.raises(AppError) as exc_info:
+        checkin_reservation(
+            db_session,
+            reservation_id=reservation.id,
+            renter_id=renter.id,
+            data=CheckInOutRequest(photo_url="https://example.com/checkin.jpg"),
+        )
+
+    assert exc_info.value.status_code == 409
+    assert exc_info.value.code == "INVALID_TRANSITION"
+
+
+def test_checkout_reservation_happy_path(db_session: Session, make_user, make_item) -> None:
+    """Happy path: checking out a delivered reservation moves it to returned."""
+    from app.services.reservations import (
+        approve_reservation,
+        checkin_reservation,
+        checkout_reservation,
+        create_reservation,
+    )
+
+    owner = make_user(email="checkout-owner1@example.com")
+    renter = make_user(email="checkout-renter1@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(5, 2)
+    )
+    approve_reservation(db_session, reservation_id=reservation.id, owner_id=owner.id)
+    checkin_reservation(
+        db_session,
+        reservation_id=reservation.id,
+        renter_id=renter.id,
+        data=CheckInOutRequest(photo_url="https://example.com/checkin.jpg"),
+    )
+
+    checked_out = checkout_reservation(
+        db_session,
+        reservation_id=reservation.id,
+        renter_id=renter.id,
+        data=CheckInOutRequest(photo_url="https://example.com/checkout.jpg"),
+    )
+
+    assert checked_out.status == "returned"
+
+
+def test_checkout_reservation_requires_renter(db_session: Session, make_user, make_item) -> None:
+    """Failure path: the item's owner can't check out on the renter's
+    behalf, 403 FORBIDDEN.
+    """
+    from app.services.reservations import (
+        approve_reservation,
+        checkin_reservation,
+        checkout_reservation,
+        create_reservation,
+    )
+
+    owner = make_user(email="checkout-owner2@example.com")
+    renter = make_user(email="checkout-renter2@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(5, 2)
+    )
+    approve_reservation(db_session, reservation_id=reservation.id, owner_id=owner.id)
+    checkin_reservation(
+        db_session,
+        reservation_id=reservation.id,
+        renter_id=renter.id,
+        data=CheckInOutRequest(photo_url="https://example.com/checkin.jpg"),
+    )
+
+    with pytest.raises(AppError) as exc_info:
+        checkout_reservation(
+            db_session,
+            reservation_id=reservation.id,
+            renter_id=owner.id,
+            data=CheckInOutRequest(photo_url="https://example.com/checkout.jpg"),
+        )
+
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.code == "FORBIDDEN"
+
+
+def test_checkout_reservation_requires_delivered_status(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Failure path: checking out a still-approved reservation is 409
+    INVALID_TRANSITION.
+    """
+    from app.services.reservations import (
+        approve_reservation,
+        checkout_reservation,
+        create_reservation,
+    )
+
+    owner = make_user(email="checkout-owner3@example.com")
+    renter = make_user(email="checkout-renter3@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(5, 2)
+    )
+    approve_reservation(db_session, reservation_id=reservation.id, owner_id=owner.id)
+
+    with pytest.raises(AppError) as exc_info:
+        checkout_reservation(
+            db_session,
+            reservation_id=reservation.id,
+            renter_id=renter.id,
+            data=CheckInOutRequest(photo_url="https://example.com/checkout.jpg"),
+        )
+
+    assert exc_info.value.status_code == 409
+    assert exc_info.value.code == "INVALID_TRANSITION"
+
+
+def test_close_reservation_happy_path(db_session: Session, make_user, make_item) -> None:
+    """Happy path: closing a returned reservation releases the deposit."""
+    from app.services.reservations import (
+        approve_reservation,
+        checkin_reservation,
+        checkout_reservation,
+        close_reservation,
+        create_reservation,
+    )
+
+    owner = make_user(email="close-owner1@example.com")
+    renter = make_user(email="close-renter1@example.com")
+    item = make_item(owner_id=owner.id, price_per_day=5000)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(5, 3)
+    )
+    approve_reservation(db_session, reservation_id=reservation.id, owner_id=owner.id)
+    checkin_reservation(
+        db_session,
+        reservation_id=reservation.id,
+        renter_id=renter.id,
+        data=CheckInOutRequest(photo_url="https://example.com/in.jpg"),
+    )
+    checkout_reservation(
+        db_session,
+        reservation_id=reservation.id,
+        renter_id=renter.id,
+        data=CheckInOutRequest(photo_url="https://example.com/out.jpg"),
+    )
+
+    closed = close_reservation(db_session, reservation_id=reservation.id, owner_id=owner.id)
+
+    assert closed.status == "closed"
+    assert closed.deposit_status == "released"
+
+
+def test_close_reservation_requires_ownership(db_session: Session, make_user, make_item) -> None:
+    """Failure path: a non-owner can't close, 403 FORBIDDEN."""
+    from app.services.reservations import (
+        approve_reservation,
+        checkin_reservation,
+        checkout_reservation,
+        close_reservation,
+        create_reservation,
+    )
+
+    owner = make_user(email="close-owner2@example.com")
+    renter = make_user(email="close-renter2@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(5, 3)
+    )
+    approve_reservation(db_session, reservation_id=reservation.id, owner_id=owner.id)
+    checkin_reservation(
+        db_session,
+        reservation_id=reservation.id,
+        renter_id=renter.id,
+        data=CheckInOutRequest(photo_url="https://example.com/in.jpg"),
+    )
+    checkout_reservation(
+        db_session,
+        reservation_id=reservation.id,
+        renter_id=renter.id,
+        data=CheckInOutRequest(photo_url="https://example.com/out.jpg"),
+    )
+
+    with pytest.raises(AppError) as exc_info:
+        close_reservation(db_session, reservation_id=reservation.id, owner_id=renter.id)
+
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.code == "FORBIDDEN"
+
+
+def test_close_reservation_requires_returned_status(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Failure path: closing a still-requested reservation is 409
+    INVALID_TRANSITION.
+    """
+    from app.services.reservations import close_reservation, create_reservation
+
+    owner = make_user(email="close-owner3@example.com")
+    renter = make_user(email="close-renter3@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(5, 3)
+    )
+
+    with pytest.raises(AppError) as exc_info:
+        close_reservation(db_session, reservation_id=reservation.id, owner_id=owner.id)
+
+    assert exc_info.value.status_code == 409
+    assert exc_info.value.code == "INVALID_TRANSITION"
+
+
+def test_close_reservation_blocked_by_active_freeze(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Failure path: a returned reservation with an active freeze (open
+    problem report) can't be closed, 409 FREEZE_ACTIVE. The freeze
+    transaction is inserted directly here — report_problem (Task 6)
+    doesn't exist yet, and close_reservation's check only reads
+    deposit_status, never the reports table (see design spec).
+    """
+    from app.models.reservation import Transaction
+    from app.services.reservations import (
+        approve_reservation,
+        checkin_reservation,
+        checkout_reservation,
+        close_reservation,
+        create_reservation,
+    )
+
+    owner = make_user(email="close-owner4@example.com")
+    renter = make_user(email="close-renter4@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(5, 3)
+    )
+    approve_reservation(db_session, reservation_id=reservation.id, owner_id=owner.id)
+    checkin_reservation(
+        db_session,
+        reservation_id=reservation.id,
+        renter_id=renter.id,
+        data=CheckInOutRequest(photo_url="https://example.com/in.jpg"),
+    )
+    checkout_reservation(
+        db_session,
+        reservation_id=reservation.id,
+        renter_id=renter.id,
+        data=CheckInOutRequest(photo_url="https://example.com/out.jpg"),
+    )
+    db_session.add(
+        Transaction(
+            reservation_id=reservation.id, type="freeze", amount=reservation.deposit_amount
+        )
+    )
+    db_session.commit()
+
+    with pytest.raises(AppError) as exc_info:
+        close_reservation(db_session, reservation_id=reservation.id, owner_id=owner.id)
+
+    assert exc_info.value.status_code == 409
+    assert exc_info.value.code == "FREEZE_ACTIVE"
+
+
+def test_get_transactions_happy_path(db_session: Session, make_user, make_item) -> None:
+    """Happy path: after approving, the reservation has one hold transaction."""
+    from app.services.reservations import approve_reservation, create_reservation, get_transactions
+
+    owner = make_user(email="transactions-owner1@example.com")
+    renter = make_user(email="transactions-renter1@example.com")
+    item = make_item(owner_id=owner.id, price_per_day=5000)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(5, 3)
+    )
+    approve_reservation(db_session, reservation_id=reservation.id, owner_id=owner.id)
+
+    transactions = get_transactions(db_session, reservation_id=reservation.id, user_id=renter.id)
+
+    assert len(transactions) == 1
+    assert transactions[0].type == "hold"
+    assert transactions[0].amount == 15000
+
+
+def test_get_transactions_requires_participant(db_session: Session, make_user, make_item) -> None:
+    """Failure path: a stranger can't view the transaction history, 403 FORBIDDEN."""
+    from app.services.reservations import create_reservation, get_transactions
+
+    owner = make_user(email="transactions-owner2@example.com")
+    renter = make_user(email="transactions-renter2@example.com")
+    stranger = make_user(email="transactions-stranger2@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(5, 3)
+    )
+
+    with pytest.raises(AppError) as exc_info:
+        get_transactions(db_session, reservation_id=reservation.id, user_id=stranger.id)
+
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.code == "FORBIDDEN"
+
+
+def _make_closed_reservation(db_session: Session, owner, renter, item, start_offset: int):
+    from app.services.reservations import (
+        approve_reservation,
+        checkin_reservation,
+        checkout_reservation,
+        close_reservation,
+        create_reservation,
+    )
+
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(start_offset, 2)
+    )
+    approve_reservation(db_session, reservation_id=reservation.id, owner_id=owner.id)
+    checkin_reservation(
+        db_session,
+        reservation_id=reservation.id,
+        renter_id=renter.id,
+        data=CheckInOutRequest(photo_url="https://example.com/in.jpg"),
+    )
+    checkout_reservation(
+        db_session,
+        reservation_id=reservation.id,
+        renter_id=renter.id,
+        data=CheckInOutRequest(photo_url="https://example.com/out.jpg"),
+    )
+    return close_reservation(db_session, reservation_id=reservation.id, owner_id=owner.id)
+
+
+def test_get_earnings_happy_path(db_session: Session, make_user, make_item) -> None:
+    """Happy path: total_earnings and by_item reflect a closed, released reservation."""
+    from app.services.reservations import get_earnings
+
+    owner = make_user(email="earnings-owner1@example.com")
+    renter = make_user(email="earnings-renter1@example.com")
+    item = make_item(owner_id=owner.id, price_per_day=5000, name="Taladro Bosch")
+    _make_closed_reservation(db_session, owner, renter, item, start_offset=5)
+
+    earnings = get_earnings(db_session, owner_id=owner.id)
+
+    assert earnings.total_earnings == 10000
+    assert len(earnings.by_item) == 1
+    assert earnings.by_item[0].item_name == "Taladro Bosch"
+    assert earnings.by_item[0].total == 10000
+    assert len(earnings.by_item[0].rentals) == 1
+
+
+def test_get_earnings_only_counts_closed_reservations(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Edge path: an approved-but-not-closed reservation doesn't count
+    toward earnings.
+    """
+    from app.services.reservations import approve_reservation, create_reservation, get_earnings
+
+    owner = make_user(email="earnings-owner2@example.com")
+    renter = make_user(email="earnings-renter2@example.com")
+    item = make_item(owner_id=owner.id, price_per_day=5000)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(5, 2)
+    )
+    approve_reservation(db_session, reservation_id=reservation.id, owner_id=owner.id)
+
+    earnings = get_earnings(db_session, owner_id=owner.id)
+
+    assert earnings.total_earnings == 0
+    assert earnings.by_item == []
+
+
+def test_get_earnings_only_counts_this_owners_items(db_session: Session, make_user, make_item) -> None:
+    """Edge path: a different owner's closed reservation isn't counted —
+    cross-tenant isolation.
+    """
+    from app.services.reservations import get_earnings
+
+    owner_a = make_user(email="earnings-ownerA@example.com")
+    owner_b = make_user(email="earnings-ownerB@example.com")
+    renter = make_user(email="earnings-renter3@example.com")
+    item_a = make_item(owner_id=owner_a.id, price_per_day=5000)
+    _make_closed_reservation(db_session, owner_a, renter, item_a, start_offset=5)
+
+    earnings_b = get_earnings(db_session, owner_id=owner_b.id)
+
+    assert earnings_b.total_earnings == 0
+    assert earnings_b.by_item == []

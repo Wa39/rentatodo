@@ -10,8 +10,11 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.exceptions import AppError
+from app.models.check_evidence import CheckEvidence
 from app.models.item import Item
 from app.models.reservation import BLOCKING_STATUSES, Reservation, Transaction
+from app.schemas.check_evidence import CheckInOutRequest
+from app.schemas.earnings import EarningsByItem, EarningsResponse, EarningsRental
 from app.schemas.reservation import CreateReservationRequest
 
 
@@ -113,7 +116,8 @@ def create_reservation(
 
 
 def _get_reservation_or_404(db: Session, reservation_id: uuid.UUID) -> Reservation:
-    """Look up a reservation by id, with its item and renter pre-loaded.
+    """Look up a reservation by id, with its item and renter pre-loaded,
+    holding a row lock for the rest of the caller's transaction.
 
     Args:
         db: Database session.
@@ -125,6 +129,15 @@ def _get_reservation_or_404(db: Session, reservation_id: uuid.UUID) -> Reservati
     Raises:
         AppError: 404 NOT_FOUND if no reservation exists with that id.
     """
+    # .with_for_update() added now that close_reservation and report_problem
+    # insert real ledger entries (release/freeze) whose ordering matters —
+    # see design spec 2026-07-21. Two concurrent calls on the same reservation
+    # can no longer both pass a status check before either commits.
+    # of=Reservation is required: joinedload(item)/joinedload(renter) below
+    # produce LEFT OUTER JOINs (neither relationship sets innerjoin=True),
+    # and Postgres rejects a bare FOR UPDATE on the nullable side of an outer
+    # join. Scoping the lock to just the reservations row also avoids
+    # incidentally locking the joined item/user rows.
     reservation = db.scalar(
         select(Reservation)
         .options(joinedload(Reservation.item), joinedload(Reservation.renter))
@@ -133,6 +146,142 @@ def _get_reservation_or_404(db: Session, reservation_id: uuid.UUID) -> Reservati
     )
     if reservation is None:
         raise AppError(404, "NOT_FOUND", "Reservation not found")
+    return reservation
+
+
+def _assert_participant(reservation: Reservation, user_id: uuid.UUID) -> None:
+    """Ensure the caller is either the reservation's renter or the
+    rented item's owner.
+
+    Args:
+        reservation: The reservation being accessed.
+        user_id: The authenticated caller's id.
+
+    Raises:
+        AppError: 403 FORBIDDEN if the caller is neither party.
+    """
+    if user_id != reservation.renter_id and user_id != reservation.item.owner_id:
+        raise AppError(403, "FORBIDDEN", "You are not a party to this reservation")
+
+
+def checkin_reservation(
+    db: Session, reservation_id: uuid.UUID, renter_id: uuid.UUID, data: CheckInOutRequest
+) -> Reservation:
+    """Renter checks in an approved reservation, recording photo evidence.
+
+    Args:
+        db: Database session.
+        reservation_id: The reservation to check in.
+        renter_id: The authenticated caller's id — must be the
+            reservation's renter.
+        data: The check-in photo_url and optional notes.
+
+    Returns:
+        The reservation, now "delivered".
+
+    Raises:
+        AppError: 404 NOT_FOUND if the reservation doesn't exist. 403
+            FORBIDDEN if the caller isn't its renter. 409
+            INVALID_TRANSITION if the reservation isn't "approved".
+    """
+    reservation = _get_reservation_or_404(db, reservation_id)
+    if reservation.renter_id != renter_id:
+        raise AppError(403, "FORBIDDEN", "You are not the renter for this reservation")
+    if reservation.status != "approved":
+        raise AppError(
+            409, "INVALID_TRANSITION", "Only an approved reservation can be checked in"
+        )
+
+    reservation.status = "delivered"
+    db.add(
+        CheckEvidence(
+            reservation_id=reservation.id,
+            type="check_in",
+            photo_url=data.photo_url,
+            notes=data.notes,
+        )
+    )
+    db.commit()
+    db.refresh(reservation)
+    return reservation
+
+
+def checkout_reservation(
+    db: Session, reservation_id: uuid.UUID, renter_id: uuid.UUID, data: CheckInOutRequest
+) -> Reservation:
+    """Renter checks out a delivered reservation, recording photo evidence.
+
+    Args:
+        db: Database session.
+        reservation_id: The reservation to check out.
+        renter_id: The authenticated caller's id — must be the
+            reservation's renter.
+        data: The check-out photo_url and optional notes.
+
+    Returns:
+        The reservation, now "returned".
+
+    Raises:
+        AppError: 404 NOT_FOUND if the reservation doesn't exist. 403
+            FORBIDDEN if the caller isn't its renter. 409
+            INVALID_TRANSITION if the reservation isn't "delivered".
+    """
+    reservation = _get_reservation_or_404(db, reservation_id)
+    if reservation.renter_id != renter_id:
+        raise AppError(403, "FORBIDDEN", "You are not the renter for this reservation")
+    if reservation.status != "delivered":
+        raise AppError(
+            409, "INVALID_TRANSITION", "Only a delivered reservation can be checked out"
+        )
+
+    reservation.status = "returned"
+    db.add(
+        CheckEvidence(
+            reservation_id=reservation.id,
+            type="check_out",
+            photo_url=data.photo_url,
+            notes=data.notes,
+        )
+    )
+    db.commit()
+    db.refresh(reservation)
+    return reservation
+
+
+def close_reservation(db: Session, reservation_id: uuid.UUID, owner_id: uuid.UUID) -> Reservation:
+    """Owner closes a returned reservation, releasing the deposit.
+
+    Args:
+        db: Database session.
+        reservation_id: The reservation to close.
+        owner_id: The authenticated caller's id — must be the item's owner.
+
+    Returns:
+        The closed Reservation, with a "release" Transaction inserted.
+
+    Raises:
+        AppError: 404 NOT_FOUND if the reservation doesn't exist. 403
+            FORBIDDEN if the caller isn't the item's owner. 409
+            INVALID_TRANSITION if the reservation isn't "returned". 409
+            FREEZE_ACTIVE if an open problem report exists (deposit is
+            frozen).
+    """
+    reservation = _get_reservation_or_404(db, reservation_id)
+    if reservation.item.owner_id != owner_id:
+        raise AppError(403, "FORBIDDEN", "You do not own this item")
+    if reservation.status != "returned":
+        raise AppError(409, "INVALID_TRANSITION", "Only a returned reservation can be closed")
+    if reservation.deposit_status == "frozen":
+        raise AppError(
+            409, "FREEZE_ACTIVE", "Cannot close a reservation with an open problem report"
+        )
+
+    reservation.status = "closed"
+    db.add(
+        Transaction(reservation_id=reservation.id, type="release", amount=reservation.deposit_amount)
+    )
+    db.commit()
+    db.refresh(reservation)
     return reservation
 
 
@@ -303,3 +452,69 @@ def list_my_requests(
     query = query.order_by(Reservation.created_at.desc()).offset((page - 1) * limit).limit(limit)
     reservations = list(db.scalars(query).unique())
     return reservations, total
+
+
+def get_transactions(
+    db: Session, reservation_id: uuid.UUID, user_id: uuid.UUID
+) -> list[Transaction]:
+    """Get a reservation's full deposit transaction history.
+
+    Args:
+        db: Database session.
+        reservation_id: The reservation whose history is requested.
+        user_id: The authenticated caller's id — must be its renter or
+            the item's owner.
+
+    Returns:
+        The reservation's transactions, oldest first.
+
+    Raises:
+        AppError: 404 NOT_FOUND if the reservation doesn't exist. 403
+            FORBIDDEN if the caller is neither party.
+    """
+    reservation = _get_reservation_or_404(db, reservation_id)
+    _assert_participant(reservation, user_id)
+    return reservation.transactions
+
+
+def get_earnings(db: Session, owner_id: uuid.UUID) -> EarningsResponse:
+    """Summarize an owner's earnings from closed, paid-out reservations.
+
+    Args:
+        db: Database session.
+        owner_id: The authenticated caller's id.
+
+    Returns:
+        Total earnings and a per-item breakdown with each rental's date
+        range and amount. Renter names are never included.
+    """
+    reservations = db.scalars(
+        select(Reservation)
+        .options(joinedload(Reservation.item), selectinload(Reservation.transactions))
+        .where(
+            Reservation.item_id.in_(select(Item.id).where(Item.owner_id == owner_id)),
+            Reservation.status == "closed",
+        )
+    ).unique()
+
+    by_item: dict[uuid.UUID, EarningsByItem] = {}
+    total_earnings = 0
+    for reservation in reservations:
+        if reservation.deposit_status != "released":
+            continue
+        total_earnings += reservation.deposit_amount
+        item_id = reservation.item_id
+        if item_id not in by_item:
+            by_item[item_id] = EarningsByItem(
+                item_id=item_id, item_name=reservation.item_name, total=0, rentals=[]
+            )
+        by_item[item_id].total += reservation.deposit_amount
+        by_item[item_id].rentals.append(
+            EarningsRental(
+                start_date=reservation.start_date,
+                end_date=reservation.end_date,
+                amount=reservation.deposit_amount,
+            )
+        )
+
+    return EarningsResponse(total_earnings=total_earnings, by_item=list(by_item.values()))
