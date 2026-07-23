@@ -15,6 +15,10 @@ from app.models.reservation import BLOCKING_STATUSES, Reservation
 from app.schemas.item import CreateItemRequest, UpdateItemRequest
 
 
+def _fetch_item_with_owner(db: Session, item_id: uuid.UUID) -> Item:
+    return db.scalar(select(Item).options(joinedload(Item.owner)).where(Item.id == item_id))
+
+
 def create_item(db: Session, owner_id: uuid.UUID, data: CreateItemRequest) -> Item:
     """Publish a new item.
 
@@ -37,8 +41,7 @@ def create_item(db: Session, owner_id: uuid.UUID, data: CreateItemRequest) -> It
     )
     db.add(item)
     db.commit()
-    db.refresh(item)
-    return item
+    return _fetch_item_with_owner(db, item.id)
 
 
 def get_item(db: Session, item_id: uuid.UUID) -> Item:
@@ -257,8 +260,7 @@ def update_item(
         item.photo_url = str(data.photo_url)
 
     db.commit()
-    db.refresh(item)
-    return item
+    return _fetch_item_with_owner(db, item.id)
 
 
 def delete_item(db: Session, item_id: uuid.UUID, owner_id: uuid.UUID) -> Item:
@@ -287,8 +289,7 @@ def delete_item(db: Session, item_id: uuid.UUID, owner_id: uuid.UUID) -> Item:
 
     item.is_active = False
     db.commit()
-    db.refresh(item)
-    return item
+    return _fetch_item_with_owner(db, item.id)
 
 
 def list_my_items(db: Session, owner_id: uuid.UUID) -> list[Item]:

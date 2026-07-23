@@ -125,16 +125,11 @@ def _get_reservation_or_404(db: Session, reservation_id: uuid.UUID) -> Reservati
     Raises:
         AppError: 404 NOT_FOUND if no reservation exists with that id.
     """
-    # Note: No row lock (.with_for_update()) is taken here, unlike the Item
-    # lock in create_reservation(). Two concurrent calls on the same reservation
-    # could both pass the status check and each insert a transaction row. This
-    # is accepted for now: the deposit ledger is mock (no real money) and
-    # deposit_status always reads the latest transaction regardless. Add
-    # .with_for_update() here if/when the ledger becomes load-bearing (Weeks 3-4).
     reservation = db.scalar(
         select(Reservation)
         .options(joinedload(Reservation.item), joinedload(Reservation.renter))
         .where(Reservation.id == reservation_id)
+        .with_for_update(of=Reservation)
     )
     if reservation is None:
         raise AppError(404, "NOT_FOUND", "Reservation not found")
