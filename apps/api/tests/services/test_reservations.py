@@ -526,3 +526,72 @@ def test_list_my_requests_filters_by_status(
 
     assert total == 1
     assert reservations[0].status == "rejected"
+
+
+def test_get_reservation_or_404_locks_the_row(db_session: Session, make_user, make_item) -> None:
+    """The lookup used by every mutating endpoint takes a row lock
+    (FOR UPDATE), so two concurrent calls on the same reservation can't
+    both pass a status check before either commits.
+    """
+    from sqlalchemy import event
+
+    from app.services import reservations
+    from app.services.reservations import create_reservation
+
+    owner = make_user(email="lock-owner1@example.com")
+    renter = make_user(email="lock-renter1@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(5, 2)
+    )
+
+    captured_sql = []
+
+    def _capture(conn, cursor, statement, parameters, context, executemany):
+        captured_sql.append(statement)
+
+    event.listen(db_session.get_bind(), "before_cursor_execute", _capture)
+    try:
+        reservations._get_reservation_or_404(db_session, reservation.id)
+    finally:
+        event.remove(db_session.get_bind(), "before_cursor_execute", _capture)
+
+    assert any("FOR UPDATE" in sql.upper() for sql in captured_sql)
+
+
+def test_assert_participant_allows_renter_and_owner(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Happy path: both the renter and the item's owner satisfy the check."""
+    from app.services.reservations import _assert_participant, create_reservation
+
+    owner = make_user(email="participant-owner1@example.com")
+    renter = make_user(email="participant-renter1@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(5, 2)
+    )
+
+    _assert_participant(reservation, renter.id)
+    _assert_participant(reservation, owner.id)
+
+
+def test_assert_participant_rejects_third_party(db_session: Session, make_user, make_item) -> None:
+    """Failure path: a user who is neither the renter nor the owner is
+    403 FORBIDDEN.
+    """
+    from app.services.reservations import _assert_participant, create_reservation
+
+    owner = make_user(email="participant-owner2@example.com")
+    renter = make_user(email="participant-renter2@example.com")
+    stranger = make_user(email="participant-stranger2@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(5, 2)
+    )
+
+    with pytest.raises(AppError) as exc_info:
+        _assert_participant(reservation, stranger.id)
+
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.code == "FORBIDDEN"

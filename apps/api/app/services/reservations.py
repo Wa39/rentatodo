@@ -113,7 +113,8 @@ def create_reservation(
 
 
 def _get_reservation_or_404(db: Session, reservation_id: uuid.UUID) -> Reservation:
-    """Look up a reservation by id, with its item and renter pre-loaded.
+    """Look up a reservation by id, with its item and renter pre-loaded,
+    holding a row lock for the rest of the caller's transaction.
 
     Args:
         db: Database session.
@@ -125,6 +126,15 @@ def _get_reservation_or_404(db: Session, reservation_id: uuid.UUID) -> Reservati
     Raises:
         AppError: 404 NOT_FOUND if no reservation exists with that id.
     """
+    # .with_for_update() added now that close_reservation and report_problem
+    # insert real ledger entries (release/freeze) whose ordering matters —
+    # see design spec 2026-07-21. Two concurrent calls on the same reservation
+    # can no longer both pass a status check before either commits.
+    # of=Reservation is required: joinedload(item)/joinedload(renter) below
+    # produce LEFT OUTER JOINs (neither relationship sets innerjoin=True),
+    # and Postgres rejects a bare FOR UPDATE on the nullable side of an outer
+    # join. Scoping the lock to just the reservations row also avoids
+    # incidentally locking the joined item/user rows.
     reservation = db.scalar(
         select(Reservation)
         .options(joinedload(Reservation.item), joinedload(Reservation.renter))
@@ -134,6 +144,21 @@ def _get_reservation_or_404(db: Session, reservation_id: uuid.UUID) -> Reservati
     if reservation is None:
         raise AppError(404, "NOT_FOUND", "Reservation not found")
     return reservation
+
+
+def _assert_participant(reservation: Reservation, user_id: uuid.UUID) -> None:
+    """Ensure the caller is either the reservation's renter or the
+    rented item's owner.
+
+    Args:
+        reservation: The reservation being accessed.
+        user_id: The authenticated caller's id.
+
+    Raises:
+        AppError: 403 FORBIDDEN if the caller is neither party.
+    """
+    if user_id != reservation.renter_id and user_id != reservation.item.owner_id:
+        raise AppError(403, "FORBIDDEN", "You are not a party to this reservation")
 
 
 def approve_reservation(db: Session, reservation_id: uuid.UUID, owner_id: uuid.UUID) -> Reservation:
