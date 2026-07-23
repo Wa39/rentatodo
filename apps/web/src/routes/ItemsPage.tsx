@@ -55,7 +55,7 @@ export function ItemsPage() {
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    if (!editingId) return
+    if (!editingId || photoUploading) return
     setDialogSubmitting(true)
     setDialogError(null)
     try {

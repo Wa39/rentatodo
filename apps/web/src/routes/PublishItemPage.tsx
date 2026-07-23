@@ -44,6 +44,7 @@ export function PublishItemPage() {
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
+    if (photoUploading) return
     setSubmitting(true)
     setError(null)
     try {
