@@ -10,7 +10,7 @@
 **Week:** 1 (Auth + Items) and Week 2 (Reservations, the contract's
 "vertical slice") both fully merged to `develop`. Weeks 3-4 (Delivery +
 Reports: check-in/out, close, report, transactions, earnings) not started.
-**Last updated:** 2026-07-21
+**Last updated:** 2026-07-22
 **Current focus:** All of Week 1 is merged: `User` + Auth (PR #8), CORS +
 validation handler (PR #14), `Item` model + all 6 Item endpoints (PR #16),
 and the deferred `PATCH`/`DELETE /items/{id}`/`GET /users/me/items`
@@ -41,8 +41,24 @@ still `422`, still open (non-blocking).
 `POST /uploads/presign` is implemented on `feature/uploads-presign`
 (schemas → service → router, TDD, subagent-driven, final whole-branch
 review clean after 1 fix, 144/144 tests, manually verified live against
-MiniStack). PR #41 opened against `develop`, awaiting review — not yet
-merged as of this update.
+MiniStack). **PR #41 merged 2026-07-22.**
+
+Since then, 4 more PRs merged to `develop` with no `apps/api` changes:
+#35 (Zero, mobile report-a-problem), #36 (Wa, Playwright e2e scaffold
+for the web dashboard), #40 (Silverk, web Items CRUD wired to the real
+API), #44 (Wa, seed real photos to MiniStack/S3). Also merged: #42/#43
+(docs/roadmap and mobile Maestro coverage, this file's own history).
+
+Wa opened PR #45 (Playwright e2e coverage for register + reservation-
+detail) bundled with two undiscussed `apps/api` fixes from an
+audit-driven session on Wa's side: `_get_reservation_or_404` now takes
+`.with_for_update(of=Reservation)` (see Decisions log below — this
+supersedes the 2026-07-17 deferral), and `items.py` gained
+`_fetch_item_with_owner` to avoid a post-commit lazy-load of
+`owner_name` in `create_item`/`update_item`/`delete_item`. Both reviewed
+or, content-wise, correct; approved 2026-07-22, not yet merged. Flagged
+to Wa that future audit fixes touching `apps/api` should get their own
+PR rather than ride along with `e2e/` work.
 
 Weeks 3-4 (Delivery + Reports: check-in/out, close, report, transactions,
 earnings — the last 6 of `CLAUDE_BACKEND.md`'s 22 endpoints) has an
@@ -50,10 +66,12 @@ approved design spec and a 7-task TDD implementation plan ready on
 `feature/weeks-3-4-delivery-reports`
 (`docs/superpowers/specs/2026-07-21-weeks-3-4-delivery-reports-design.md`,
 `docs/superpowers/plans/2026-07-21-weeks-3-4-delivery-reports-plan.md`).
-Execution is deliberately paused until PR #41 merges — cutting this
-branch before PR #24 merged is exactly what caused PR #28's merge
-conflict, and this file (`ROADMAP.md`) is the one that conflicts most
-often between concurrent branches.
+Execution was paused until PR #41 merged (now done), but the branch is
+still 7 commits behind `develop` (cut before #35/#36/#40/#41/#44) and
+needs a rebase/recut before starting — cutting it stale before PR #24
+merged is exactly what caused PR #28's merge conflict, and this file
+(`ROADMAP.md`) is the one that conflicts most often between concurrent
+branches.
 
 ## Done
 
@@ -77,15 +95,16 @@ often between concurrent branches.
 - [x] `Reservation` + `Transaction` models, migration with `no_double_booking` EXCLUDE constraint (`btree_gist`) — all 6 Week 2 endpoints (`POST /items/{item_id}/reservations`, `GET /users/me/reservations`, `GET /users/me/requests`, `PATCH /reservations/{id}/approve|reject|cancel`) plus `GET /items` availability wiring — all 7 tasks of `docs/superpowers/plans/2026-07-17-reservations.md` implemented on `feature/reservations` via subagent-driven development, strict TDD, each task independently reviewed (spec + quality), final whole-branch review clean (one trivial docstring fix applied, one deliberate-and-documented deferral — see Decisions log). 116/116 tests passing against real Postgres.
 - [x] PR #28 (`feature/reservations` → `develop`) — Reservations (Week 2), merged 2026-07-19. Resolved the merge conflict against PR #24 (additive on both sides — items.py/services/tests all kept side by side, no logic changes) that the previous update left open.
 - [x] PR #37 (Wa, contract) — added `POST /uploads/presign` schemas, `maxLength: 72` on `RegisterRequest.password`, `required` on several response schemas. Merged 2026-07-20. No `apps/api` code — contract only.
+- [x] PR #41 (`feature/uploads-presign` → `develop`) — `POST /uploads/presign`, merged 2026-07-22.
 
 ## In progress
 
-- PR #41 (`feature/uploads-presign` → `develop`) open, awaiting review.
-- `feature/weeks-3-4-delivery-reports` has its spec + plan committed, execution paused until PR #41 merges.
+- PR #45 (Wa, e2e Playwright tests for register + reservation-detail, bundled with 2 `apps/api` fixes — row lock on reservation writes, eager-load owner on item writes) — reviewed and approved 2026-07-22, not yet merged.
+- `feature/weeks-3-4-delivery-reports` has its spec + plan committed; PR #41 (the merge blocker) is in, but the branch itself is 7 commits behind `develop` and needs a rebase/recut before executing.
 
 ## Next up (not started)
 
-- [ ] Once PR #41 merges: execute `docs/superpowers/plans/2026-07-21-weeks-3-4-delivery-reports-plan.md` (7 tasks, subagent-driven) — `CheckEvidence`/`Report` models + migration, schemas, the `.with_for_update()` row lock + `_assert_participant` helper, checkin/checkout, close, report, transactions/earnings. Closes out all 22 of `CLAUDE_BACKEND.md`'s endpoints.
+- [ ] Rebase/recut `feature/weeks-3-4-delivery-reports` from current `develop` (picks up PR #45 once it merges too, including the row-lock change — may let Task 1 of the plan drop that part if it's now redundant), then execute `docs/superpowers/plans/2026-07-21-weeks-3-4-delivery-reports-plan.md` (7 tasks, subagent-driven) — `CheckEvidence`/`Report` models + migration, schemas, the `_assert_participant` helper, checkin/checkout, close, report, transactions/earnings. Closes out all 22 of `CLAUDE_BACKEND.md`'s endpoints.
 
 ## Decisions log
 
@@ -158,3 +177,4 @@ often between concurrent branches.
 - **2026-07-18** — PR #24 (items-followup) merged to `develop` while PR #28 (Reservations) was still open, exactly the reconciliation flagged as a risk in PR #28's own description. Reviewer j0sMedina requested changes: resolve the resulting merge conflict. Merged `origin/develop` into `feature/reservations`; real conflicts in `ROADMAP.md`, `app/routers/items.py`, `app/services/items.py`, `tests/routers/test_items.py`, `tests/services/test_items.py` — all additive (both sides added distinct endpoints/tests), resolved by keeping both sides' content side by side, no logic changes. Everything else (the large batch of `apps/web` files from PR #26) merged cleanly with no conflicts.
 - **2026-07-21** — Picked back up after a gap; local checkout had drifted (still on the now-merged `feature/reservations` branch, `develop` 12 commits behind origin). Confirmed via `gh`/direct file reads, not the stale local state: PR #28 merged 2026-07-19, and Wa's contract PR #37 (presign schemas, `maxLength: 72`, `required` fixes) merged 2026-07-20 since the last update. Reviewed the two PRs open at session start: **#35** (Zero, mobile report-a-problem) — the `Brand.teal`→`primary` blocker both reviews flagged was already fixed in a later commit (`273fa5a`), CI green, approved. **#36** (Wa, Playwright e2e scaffold) — the two blockers from its earlier review (wrong default port, `storageState` no-op) were resolved/were based on pre-PR#31 code, no longer real; but CI is still red for a different, undiscussed reason — an ambiguous `getByRole('link', {name: /publish/i})` locator in `items.spec.ts` matches both the sidebar nav link and the page's own button. `e2e/` is Wa's ownership per `CODEOWNERS`, not `apps/api`'s — diagnosed and posted as a PR comment, no code touched. Cleaned up local git state (dropped a long-superseded stash, discarded a stale uncommitted `ROADMAP.md` edit, switched to `develop`, fast-forwarded). Refreshed this file to match reality. Next: `POST /uploads/presign` implementation.
 - **2026-07-21 (continued)** — Implemented `POST /uploads/presign` end to end on `feature/uploads-presign` (see that branch's own session-log entry for the full TDD/review/live-verification detail); pushed and opened PR #41, left a comment there for Wa on two follow-ups outside this PR's scope (the bucket's public-read policy — infra, and the contract's stale `filename` description — a tiny contract PR). Also updated the external `CLAUDE_BACKEND.md` (not part of this repo) to add the `/uploads/presign` entry it was missing (21→22 endpoints), its new `AWS_*` env vars, and the S3-key security rule — scope limited to what was missing, no reconciliation of existing discrepancies. Then brainstormed Weeks 3-4 (Delivery + Reports, the last 6 endpoints): decided to do it as one spec/plan (matching the Week 2 precedent), add the row lock now (closing the gap flagged in Week 2), freeze transactions carry `deposit_amount`, report uniqueness is two-layered (app check + DB `UNIQUE`, matching `no_double_booking`), and earnings is computed in Python off the existing `deposit_status` property. Wrote the design spec and a 7-task TDD plan on a fresh `feature/weeks-3-4-delivery-reports` branch (cut from `develop`, deliberately kept separate from the still-open PR #41). **Execution intentionally not started** — waiting for PR #41 to merge first, to avoid repeating the PR #24/#28 branch-divergence conflict. Next session: check whether PR #41 merged; if so, rebase/recut `feature/weeks-3-4-delivery-reports` from the fresh `develop` and execute the plan subagent-driven. If not, keep waiting or nudge for review.
+- **2026-07-22** — Confirmed via `gh`/`git` (not the stale local checkout, which was still on last session's `docs/roadmap-session-wrap-2026-07-21` branch): PR #41 merged, plus 4 more team PRs unrelated to `apps/api` (#35, #36, #40, #44). Only one PR open: **#45** (Wa, Playwright e2e tests for register + reservation-detail), bundled with 2 undiscussed `apps/api` fixes from an audit Wa's side ran — a row lock on `_get_reservation_or_404` (`.with_for_update(of=Reservation)`, correctly scoped to not also lock the joined `item`/`renter`) that supersedes 2026-07-17's deliberate deferral, and an eager-load-owner fix in `items.py`. Reviewed both: content is correct, CI green; approved with a comment asking Wa to split `apps/api`/`apps/web` fixes into their own PR next time rather than bundling with `e2e/` work. Logged the row-lock decision reversal in this file's Decisions log (PR #46, a small standalone docs PR — the original commit had landed on the already-merged `docs/roadmap-session-wrap-2026-07-21` branch by mistake, recut cleanly from `develop`). Refreshed this file's Current status/Done/In progress/Next up to match reality. Next: rebase/recut `feature/weeks-3-4-delivery-reports` (7 commits behind `develop`) and start executing its 7-task plan.
