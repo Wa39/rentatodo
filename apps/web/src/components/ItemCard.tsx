@@ -21,7 +21,17 @@ export function ItemCard({ item, onEdit, onDelete, readOnly = false }: ItemCardP
 
   return (
     <div data-testid={`item-card-${item.id}`} className="overflow-hidden rounded-lg border border-border bg-card">
-      <div className="relative flex h-32 items-center justify-center bg-gradient-to-br from-secondary to-card">
+      <div className="relative flex h-32 items-center justify-center overflow-hidden bg-gradient-to-br from-secondary to-card">
+        {item.photo_url && (
+          <img
+            src={item.photo_url}
+            alt={item.name}
+            className="absolute inset-0 h-full w-full object-cover"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none'
+            }}
+          />
+        )}
         <span className="absolute left-two top-two rounded-full bg-foreground/75 px-two py-half text-xs font-semibold capitalize text-card">
           {t.categories[item.category]}
         </span>
