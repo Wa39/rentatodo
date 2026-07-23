@@ -44,6 +44,9 @@ async function request<T>(path: string, options: RequestInit): Promise<T> {
   })
   const body = await response.json().catch(() => null)
   if (!response.ok) {
+    if (body?.error?.code === 'TOKEN_EXPIRED') {
+      window.dispatchEvent(new CustomEvent('rentatodo:token-expired'))
+    }
     throw new ApiError(body?.error?.code ?? 'UNKNOWN_ERROR', body?.error?.message ?? 'Something went wrong. Please try again.')
   }
   return body as T
