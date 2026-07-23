@@ -40,6 +40,12 @@ def generate_presign(user_id: uuid.UUID, content_type: str) -> PresignResponse:
     extension = CONTENT_TYPE_EXTENSIONS[content_type]
     key = f"uploads/{user_id}/{uuid.uuid4()}.{extension}"
 
+    # TODO: presigned PUT does not support a ContentLengthRange condition —
+    # S3 will accept an upload of any size. To enforce a size cap (e.g. 10 MB)
+    # switch to generate_presigned_post() (presigned POST supports a
+    # content-length-range policy condition). That change requires updating
+    # the PresignResponse schema and the /uploads/presign contract in
+    # packages/contracts/openapi.yaml.
     upload_url = s3_client.generate_presigned_url(
         "put_object",
         Params={
