@@ -5,6 +5,7 @@ import { useItems } from '@/lib/ItemsContext'
 import { useAuth } from '@/lib/AuthContext'
 import { ItemCard } from '@/components/ItemCard'
 import { AuthErrorBanner } from '@/components/AuthErrorBanner'
+import { PhotoUploadField } from '@/components/PhotoUploadField'
 import { getErrorMessage } from '@/lib/api'
 import type { Category, Item } from '@/lib/types'
 import { useTranslation } from '@/lib/i18n'
@@ -18,7 +19,7 @@ export function PublishItemPage() {
   const t = useTranslation()
   const navigate = useNavigate()
   const { addItem } = useItems()
-  const { user } = useAuth()
+  const { user, token } = useAuth()
   const [name, setName] = useState('')
   const [category, setCategory] = useState<Category>(CATEGORIES[0])
   const [priceDollars, setPriceDollars] = useState('')
@@ -26,6 +27,7 @@ export function PublishItemPage() {
   const [photoUrl, setPhotoUrl] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [photoUploading, setPhotoUploading] = useState(false)
 
   const previewItem: Item = {
     id: 'preview',
@@ -114,12 +116,16 @@ export function PublishItemPage() {
               className="w-full rounded-md border border-input bg-card px-two py-half text-foreground"
             />
           </div>
-          <div className="space-y-half">
-            <Label htmlFor="publish-photo">{t.publish.photo}</Label>
-            <Input id="publish-photo" type="url" value={photoUrl} onChange={(e) => setPhotoUrl(e.target.value)} required />
-          </div>
+          <PhotoUploadField
+            id="publish-photo"
+            label={t.publish.photo}
+            value={photoUrl}
+            onChange={setPhotoUrl}
+            onUploadingChange={setPhotoUploading}
+            token={token ?? ''}
+          />
           <div className="flex gap-two">
-            <Button type="submit" className="flex-1" disabled={submitting}>
+            <Button type="submit" className="flex-1" disabled={submitting || !photoUrl || photoUploading}>
               {submitting ? t.publish.submitting : t.publish.submit}
             </Button>
             <Button type="button" variant="outline" className="flex-1" onClick={handleCancel} disabled={submitting}>
