@@ -929,3 +929,127 @@ def test_close_reservation_blocked_by_active_freeze(
 
     assert exc_info.value.status_code == 409
     assert exc_info.value.code == "FREEZE_ACTIVE"
+
+
+def test_get_transactions_happy_path(db_session: Session, make_user, make_item) -> None:
+    """Happy path: after approving, the reservation has one hold transaction."""
+    from app.services.reservations import approve_reservation, create_reservation, get_transactions
+
+    owner = make_user(email="transactions-owner1@example.com")
+    renter = make_user(email="transactions-renter1@example.com")
+    item = make_item(owner_id=owner.id, price_per_day=5000)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(5, 3)
+    )
+    approve_reservation(db_session, reservation_id=reservation.id, owner_id=owner.id)
+
+    transactions = get_transactions(db_session, reservation_id=reservation.id, user_id=renter.id)
+
+    assert len(transactions) == 1
+    assert transactions[0].type == "hold"
+    assert transactions[0].amount == 15000
+
+
+def test_get_transactions_requires_participant(db_session: Session, make_user, make_item) -> None:
+    """Failure path: a stranger can't view the transaction history, 403 FORBIDDEN."""
+    from app.services.reservations import create_reservation, get_transactions
+
+    owner = make_user(email="transactions-owner2@example.com")
+    renter = make_user(email="transactions-renter2@example.com")
+    stranger = make_user(email="transactions-stranger2@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(5, 3)
+    )
+
+    with pytest.raises(AppError) as exc_info:
+        get_transactions(db_session, reservation_id=reservation.id, user_id=stranger.id)
+
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.code == "FORBIDDEN"
+
+
+def _make_closed_reservation(db_session: Session, owner, renter, item, start_offset: int):
+    from app.services.reservations import (
+        approve_reservation,
+        checkin_reservation,
+        checkout_reservation,
+        close_reservation,
+        create_reservation,
+    )
+
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(start_offset, 2)
+    )
+    approve_reservation(db_session, reservation_id=reservation.id, owner_id=owner.id)
+    checkin_reservation(
+        db_session,
+        reservation_id=reservation.id,
+        renter_id=renter.id,
+        data=CheckInOutRequest(photo_url="https://example.com/in.jpg"),
+    )
+    checkout_reservation(
+        db_session,
+        reservation_id=reservation.id,
+        renter_id=renter.id,
+        data=CheckInOutRequest(photo_url="https://example.com/out.jpg"),
+    )
+    return close_reservation(db_session, reservation_id=reservation.id, owner_id=owner.id)
+
+
+def test_get_earnings_happy_path(db_session: Session, make_user, make_item) -> None:
+    """Happy path: total_earnings and by_item reflect a closed, released reservation."""
+    from app.services.reservations import get_earnings
+
+    owner = make_user(email="earnings-owner1@example.com")
+    renter = make_user(email="earnings-renter1@example.com")
+    item = make_item(owner_id=owner.id, price_per_day=5000, name="Taladro Bosch")
+    _make_closed_reservation(db_session, owner, renter, item, start_offset=5)
+
+    earnings = get_earnings(db_session, owner_id=owner.id)
+
+    assert earnings.total_earnings == 10000
+    assert len(earnings.by_item) == 1
+    assert earnings.by_item[0].item_name == "Taladro Bosch"
+    assert earnings.by_item[0].total == 10000
+    assert len(earnings.by_item[0].rentals) == 1
+
+
+def test_get_earnings_only_counts_closed_reservations(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Edge path: an approved-but-not-closed reservation doesn't count
+    toward earnings.
+    """
+    from app.services.reservations import approve_reservation, create_reservation, get_earnings
+
+    owner = make_user(email="earnings-owner2@example.com")
+    renter = make_user(email="earnings-renter2@example.com")
+    item = make_item(owner_id=owner.id, price_per_day=5000)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(5, 2)
+    )
+    approve_reservation(db_session, reservation_id=reservation.id, owner_id=owner.id)
+
+    earnings = get_earnings(db_session, owner_id=owner.id)
+
+    assert earnings.total_earnings == 0
+    assert earnings.by_item == []
+
+
+def test_get_earnings_only_counts_this_owners_items(db_session: Session, make_user, make_item) -> None:
+    """Edge path: a different owner's closed reservation isn't counted —
+    cross-tenant isolation.
+    """
+    from app.services.reservations import get_earnings
+
+    owner_a = make_user(email="earnings-ownerA@example.com")
+    owner_b = make_user(email="earnings-ownerB@example.com")
+    renter = make_user(email="earnings-renter3@example.com")
+    item_a = make_item(owner_id=owner_a.id, price_per_day=5000)
+    _make_closed_reservation(db_session, owner_a, renter, item_a, start_offset=5)
+
+    earnings_b = get_earnings(db_session, owner_id=owner_b.id)
+
+    assert earnings_b.total_earnings == 0
+    assert earnings_b.by_item == []

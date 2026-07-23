@@ -9,12 +9,14 @@ from app.database import get_db
 from app.dependencies.auth import get_current_user
 from app.models.user import User
 from app.schemas.check_evidence import CheckInOutRequest
+from app.schemas.earnings import EarningsResponse
 from app.schemas.reservation import (
     CreateReservationRequest,
     ReservationListResponse,
     ReservationResponse,
     ReservationStatusEnum,
 )
+from app.schemas.transaction import TransactionResponse
 from app.services.reservations import (
     approve_reservation,
     cancel_reservation,
@@ -22,6 +24,8 @@ from app.services.reservations import (
     checkout_reservation,
     close_reservation,
     create_reservation,
+    get_earnings,
+    get_transactions,
     list_my_requests,
     list_my_reservations,
     reject_reservation,
@@ -250,3 +254,41 @@ def cancel_reservation_endpoint(
     """
     reservation = cancel_reservation(db, reservation_id=reservation_id, renter_id=current_user.id)
     return ReservationResponse.model_validate(reservation)
+
+
+@router.get("/reservations/{reservation_id}/transactions")
+def get_transactions_endpoint(
+    reservation_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[TransactionResponse]:
+    """Get a reservation's deposit transaction history.
+
+    Args:
+        reservation_id: The reservation whose history is requested.
+        current_user: Resolved by get_current_user — must be its renter
+            or the item's owner.
+        db: Database session injected by FastAPI.
+
+    Returns:
+        The reservation's transactions, oldest first.
+    """
+    transactions = get_transactions(db, reservation_id=reservation_id, user_id=current_user.id)
+    return [TransactionResponse.model_validate(t) for t in transactions]
+
+
+@router.get("/users/me/earnings")
+def get_earnings_endpoint(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> EarningsResponse:
+    """Get the authenticated owner's earnings summary.
+
+    Args:
+        current_user: Resolved by get_current_user.
+        db: Database session injected by FastAPI.
+
+    Returns:
+        Total earnings and a per-item breakdown.
+    """
+    return get_earnings(db, owner_id=current_user.id)

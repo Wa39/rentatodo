@@ -468,3 +468,112 @@ def test_close_endpoint_forbidden_for_renter(client: TestClient) -> None:
 
     assert response.status_code == 403
     assert response.json()["error"]["code"] == "FORBIDDEN"
+
+
+def test_transactions_endpoint_happy_path(client: TestClient) -> None:
+    """Happy path: after approving, the transactions endpoint returns one
+    hold entry.
+    """
+    owner_token = _register_and_login(client, "resrouter-owner-tx1@example.com")
+    item_id = _create_item(client, owner_token, price_per_day=5000)
+    renter_token = _register_and_login(client, "resrouter-renter-tx1@example.com")
+    create_response = client.post(
+        f"/items/{item_id}/reservations",
+        headers={"Authorization": f"Bearer {renter_token}"},
+        json={
+            "start_date": str(date.today() + timedelta(days=50)),
+            "end_date": str(date.today() + timedelta(days=52)),
+        },
+    )
+    reservation_id = create_response.json()["id"]
+    client.patch(
+        f"/reservations/{reservation_id}/approve",
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+
+    response = client.get(
+        f"/reservations/{reservation_id}/transactions",
+        headers={"Authorization": f"Bearer {renter_token}"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) == 1
+    assert body[0]["type"] == "hold"
+
+
+def test_transactions_endpoint_forbidden_for_stranger(client: TestClient) -> None:
+    """Failure path: a user who is neither party gets 403 FORBIDDEN."""
+    owner_token = _register_and_login(client, "resrouter-owner-tx2@example.com")
+    item_id = _create_item(client, owner_token)
+    renter_token = _register_and_login(client, "resrouter-renter-tx2@example.com")
+    stranger_token = _register_and_login(client, "resrouter-stranger-tx2@example.com")
+    create_response = client.post(
+        f"/items/{item_id}/reservations",
+        headers={"Authorization": f"Bearer {renter_token}"},
+        json={
+            "start_date": str(date.today() + timedelta(days=53)),
+            "end_date": str(date.today() + timedelta(days=54)),
+        },
+    )
+    reservation_id = create_response.json()["id"]
+
+    response = client.get(
+        f"/reservations/{reservation_id}/transactions",
+        headers={"Authorization": f"Bearer {stranger_token}"},
+    )
+
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "FORBIDDEN"
+
+
+def test_earnings_endpoint_happy_path(client: TestClient) -> None:
+    """Happy path: earnings reflects a fully closed reservation."""
+    owner_token = _register_and_login(client, "resrouter-owner-earn1@example.com")
+    item_id = _create_item(client, owner_token, price_per_day=5000)
+    renter_token = _register_and_login(client, "resrouter-renter-earn1@example.com")
+    create_response = client.post(
+        f"/items/{item_id}/reservations",
+        headers={"Authorization": f"Bearer {renter_token}"},
+        json={
+            "start_date": str(date.today() + timedelta(days=55)),
+            "end_date": str(date.today() + timedelta(days=56)),
+        },
+    )
+    reservation_id = create_response.json()["id"]
+    client.patch(
+        f"/reservations/{reservation_id}/approve",
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+    client.post(
+        f"/reservations/{reservation_id}/checkin",
+        headers={"Authorization": f"Bearer {renter_token}"},
+        json={"photo_url": "https://example.com/checkin.jpg"},
+    )
+    client.post(
+        f"/reservations/{reservation_id}/checkout",
+        headers={"Authorization": f"Bearer {renter_token}"},
+        json={"photo_url": "https://example.com/checkout.jpg"},
+    )
+    client.patch(
+        f"/reservations/{reservation_id}/close",
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+
+    response = client.get(
+        "/users/me/earnings",
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total_earnings"] == 10000
+    assert len(body["by_item"]) == 1
+
+
+def test_earnings_endpoint_requires_authentication(client: TestClient) -> None:
+    """Failure path: no Authorization header returns 401 UNAUTHORIZED."""
+    response = client.get("/users/me/earnings")
+
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "UNAUTHORIZED"
