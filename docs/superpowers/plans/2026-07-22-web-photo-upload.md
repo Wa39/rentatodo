@@ -283,8 +283,17 @@ function isUploadContentType(type: string): type is UploadContentType {
   return type === 'image/jpeg' || type === 'image/png' || type === 'image/webp'
 }
 
+function readAsArrayBuffer(blob: Blob): Promise<ArrayBuffer> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as ArrayBuffer)
+    reader.onerror = () => reject(reader.error)
+    reader.readAsArrayBuffer(blob)
+  })
+}
+
 async function matchesSignature(file: File, contentType: UploadContentType): Promise<boolean> {
-  const buffer = await file.slice(0, 12).arrayBuffer()
+  const buffer = await readAsArrayBuffer(file.slice(0, 12))
   return SIGNATURE_CHECKS[contentType](new Uint8Array(buffer))
 }
 
