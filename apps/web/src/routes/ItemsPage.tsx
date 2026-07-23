@@ -7,6 +7,8 @@ import { useItems } from '@/lib/ItemsContext'
 import { getErrorMessage } from '@/lib/api'
 import type { Category, Item } from '@/lib/types'
 import { useTranslation } from '@/lib/i18n'
+import { useAuth } from '@/lib/AuthContext'
+import { PhotoUploadField } from '@/components/PhotoUploadField'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -25,6 +27,8 @@ export function ItemsPage() {
   const [query, setQuery] = useState('')
   const [dialogSubmitting, setDialogSubmitting] = useState(false)
   const [dialogError, setDialogError] = useState<string | null>(null)
+  const { token } = useAuth()
+  const [photoUploading, setPhotoUploading] = useState(false)
 
   const activeCount = items.filter((i) => i.is_active).length
   const inactiveCount = items.length - activeCount
@@ -45,6 +49,7 @@ export function ItemsPage() {
       photoUrl: item.photo_url,
     })
     setDialogError(null)
+    setPhotoUploading(false)
     setOpen(true)
   }
 
@@ -149,17 +154,16 @@ export function ItemsPage() {
                   required
                 />
               </div>
-              <div className="space-y-half">
-                <Label htmlFor="item-photo">Photo URL</Label>
-                <Input
-                  id="item-photo"
-                  type="url"
-                  value={form.photoUrl}
-                  onChange={(e) => setForm((f) => ({ ...f, photoUrl: e.target.value }))}
-                  required
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={dialogSubmitting}>
+              <PhotoUploadField
+                key={editingId ?? 'new'}
+                id="item-photo"
+                label="Photo"
+                value={form.photoUrl}
+                onChange={(url) => setForm((f) => ({ ...f, photoUrl: url }))}
+                onUploadingChange={setPhotoUploading}
+                token={token ?? ''}
+              />
+              <Button type="submit" className="w-full" disabled={dialogSubmitting || !form.photoUrl || photoUploading}>
                 {dialogSubmitting ? 'Saving…' : 'Save item'}
               </Button>
             </form>
