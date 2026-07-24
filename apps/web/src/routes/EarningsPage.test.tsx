@@ -3,14 +3,17 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { mockEarnings } from '@/lib/mockData'
 import { formatCentavos } from '@/lib/format'
+import { AuthProvider } from '@/lib/AuthContext'
 import { RequestsProvider } from '@/lib/RequestsContext'
 import { EarningsPage } from './EarningsPage'
 
 function renderPage() {
   render(
-    <RequestsProvider>
-      <EarningsPage />
-    </RequestsProvider>,
+    <AuthProvider>
+      <RequestsProvider>
+        <EarningsPage />
+      </RequestsProvider>
+    </AuthProvider>,
   )
 }
 
@@ -49,11 +52,14 @@ describe('EarningsPage', () => {
       return { ...actual, mockEarnings: { total_earnings: 0, by_item: [], by_month: [] } }
     })
     const { EarningsPage: PatchedPage } = await import('./EarningsPage')
+    const authModule = await import('@/lib/AuthContext')
     const requestsModule = await import('@/lib/RequestsContext')
     expect(() => render(
-      <requestsModule.RequestsProvider>
-        <PatchedPage />
-      </requestsModule.RequestsProvider>,
+      <authModule.AuthProvider>
+        <requestsModule.RequestsProvider>
+          <PatchedPage />
+        </requestsModule.RequestsProvider>
+      </authModule.AuthProvider>,
     )).not.toThrow()
     vi.doUnmock('@/lib/mockData')
   })
