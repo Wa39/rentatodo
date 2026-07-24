@@ -19,7 +19,7 @@
 
 ## PR Plan
 
-**PR 1 (Tasks 1-5):** `lib/api.ts`, `lib/i18n/en.ts`, `lib/RequestsContext.tsx`, `routes/RequestsPage.tsx`, `routes/DashboardPage.tsx` + all their tests, plus a mock-fixture-only fix to `routes/CalendarPage.test.tsx` (required to keep it passing once `RequestsContext` starts making real fetch calls — no behavior change to `CalendarPage.tsx` itself). Branch: `feature/web-reservations-wiring` (already cut from `develop` @ `7f80016`).
+**PR 1 (Tasks 1-5):** `lib/api.ts`, `lib/i18n/en.ts`, `lib/RequestsContext.tsx`, `routes/RequestsPage.tsx`, `routes/DashboardPage.tsx` + all their tests, plus mock-fixture-only fixes to `routes/CalendarPage.test.tsx`, `components/ItemCard.test.tsx`, `routes/EarningsPage.test.tsx`, `layouts/DashboardLayout.test.tsx`, and `routes/ReservationDetailPage.test.tsx` (required to keep them passing once `RequestsContext` starts making real fetch calls — no behavior change to any of their production files; discovered during Task 2's execution, wider than originally scoped — see Task 3). 14 files touched total; 5 of them are mechanical fixture-only fixes, treated as exempt from the size-flag policy the same way a rename would be — user-confirmed 2026-07-23. Branch: `feature/web-reservations-wiring` (already cut from `develop` @ `7f80016`).
 
 **PR 2 (Task 6, follow-up):** `routes/CalendarPage.tsx`'s missing error branch + its test. Independent — `CalendarPage.tsx` doesn't call `approveRequest`/`rejectRequest`, so it isn't compile-coupled to PR 1. Cut this branch from `develop` once PR 1 merges, so it starts from `RequestsContext`'s new shape without carrying PR 1's diff.
 
@@ -671,15 +671,21 @@ git commit -m "feat(web): wire RequestsContext to the real Reservations API"
 
 ---
 
-### Task 3: Fix `CalendarPage.test.tsx`'s mock fixtures (no behavior change)
+### Task 3: Fix all `RequestsProvider`-rendering test fixtures (no behavior change)
+
+**Scope note (added after Task 2 landed):** Task 2's implementer discovered, and the controller independently confirmed via a full `vitest run`, that rewriting `RequestsContext` to fetch real data breaks 4 test files beyond the one this task originally named: `apps/web/src/components/ItemCard.test.tsx`, `apps/web/src/routes/EarningsPage.test.tsx`, `apps/web/src/layouts/DashboardLayout.test.tsx`, and `apps/web/src/routes/ReservationDetailPage.test.tsx` (13 additional failing tests, on top of `CalendarPage.test.tsx`'s and the separately-expected `RequestsPage.test.tsx`/`DashboardPage.test.tsx` failures fixed in Tasks 4-5). Root cause is the same in all 5 files: each renders `<RequestsProvider>` (directly or via a component that calls `useRequests()`) without the `<AuthProvider>` wrapper and/or `/users/me/requests` fetch mock the new real-API context now requires. Per user decision, all 5 fixture-only fixes are folded into this task and PR 1 — they are mechanical, zero-production-code-risk changes forced by Task 2, the same category as a rename, not a new feature.
 
 **Files:**
 - Modify: `apps/web/src/routes/CalendarPage.test.tsx`
+- Modify: `apps/web/src/components/ItemCard.test.tsx`
+- Modify: `apps/web/src/routes/EarningsPage.test.tsx`
+- Modify: `apps/web/src/layouts/DashboardLayout.test.tsx`
+- Modify: `apps/web/src/routes/ReservationDetailPage.test.tsx`
 
 **Interfaces:**
-- Consumes: `useRequests()` → `{ requests }` (Task 2's context; `CalendarPage.tsx` itself is untouched — it only ever read `requests`, which is still present).
+- Consumes: `useRequests()` → `{ requests }` (Task 2's context). None of `CalendarPage.tsx`, `ItemCard.tsx`, `EarningsPage.tsx`, `DashboardLayout.tsx`, `ReservationDetailPage.tsx` are modified in this task — they all only ever read `requests`, which is still present on the new context's interface. Only their test files change.
 
-`CalendarPage.tsx` is not modified in this task. Its tests wrap every render in `RequestsProvider`, which now performs a real `GET /users/me/requests` fetch — every existing test's `mockFetchRoutes` call needs that route added, and the one test that read reservation data from `mockRequests` (removed from `RequestsContext` in Task 2) needs a local fixture instead.
+None of the 5 production files above are modified in this task. Every existing test in them wraps a render in `RequestsProvider` (or a component tree that includes one), which now performs a real `GET /users/me/requests` fetch — every affected test needs `<AuthProvider>` in its tree and (where the test's assertions depend on reservation content, or where a token is set at all) a matching fetch mock.
 
 - [ ] **Step 1: Run the current tests to see them fail**
 
@@ -884,11 +890,455 @@ describe('CalendarPage', () => {
 Run: `cd apps/web && npx vitest run src/routes/CalendarPage.test.tsx`
 Expected: PASS — all 9 tests green, no production-code change involved.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 4: Fix `ItemCard.test.tsx`**
+
+`ItemCard.tsx` calls `useRequests()` for its availability strip. None of its 6 tests set a token, so `RequestsProvider` never fetches (matches the "no token → never fetches" behavior already covered by `RequestsContext.test.tsx`) — the fix is only to wrap `<AuthProvider>` around every existing `<RequestsProvider>` so `useAuth()` inside the new `RequestsProvider` has a provider to read from.
+
+Replace the full contents of `apps/web/src/components/ItemCard.test.tsx` with:
+
+```tsx
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
+import { describe, expect, it, vi } from 'vitest'
+import { mockItems } from '@/lib/mockData'
+import { AuthProvider } from '@/lib/AuthContext'
+import { RequestsProvider } from '@/lib/RequestsContext'
+import { ItemCard } from './ItemCard'
+
+describe('ItemCard', () => {
+  it('renders the item name, category label, and the 14-day availability strip for an active item', () => {
+    const item = mockItems[0]
+    render(
+      <AuthProvider>
+        <RequestsProvider>
+          <MemoryRouter>
+            <ItemCard item={item} onEdit={vi.fn()} onDelete={vi.fn()} />
+          </MemoryRouter>
+        </RequestsProvider>
+      </AuthProvider>,
+    )
+    expect(screen.getByText(item.name)).toBeInTheDocument()
+    expect(screen.getByText('Tools')).toBeInTheDocument()
+    expect(screen.getByText('Next 14 days')).toBeInTheDocument()
+  })
+
+  it('does not render the item name as a link', () => {
+    const item = mockItems[0]
+    render(
+      <AuthProvider>
+        <RequestsProvider>
+          <MemoryRouter>
+            <ItemCard item={item} onEdit={vi.fn()} onDelete={vi.fn()} />
+          </MemoryRouter>
+        </RequestsProvider>
+      </AuthProvider>,
+    )
+    expect(screen.queryByRole('link', { name: item.name })).not.toBeInTheDocument()
+  })
+
+  it('links the Calendar button to the calendar page with the item preselected', () => {
+    const item = mockItems[0]
+    render(
+      <AuthProvider>
+        <RequestsProvider>
+          <MemoryRouter>
+            <ItemCard item={item} onEdit={vi.fn()} onDelete={vi.fn()} />
+          </MemoryRouter>
+        </RequestsProvider>
+      </AuthProvider>,
+    )
+    expect(screen.getByRole('link', { name: 'Calendar' })).toHaveAttribute(
+      'href',
+      `/requests/calendar?item=${item.id}`,
+    )
+  })
+
+  it('calls onEdit and onDelete when their buttons are clicked', async () => {
+    const user = userEvent.setup()
+    const onEdit = vi.fn()
+    const onDelete = vi.fn()
+    const item = mockItems[0]
+    render(
+      <AuthProvider>
+        <RequestsProvider>
+          <MemoryRouter>
+            <ItemCard item={item} onEdit={onEdit} onDelete={onDelete} />
+          </MemoryRouter>
+        </RequestsProvider>
+      </AuthProvider>,
+    )
+    await user.click(screen.getByRole('button', { name: 'Edit' }))
+    expect(onEdit).toHaveBeenCalledWith(item)
+    await user.click(screen.getByRole('button', { name: 'Delete' }))
+    expect(onDelete).toHaveBeenCalledWith(item)
+  })
+
+  it('shows only Edit for an inactive item, with no Delete, Calendar, or Reactivate button', () => {
+    const item = mockItems.find((i) => !i.is_active)!
+    render(
+      <AuthProvider>
+        <RequestsProvider>
+          <MemoryRouter>
+            <ItemCard item={item} onEdit={vi.fn()} onDelete={vi.fn()} />
+          </MemoryRouter>
+        </RequestsProvider>
+      </AuthProvider>,
+    )
+    expect(screen.getByText('Inactive · not visible in search')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Calendar' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reactivate' })).not.toBeInTheDocument()
+  })
+
+  it('hides all action buttons when readOnly', () => {
+    render(
+      <AuthProvider>
+        <RequestsProvider>
+          <MemoryRouter>
+            <ItemCard item={mockItems[0]} readOnly />
+          </MemoryRouter>
+        </RequestsProvider>
+      </AuthProvider>,
+    )
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Calendar' })).not.toBeInTheDocument()
+  })
+})
+```
+
+Run: `cd apps/web && npx vitest run src/components/ItemCard.test.tsx`
+Expected: PASS — all 6 tests green.
+
+- [ ] **Step 5: Fix `EarningsPage.test.tsx`**
+
+Same shape as Step 4 — neither test sets a token, so only the `<AuthProvider>` wrapper is needed, including around the dynamically-imported `RequestsProvider` in the last test.
+
+Replace the full contents of `apps/web/src/routes/EarningsPage.test.tsx` with:
+
+```tsx
+import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { describe, expect, it, vi } from 'vitest'
+import { mockEarnings } from '@/lib/mockData'
+import { formatCentavos } from '@/lib/format'
+import { AuthProvider } from '@/lib/AuthContext'
+import { RequestsProvider } from '@/lib/RequestsContext'
+import { EarningsPage } from './EarningsPage'
+
+function renderPage() {
+  render(
+    <AuthProvider>
+      <RequestsProvider>
+        <EarningsPage />
+      </RequestsProvider>
+    </AuthProvider>,
+  )
+}
+
+describe('EarningsPage', () => {
+  it('renders the 3 KPI cards derived from mock data', () => {
+    renderPage()
+    expect(screen.getByText(formatCentavos(mockEarnings.total_earnings))).toBeInTheDocument()
+    const currentMonth = mockEarnings.by_month[mockEarnings.by_month.length - 1]
+    expect(screen.getByText(formatCentavos(currentMonth.total))).toBeInTheDocument()
+  })
+
+  it('renders one bar per month in the chart', () => {
+    renderPage()
+    for (const entry of mockEarnings.by_month) {
+      expect(screen.getByText(entry.month)).toBeInTheDocument()
+    }
+  })
+
+  it('selects the first item by default and updates the breakdown when another item is clicked', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    const first = mockEarnings.by_item[0]
+    const second = mockEarnings.by_item[1]
+
+    const firstPanel = screen.getByText(first.item_name, { selector: 'h2' }).closest('div')!
+    expect(within(firstPanel).getByText(`${first.rentals[0].start_date} - ${first.rentals[0].end_date}`)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: new RegExp(second.item_name) }))
+    expect(screen.getByText(second.item_name, { selector: 'h2' })).toBeInTheDocument()
+  })
+
+  it('does not render NaN/Infinity bar heights when earnings data is empty', async () => {
+    vi.resetModules()
+    vi.doMock('@/lib/mockData', async () => {
+      const actual = await vi.importActual<typeof import('@/lib/mockData')>('@/lib/mockData')
+      return { ...actual, mockEarnings: { total_earnings: 0, by_item: [], by_month: [] } }
+    })
+    const { EarningsPage: PatchedPage } = await import('./EarningsPage')
+    const authModule = await import('@/lib/AuthContext')
+    const requestsModule = await import('@/lib/RequestsContext')
+    expect(() => render(
+      <authModule.AuthProvider>
+        <requestsModule.RequestsProvider>
+          <PatchedPage />
+        </requestsModule.RequestsProvider>
+      </authModule.AuthProvider>,
+    )).not.toThrow()
+    vi.doUnmock('@/lib/mockData')
+  })
+})
+```
+
+Run: `cd apps/web && npx vitest run src/routes/EarningsPage.test.tsx`
+Expected: PASS — all 4 tests green.
+
+- [ ] **Step 6: Fix `DashboardLayout.test.tsx`**
+
+Unlike Steps 4-5, two of this file's tests genuinely need reservation data (the pending-count badge test needs a non-zero count; the "real name" test already sets a token and mocked `/users/me` once, but now needs a second mocked response for `/users/me/requests` or the second fetch call falls through to a real, unmocked `fetch`). This file already wraps `<AuthProvider>` — no wrapper change needed, only fetch mocking.
+
+Replace the full contents of `apps/web/src/layouts/DashboardLayout.test.tsx` with:
+
+```tsx
+import { render, screen, waitFor } from '@testing-library/react'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { AuthProvider } from '@/lib/AuthContext'
+import { RequestsProvider } from '@/lib/RequestsContext'
+import { mockEarnings } from '@/lib/mockData'
+import { formatCentavos } from '@/lib/format'
+import { DashboardLayout } from './DashboardLayout'
+
+function jsonResponse(body: unknown, status: number) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: () => Promise.resolve(body),
+  } as Response
+}
+
+const PROFILE = { id: 'u1', name: 'María Vargas', email: 'maria@example.com', created_at: '2026-01-01T00:00:00Z' }
+
+const PENDING_RESERVATION = {
+  id: 'r1',
+  item_id: 'i1',
+  item_name: 'Taladro Bosch Professional',
+  item_photo_url: 'https://example.com/p.jpg',
+  renter_id: 'u2',
+  renter_name: 'Jorge Salas',
+  start_date: '2026-07-18',
+  end_date: '2026-07-20',
+  status: 'requested',
+  deposit_amount: 2000,
+  deposit_status: 'none',
+  created_at: '2026-07-14T12:00:00Z',
+  updated_at: '2026-07-14T12:00:00Z',
+}
+
+function renderLayout() {
+  render(
+    <AuthProvider>
+      <RequestsProvider>
+        <MemoryRouter initialEntries={['/dashboard']}>
+          <Routes>
+            <Route element={<DashboardLayout />}>
+              <Route path="/dashboard" element={<div>Home content</div>} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </RequestsProvider>
+    </AuthProvider>,
+  )
+}
+
+describe('DashboardLayout', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+  it('renders nav links for every top-level dashboard section, including Calendar', () => {
+    renderLayout()
+
+    expect(screen.getByRole('link', { name: 'Overview' })).toHaveAttribute('href', '/dashboard')
+    expect(screen.getByRole('link', { name: 'My items' })).toHaveAttribute('href', '/items')
+    expect(screen.getByRole('link', { name: 'Publish item' })).toHaveAttribute('href', '/items/publish')
+    expect(screen.getByRole('link', { name: /^Requests/ })).toHaveAttribute('href', '/requests')
+    expect(screen.getByRole('link', { name: 'Calendar' })).toHaveAttribute('href', '/requests/calendar')
+    expect(screen.getByRole('link', { name: 'Earnings' })).toHaveAttribute('href', '/earnings')
+    expect(screen.getByText('Home content')).toBeInTheDocument()
+  })
+
+  it('shows a centered pending-request count badge on the Requests link', async () => {
+    localStorage.setItem('rentatodo_token', 'tok123')
+    vi.spyOn(global, 'fetch')
+      .mockResolvedValueOnce(jsonResponse(PROFILE, 200))
+      .mockResolvedValueOnce(jsonResponse({ reservations: [PENDING_RESERVATION], page: 1, limit: 50, total: 1 }, 200))
+    renderLayout()
+    const requestsLink = screen.getByRole('link', { name: /^Requests/ })
+    await waitFor(() => expect(requestsLink).toHaveTextContent(/\d+/))
+    const badge = requestsLink.querySelector('span')!
+    expect(badge).toHaveClass('h-6', 'w-6', 'flex', 'items-center', 'justify-center')
+  })
+
+  it('shows the earned-this-month widget above the user footer', () => {
+    renderLayout()
+    const currentMonth = mockEarnings.by_month[mockEarnings.by_month.length - 1]
+    expect(screen.getByText(formatCentavos(currentMonth.total))).toBeInTheDocument()
+  })
+
+  it('shows a down arrow when this month earned less than last month', async () => {
+    vi.resetModules()
+    vi.doMock('@/lib/mockData', async () => {
+      const actual = await vi.importActual<typeof import('@/lib/mockData')>('@/lib/mockData')
+      return {
+        ...actual,
+        mockEarnings: { ...actual.mockEarnings, by_month: [{ month: 'Jun', total: 2000 }, { month: 'Jul', total: 1000 }] },
+      }
+    })
+    const authModule = await import('@/lib/AuthContext')
+    const requestsModule = await import('@/lib/RequestsContext')
+    const { DashboardLayout: PatchedLayout } = await import('./DashboardLayout')
+    render(
+      <authModule.AuthProvider>
+        <requestsModule.RequestsProvider>
+          <MemoryRouter initialEntries={['/dashboard']}>
+            <Routes>
+              <Route element={<PatchedLayout />}>
+                <Route path="/dashboard" element={<div>Home content</div>} />
+              </Route>
+            </Routes>
+          </MemoryRouter>
+        </requestsModule.RequestsProvider>
+      </authModule.AuthProvider>,
+    )
+    expect(screen.getByText(/↓ 50%/)).toBeInTheDocument()
+    vi.doUnmock('@/lib/mockData')
+  })
+
+  it("shows the authenticated user's real name and initials, not the mock user", async () => {
+    localStorage.setItem('rentatodo_token', 'tok123')
+    vi.spyOn(global, 'fetch')
+      .mockResolvedValueOnce(
+        jsonResponse({ id: 'u1', name: 'Ana Torres', email: 'ana@example.com', created_at: '2026-01-01T00:00:00Z' }, 200),
+      )
+      .mockResolvedValueOnce(jsonResponse({ reservations: [], page: 1, limit: 50, total: 0 }, 200))
+
+    renderLayout()
+
+    await waitFor(() => expect(screen.getByText('Ana Torres')).toBeInTheDocument())
+    expect(screen.getByText('AT')).toBeInTheDocument()
+  })
+})
+```
+
+Run: `cd apps/web && npx vitest run src/layouts/DashboardLayout.test.tsx`
+Expected: PASS — all 5 tests green.
+
+- [ ] **Step 7: Fix `ReservationDetailPage.test.tsx`**
+
+This test's reservation now needs to come from a mocked `/users/me/requests` response instead of the removed `mockRequests` array. The fixture's `id` must stay `mockRequests[1].id` (`'77777777-7777-4777-8777-777777777777'`) — `ReservationDetailPage.tsx`'s deposit-history table still reads from the untouched, still-mock `mockTransactions` array (out of scope for this plan), and `mockTransactions[0].reservation_id` is hardcoded to that same id — changing it would silently break the transaction-history assertion.
+
+Replace the full contents of `apps/web/src/routes/ReservationDetailPage.test.tsx` with:
+
+```tsx
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { mockTransactions } from '@/lib/mockData'
+import { AuthProvider } from '@/lib/AuthContext'
+import { RequestsProvider } from '@/lib/RequestsContext'
+import { ReservationDetailPage } from './ReservationDetailPage'
+
+function jsonResponse(body: unknown, status: number) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: () => Promise.resolve(body),
+  } as Response
+}
+
+function mockFetchRoutes(routes: Record<string, Array<() => Response>>) {
+  const sortedPaths = Object.keys(routes).sort((a, b) => b.length - a.length)
+  vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+    const url = String(input)
+    const path = sortedPaths.find((candidate) => url.endsWith(candidate))
+    const next = path ? routes[path].shift() : undefined
+    if (!next) throw new Error(`Unhandled fetch call: ${url}`)
+    return Promise.resolve(next())
+  })
+}
+
+const PROFILE = { id: 'u1', name: 'María Vargas', email: 'maria@example.com', created_at: '2026-01-01T00:00:00Z' }
+
+const RESERVATION = {
+  id: '77777777-7777-4777-8777-777777777777',
+  item_id: '33333333-3333-4333-8333-333333333333',
+  item_name: 'Carpa Camping 4 personas',
+  item_photo_url: 'https://storage.example.com/photos/carpa.jpg',
+  renter_id: '88888888-8888-4888-8888-888888888888',
+  renter_name: 'Camila Ríos',
+  start_date: '2026-07-10',
+  end_date: '2026-07-12',
+  status: 'delivered',
+  deposit_amount: 4500,
+  deposit_status: 'held',
+  created_at: '2026-07-08T09:00:00Z',
+  updated_at: '2026-07-10T08:00:00Z',
+}
+
+describe('ReservationDetailPage', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    vi.spyOn(global, 'fetch')
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('renders the transaction history and a report-problem form', async () => {
+    localStorage.setItem('rentatodo_token', 'tok123')
+    mockFetchRoutes({
+      '/users/me': [() => jsonResponse(PROFILE, 200)],
+      '/users/me/requests?page=1&limit=50': [() => jsonResponse({ reservations: [RESERVATION], page: 1, limit: 50, total: 1 }, 200)],
+    })
+    const user = userEvent.setup()
+    render(
+      <AuthProvider>
+        <RequestsProvider>
+          <MemoryRouter initialEntries={[`/reservations/${RESERVATION.id}`]}>
+            <Routes>
+              <Route path="/reservations/:id" element={<ReservationDetailPage />} />
+            </Routes>
+          </MemoryRouter>
+        </RequestsProvider>
+      </AuthProvider>,
+    )
+
+    await waitFor(() => expect(screen.getByText(mockTransactions[0].type)).toBeInTheDocument())
+
+    await user.type(screen.getByLabelText('What went wrong?'), 'The drill bit was broken')
+    await user.type(screen.getByLabelText('Photo URL'), 'https://storage.example.com/photos/broken.jpg')
+    await user.click(screen.getByRole('button', { name: 'Submit report' }))
+
+    expect(screen.getByText('Report submitted.')).toBeInTheDocument()
+  })
+})
+```
+
+Run: `cd apps/web && npx vitest run src/routes/ReservationDetailPage.test.tsx`
+Expected: PASS — the 1 test green.
+
+- [ ] **Step 8: Run the full suite to confirm no other collateral damage remains**
+
+Run: `cd apps/web && npx vitest run`
+Expected: only `RequestsPage.test.tsx` and `DashboardPage.test.tsx` still fail (their planned, expected failures — fixed in Tasks 4-5). Every other file, including all 5 touched in this task, passes. If any other file fails, stop and report it — do not proceed to commit with an unexplained failure.
+
+- [ ] **Step 9: Commit**
 
 ```bash
-git add apps/web/src/routes/CalendarPage.test.tsx
-git commit -m "test(web): fix CalendarPage fixtures for RequestsContext's real fetch"
+git add apps/web/src/routes/CalendarPage.test.tsx apps/web/src/components/ItemCard.test.tsx apps/web/src/routes/EarningsPage.test.tsx apps/web/src/layouts/DashboardLayout.test.tsx apps/web/src/routes/ReservationDetailPage.test.tsx
+git commit -m "test(web): fix RequestsProvider fixtures across 5 files for RequestsContext's real fetch"
 ```
 
 ---
@@ -1799,7 +2249,7 @@ Push this branch and open a PR against `develop`.
 - `CalendarPage`'s missing error branch — Task 6 (split into PR 2 per the file-count discussion). ✓
 - `ReservationDetailPage` — explicitly out of scope per the spec; not touched by any task. ✓
 - Testing coverage listed in the spec (stale-response discarding, no-token mutation throwing `ApiError`, provider-less `useRequests()` throw, per-page loading/error) — covered in Tasks 2, 4, 5, 6. ✓
-- PR-size target — addressed by the Task 3/Task 6 split (PR 1 lands at 9 files: `api.ts`+test, `en.ts`, `RequestsContext.tsx`+test, `RequestsPage.tsx`+test, `DashboardPage.tsx`+test, plus the test-only `CalendarPage.test.tsx` fix = 10 files touched, under the file-count flag once `CalendarPage.tsx`'s own change is deferred to PR 2). ✓
+- PR-size target — addressed by the Task 3/Task 6 split: `CalendarPage.tsx`'s own feature change is deferred to PR 2, keeping PR 1 free of any new production-code file. Task 2's execution surfaced a wider fixture-fix blast radius than originally scoped (4 more test files beyond `CalendarPage.test.tsx`); user-confirmed 2026-07-23 to fold all 5 fixture-only fixes into PR 1 as mechanical, exempting them from the file-count flag the same way a rename would be. PR 1 lands at 14 files total: 9 substantive (`api.ts`+test, `en.ts`, `RequestsContext.tsx`+test, `RequestsPage.tsx`+test, `DashboardPage.tsx`+test) + 5 mechanical fixture-only test fixes. ✓
 
 **Placeholder scan:** no TBD/TODO markers; every step has complete, runnable code.
 
