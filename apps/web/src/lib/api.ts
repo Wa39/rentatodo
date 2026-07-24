@@ -1,4 +1,4 @@
-import type { Category, Item } from './types'
+import type { Category, Item, Reservation } from './types'
 
 export class ApiError extends Error {
   code: string
@@ -35,6 +35,13 @@ export interface CreateItemPayload {
 }
 
 export type UpdateItemPayload = Partial<CreateItemPayload>
+
+export interface ReservationListResponse {
+  reservations: Reservation[]
+  page: number
+  limit: number
+  total: number
+}
 
 async function request<T>(path: string, options: RequestInit): Promise<T> {
   const baseUrl = import.meta.env.VITE_API_URL
@@ -86,4 +93,16 @@ export function apiUpdateItem(token: string, id: string, data: UpdateItemPayload
 
 export function apiDeleteItem(token: string, id: string): Promise<Item> {
   return request(`/items/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
+}
+
+export function apiListMyRequests(token: string): Promise<ReservationListResponse> {
+  return request('/users/me/requests?page=1&limit=50', { method: 'GET', headers: { Authorization: `Bearer ${token}` } })
+}
+
+export function apiApproveReservation(token: string, id: string): Promise<Reservation> {
+  return request(`/reservations/${id}/approve`, { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } })
+}
+
+export function apiRejectReservation(token: string, id: string): Promise<Reservation> {
+  return request(`/reservations/${id}/reject`, { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } })
 }

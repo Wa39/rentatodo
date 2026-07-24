@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 import { mockItems } from '@/lib/mockData'
+import { AuthProvider } from '@/lib/AuthContext'
 import { RequestsProvider } from '@/lib/RequestsContext'
 import { ItemCard } from './ItemCard'
 
@@ -10,11 +11,13 @@ describe('ItemCard', () => {
   it('renders the item name, category label, and the 14-day availability strip for an active item', () => {
     const item = mockItems[0]
     render(
-      <RequestsProvider>
-        <MemoryRouter>
-          <ItemCard item={item} onEdit={vi.fn()} onDelete={vi.fn()} />
-        </MemoryRouter>
-      </RequestsProvider>,
+      <AuthProvider>
+        <RequestsProvider>
+          <MemoryRouter>
+            <ItemCard item={item} onEdit={vi.fn()} onDelete={vi.fn()} />
+          </MemoryRouter>
+        </RequestsProvider>
+      </AuthProvider>,
     )
     expect(screen.getByText(item.name)).toBeInTheDocument()
     expect(screen.getByText('Tools')).toBeInTheDocument()
@@ -24,11 +27,13 @@ describe('ItemCard', () => {
   it('does not render the item name as a link', () => {
     const item = mockItems[0]
     render(
-      <RequestsProvider>
-        <MemoryRouter>
-          <ItemCard item={item} onEdit={vi.fn()} onDelete={vi.fn()} />
-        </MemoryRouter>
-      </RequestsProvider>,
+      <AuthProvider>
+        <RequestsProvider>
+          <MemoryRouter>
+            <ItemCard item={item} onEdit={vi.fn()} onDelete={vi.fn()} />
+          </MemoryRouter>
+        </RequestsProvider>
+      </AuthProvider>,
     )
     expect(screen.queryByRole('link', { name: item.name })).not.toBeInTheDocument()
   })
@@ -36,11 +41,13 @@ describe('ItemCard', () => {
   it('links the Calendar button to the calendar page with the item preselected', () => {
     const item = mockItems[0]
     render(
-      <RequestsProvider>
-        <MemoryRouter>
-          <ItemCard item={item} onEdit={vi.fn()} onDelete={vi.fn()} />
-        </MemoryRouter>
-      </RequestsProvider>,
+      <AuthProvider>
+        <RequestsProvider>
+          <MemoryRouter>
+            <ItemCard item={item} onEdit={vi.fn()} onDelete={vi.fn()} />
+          </MemoryRouter>
+        </RequestsProvider>
+      </AuthProvider>,
     )
     expect(screen.getByRole('link', { name: 'Calendar' })).toHaveAttribute(
       'href',
@@ -54,11 +61,13 @@ describe('ItemCard', () => {
     const onDelete = vi.fn()
     const item = mockItems[0]
     render(
-      <RequestsProvider>
-        <MemoryRouter>
-          <ItemCard item={item} onEdit={onEdit} onDelete={onDelete} />
-        </MemoryRouter>
-      </RequestsProvider>,
+      <AuthProvider>
+        <RequestsProvider>
+          <MemoryRouter>
+            <ItemCard item={item} onEdit={onEdit} onDelete={onDelete} />
+          </MemoryRouter>
+        </RequestsProvider>
+      </AuthProvider>,
     )
     await user.click(screen.getByRole('button', { name: 'Edit' }))
     expect(onEdit).toHaveBeenCalledWith(item)
@@ -69,11 +78,13 @@ describe('ItemCard', () => {
   it('shows only Edit for an inactive item, with no Delete, Calendar, or Reactivate button', () => {
     const item = mockItems.find((i) => !i.is_active)!
     render(
-      <RequestsProvider>
-        <MemoryRouter>
-          <ItemCard item={item} onEdit={vi.fn()} onDelete={vi.fn()} />
-        </MemoryRouter>
-      </RequestsProvider>,
+      <AuthProvider>
+        <RequestsProvider>
+          <MemoryRouter>
+            <ItemCard item={item} onEdit={vi.fn()} onDelete={vi.fn()} />
+          </MemoryRouter>
+        </RequestsProvider>
+      </AuthProvider>,
     )
     expect(screen.getByText('Inactive · not visible in search')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
@@ -84,11 +95,13 @@ describe('ItemCard', () => {
 
   it('hides all action buttons when readOnly', () => {
     render(
-      <RequestsProvider>
-        <MemoryRouter>
-          <ItemCard item={mockItems[0]} readOnly />
-        </MemoryRouter>
-      </RequestsProvider>,
+      <AuthProvider>
+        <RequestsProvider>
+          <MemoryRouter>
+            <ItemCard item={mockItems[0]} readOnly />
+          </MemoryRouter>
+        </RequestsProvider>
+      </AuthProvider>,
     )
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Calendar' })).not.toBeInTheDocument()

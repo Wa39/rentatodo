@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { mockEarnings } from '@/lib/mockData'
 import { formatCentavos } from '@/lib/format'
+import { getErrorMessage } from '@/lib/api'
 import { useAuth } from '@/lib/AuthContext'
 import { useItems } from '@/lib/ItemsContext'
 import { useTranslation } from '@/lib/i18n'
@@ -13,12 +15,35 @@ import { AuthErrorBanner } from '@/components/AuthErrorBanner'
 export function DashboardPage() {
   const t = useTranslation()
   const { user } = useAuth()
-  const { items, error } = useItems()
-  const { requests, setStatus } = useRequests()
+  const { items, error: itemsError } = useItems()
+  const { requests, error: requestsError, approveRequest, rejectRequest } = useRequests()
+  const [pendingId, setPendingId] = useState<string | null>(null)
   const activeItems = items.filter((item) => item.is_active).length
   const pendingRequests = requests.filter((r) => r.status === 'requested')
   const activeReservations = requests.filter((r) => RESERVED_STATUSES.includes(r.status)).length
   const recentPending = pendingRequests.slice(0, 2)
+
+  async function handleApprove(id: string) {
+    setPendingId(id)
+    try {
+      await approveRequest(id)
+    } catch (err) {
+      window.alert(getErrorMessage(err, t.errors.network))
+    } finally {
+      setPendingId(null)
+    }
+  }
+
+  async function handleReject(id: string) {
+    setPendingId(id)
+    try {
+      await rejectRequest(id)
+    } catch (err) {
+      window.alert(getErrorMessage(err, t.errors.network))
+    } finally {
+      setPendingId(null)
+    }
+  }
 
   return (
     <div>
@@ -32,7 +57,8 @@ export function DashboardPage() {
         }
       />
       <div className="p-four space-y-four">
-        <AuthErrorBanner message={error} />
+        <AuthErrorBanner message={itemsError} />
+        <AuthErrorBanner message={requestsError} />
         <div className="grid grid-cols-4 gap-three">
           <div className="rounded-lg border border-border bg-card p-three">
             <p className="text-xs font-medium text-muted-foreground">{t.dashboard.kpiActiveItems}</p>
@@ -74,10 +100,15 @@ export function DashboardPage() {
                   </p>
                 </div>
                 <div className="flex gap-two">
-                  <Button size="sm" variant="outline" onClick={() => setStatus(reservation.id, 'rejected')}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={pendingId === reservation.id}
+                    onClick={() => handleReject(reservation.id)}
+                  >
                     {t.dashboard.reject}
                   </Button>
-                  <Button size="sm" onClick={() => setStatus(reservation.id, 'approved')}>
+                  <Button size="sm" disabled={pendingId === reservation.id} onClick={() => handleApprove(reservation.id)}>
                     {t.dashboard.approve}
                   </Button>
                 </div>

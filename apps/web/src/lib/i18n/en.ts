@@ -110,6 +110,8 @@ export const en = {
     searchPlaceholder: 'Search by person or item…',
     reject: 'Reject',
     approve: 'Approve',
+    loading: 'Loading your requests…',
+    loadError: "Couldn't load your requests. Try refreshing the page.",
   },
   earnings: {
     title: 'Earnings',
