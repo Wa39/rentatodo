@@ -1,5 +1,5 @@
 import { ApiRequestError } from '@/data/api/http';
-import type { Category, DepositStatus, ReservationStatus } from '@/data/types';
+import type { Category, DepositStatus, ReservationStatus, TransactionType } from '@/data/types';
 
 /**
  * Single place where the frozen contract's enums (English) are
@@ -51,6 +51,20 @@ export const DEPOSIT_LABELS: Record<DepositStatus, string> = {
   held: 'Retenido',
   released: 'Liberado',
   frozen: 'Congelado (en disputa)',
+};
+
+/**
+ * Spanish labels + icon/color for the contract's transaction types.
+ * `sign` describes the deposit movement from the renter's point of view:
+ * a hold ties funds up, a release returns them, a freeze locks them.
+ */
+export const TRANSACTION_META: Record<
+  TransactionType,
+  { label: string; icon: string; color: string }
+> = {
+  hold: { label: 'Retención del depósito', icon: 'lock-closed-outline', color: '#8F550F' },
+  release: { label: 'Liberación del depósito', icon: 'lock-open-outline', color: '#155C3B' },
+  freeze: { label: 'Congelamiento por disputa', icon: 'snow-outline', color: '#C24A32' },
 };
 
 /** Human-readable Spanish message for any error thrown by the data layer. */
