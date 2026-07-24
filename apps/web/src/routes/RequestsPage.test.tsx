@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -124,6 +124,70 @@ describe('RequestsPage', () => {
     renderPage()
     const row = await screen.findByText(new RegExp(REQUESTED.renter_name))
     await user.click(within(row.closest('li')!).getByRole('button', { name: 'Approve' }))
+    await waitFor(() => expect(screen.queryByText(new RegExp(REQUESTED.renter_name))).not.toBeInTheDocument())
+  })
+
+  it("disables the acting row's Approve and Reject buttons while the approve request is in flight, and clears them once it resolves", async () => {
+    let resolveApprove: (r: Response) => void = () => {}
+    const approvePromise = new Promise<Response>((resolve) => {
+      resolveApprove = resolve
+    })
+    let resolveRefetch: (r: Response) => void = () => {}
+    const refetchPromise = new Promise<Response>((resolve) => {
+      resolveRefetch = resolve
+    })
+    let requestsCallCount = 0
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.endsWith('/users/me')) return Promise.resolve(jsonResponse(PROFILE, 200))
+      if (url.endsWith('/reservations/r1/approve')) return approvePromise
+      if (url.includes('/users/me/requests')) {
+        requestsCallCount += 1
+        if (requestsCallCount === 1) {
+          return Promise.resolve(jsonResponse({ reservations: RESERVATIONS, page: 1, limit: 50, total: 3 }, 200))
+        }
+        return refetchPromise
+      }
+      throw new Error(`Unhandled fetch call: ${url}`)
+    })
+
+    const user = userEvent.setup()
+    renderPage()
+    const row = await screen.findByText(new RegExp(REQUESTED.renter_name))
+    const li = row.closest('li')!
+    const approveButton = within(li).getByRole('button', { name: 'Approve' })
+    const rejectButton = within(li).getByRole('button', { name: 'Reject' })
+
+    expect(approveButton).not.toBeDisabled()
+    expect(rejectButton).not.toBeDisabled()
+
+    await user.click(approveButton)
+
+    // Approve call is still pending: the row's buttons must be disabled to prevent double-submit.
+    await waitFor(() => expect(approveButton).toBeDisabled())
+    expect(rejectButton).toBeDisabled()
+
+    await act(async () => {
+      resolveApprove(jsonResponse({ ...REQUESTED, status: 'approved', deposit_status: 'held' }, 200))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    // approveRequest() awaits refetch() before pendingId is cleared, so the buttons must
+    // stay disabled through the follow-up GET /users/me/requests too.
+    expect(approveButton).toBeDisabled()
+    expect(rejectButton).toBeDisabled()
+
+    await act(async () => {
+      resolveRefetch(
+        jsonResponse(
+          { reservations: [{ ...REQUESTED, status: 'approved', deposit_status: 'held' }, DELIVERED, CLOSED], page: 1, limit: 50, total: 3 },
+          200,
+        ),
+      )
+    })
+
+    // Once both calls resolve, the now-approved reservation leaves the Pending tab entirely.
     await waitFor(() => expect(screen.queryByText(new RegExp(REQUESTED.renter_name))).not.toBeInTheDocument())
   })
 
