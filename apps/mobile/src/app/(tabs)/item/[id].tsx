@@ -174,6 +174,7 @@ export default function ItemDetailScreen() {
         {error && <Text style={styles.error}>{error}</Text>}
 
         <Pressable
+          testID="item-request-submit"
           style={[styles.cta, (!start || !end || submitting) && styles.ctaDisabled]}
           disabled={!start || !end || submitting}
           onPress={onSubmit}>

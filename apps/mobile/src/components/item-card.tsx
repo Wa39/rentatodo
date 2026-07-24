@@ -13,7 +13,7 @@ import { formatUSD, type Item } from '@/data/types';
 export function ItemCard({ item }: { item: Item }) {
   return (
     <Link href={{ pathname: '/item/[id]', params: { id: item.id } }} asChild>
-      <Pressable style={styles.card}>
+      <Pressable testID={`item-card-${item.id}`} style={styles.card}>
         <View style={styles.thumb}>
           <Text style={styles.initial}>{item.name.charAt(0)}</Text>
         </View>

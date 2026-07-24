@@ -123,6 +123,7 @@ export default function ReservationDetailScreen() {
 
         {reservation.status === 'approved' && (
           <Pressable
+            testID="reservation-checkin"
             style={styles.primaryButton}
             onPress={() =>
               router.push({ pathname: '/check/[id]', params: { id: reservation.id, mode: 'in' } })
@@ -134,6 +135,7 @@ export default function ReservationDetailScreen() {
 
         {reservation.status === 'delivered' && (
           <Pressable
+            testID="reservation-checkout"
             style={styles.primaryButton}
             onPress={() =>
               router.push({ pathname: '/check/[id]', params: { id: reservation.id, mode: 'out' } })
@@ -153,6 +155,7 @@ export default function ReservationDetailScreen() {
             </View>
           ) : (
             <Pressable
+              testID="reservation-report"
               style={styles.reportButton}
               onPress={() =>
                 router.push({ pathname: '/report/[id]', params: { id: reservation.id } })
@@ -163,7 +166,10 @@ export default function ReservationDetailScreen() {
           ))}
 
         {cancellable && !confirming && (
-          <Pressable style={styles.cancelButton} onPress={() => setConfirming(true)}>
+          <Pressable
+            testID="reservation-cancel"
+            style={styles.cancelButton}
+            onPress={() => setConfirming(true)}>
             <Text style={styles.cancelText}>Cancelar reserva</Text>
           </Pressable>
         )}
@@ -185,6 +191,7 @@ export default function ReservationDetailScreen() {
                 <Text style={styles.confirmNoText}>Volver</Text>
               </Pressable>
               <Pressable
+                testID="reservation-cancel-confirm"
                 style={[styles.confirmButton, styles.confirmYes]}
                 disabled={submitting}
                 onPress={onCancel}>

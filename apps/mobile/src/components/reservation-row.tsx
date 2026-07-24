@@ -12,7 +12,7 @@ export function ReservationRow({ reservation }: { reservation: Reservation }) {
     <Link
       href={{ pathname: '/reservation/[id]', params: { id: reservation.id } }}
       asChild>
-      <Pressable style={styles.row}>
+      <Pressable testID={`reservation-row-${reservation.id}`} style={styles.row}>
         <View style={styles.thumb}>
           <Text style={styles.initial}>{reservation.item_name.charAt(0)}</Text>
         </View>

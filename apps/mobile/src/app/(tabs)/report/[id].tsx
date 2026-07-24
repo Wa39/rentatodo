@@ -91,6 +91,7 @@ export default function ReportProblemScreen() {
 
         <Text style={styles.label}>¿Qué problema encontró? *</Text>
         <TextInput
+          testID="report-reason"
           style={styles.reason}
           value={reason}
           onChangeText={setReason}
@@ -113,12 +114,12 @@ export default function ReportProblemScreen() {
 
         <View style={styles.pickRow}>
           {Platform.OS !== 'web' && (
-            <Pressable style={styles.pickButton} onPress={pickFromCamera}>
+            <Pressable testID="report-pick-camera" style={styles.pickButton} onPress={pickFromCamera}>
               <Ionicons name="camera-outline" size={18} color={Brand.primary} />
               <Text style={styles.pickText}>Tomar foto</Text>
             </Pressable>
           )}
-          <Pressable style={styles.pickButton} onPress={pickFromLibrary}>
+          <Pressable testID="report-pick-library" style={styles.pickButton} onPress={pickFromLibrary}>
             <Ionicons name="image-outline" size={18} color={Brand.primary} />
             <Text style={styles.pickText}>
               {Platform.OS === 'web' ? 'Elegir archivo' : 'Elegir de galería'}
@@ -129,6 +130,7 @@ export default function ReportProblemScreen() {
         {error && <Text style={styles.error}>{error}</Text>}
 
         <Pressable
+          testID="report-submit"
           style={[styles.cta, !canSubmit && styles.ctaDisabled]}
           disabled={!canSubmit}
           onPress={onSubmit}>

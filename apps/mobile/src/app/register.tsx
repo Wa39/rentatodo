@@ -61,6 +61,7 @@ export default function RegisterScreen() {
 
           <Text style={styles.label}>Nombre</Text>
           <TextInput
+            testID="register-name"
             style={styles.input}
             value={name}
             onChangeText={setName}
@@ -71,6 +72,7 @@ export default function RegisterScreen() {
 
           <Text style={styles.label}>Correo electrónico</Text>
           <TextInput
+            testID="register-email"
             style={styles.input}
             value={email}
             onChangeText={setEmail}
@@ -83,6 +85,7 @@ export default function RegisterScreen() {
 
           <Text style={styles.label}>Contraseña</Text>
           <TextInput
+            testID="register-password"
             style={styles.input}
             value={password}
             onChangeText={setPassword}
@@ -92,9 +95,14 @@ export default function RegisterScreen() {
             autoComplete="new-password"
           />
 
-          {error && <Text style={styles.error}>{error}</Text>}
+          {error && (
+            <Text testID="register-error" style={styles.error}>
+              {error}
+            </Text>
+          )}
 
           <Pressable
+            testID="register-submit"
             style={[styles.button, !canSubmit && styles.buttonDisabled]}
             disabled={!canSubmit}
             onPress={onSubmit}>
@@ -107,7 +115,7 @@ export default function RegisterScreen() {
 
           <View style={styles.footer}>
             <Text style={styles.footerText}>¿Ya tiene cuenta?</Text>
-            <Link href="/login" style={styles.footerLink}>
+            <Link testID="register-to-login" href="/login" style={styles.footerLink}>
               Iniciar sesión
             </Link>
           </View>

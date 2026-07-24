@@ -107,12 +107,12 @@ export default function CheckScreen() {
 
         <View style={styles.pickRow}>
           {Platform.OS !== 'web' && (
-            <Pressable style={styles.pickButton} onPress={pickFromCamera}>
+            <Pressable testID="check-pick-camera" style={styles.pickButton} onPress={pickFromCamera}>
               <Ionicons name="camera-outline" size={18} color={Brand.primary} />
               <Text style={styles.pickText}>Tomar foto</Text>
             </Pressable>
           )}
-          <Pressable style={styles.pickButton} onPress={pickFromLibrary}>
+          <Pressable testID="check-pick-library" style={styles.pickButton} onPress={pickFromLibrary}>
             <Ionicons name="image-outline" size={18} color={Brand.primary} />
             <Text style={styles.pickText}>
               {Platform.OS === 'web' ? 'Elegir archivo' : 'Elegir de galería'}
@@ -135,6 +135,7 @@ export default function CheckScreen() {
         {error && <Text style={styles.error}>{error}</Text>}
 
         <Pressable
+          testID="check-submit"
           style={[styles.cta, (!photo || submitting) && styles.ctaDisabled]}
           disabled={!photo || submitting}
           onPress={onSubmit}>
