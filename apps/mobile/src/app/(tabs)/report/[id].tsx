@@ -18,7 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Brand } from '@/constants/brand';
 import { dataSource } from '@/data/data-source';
 import { errorMessage } from '@/data/labels';
-import { photoUploader } from '@/data/photo-uploader';
+import { photoUploader, type LocalPhoto } from '@/data/photo-uploader';
 
 /**
  * Report a problem (contract: reason + photo_url required, only from
@@ -30,11 +30,11 @@ import { photoUploader } from '@/data/photo-uploader';
 export default function ReportProblemScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [reason, setReason] = useState('');
-  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [photo, setPhoto] = useState<LocalPhoto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const canSubmit = reason.trim() !== '' && photoUri !== null && !submitting;
+  const canSubmit = reason.trim() !== '' && photo !== null && !submitting;
 
   async function pickFromCamera() {
     setError(null);
@@ -44,7 +44,7 @@ export default function ReportProblemScreen() {
       return;
     }
     const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.7 });
-    if (!result.canceled && result.assets?.[0]) setPhotoUri(result.assets[0].uri);
+    if (!result.canceled && result.assets?.[0]) setPhoto(result.assets[0]);
   }
 
   async function pickFromLibrary() {
@@ -53,15 +53,15 @@ export default function ReportProblemScreen() {
       mediaTypes: ['images'],
       quality: 0.7,
     });
-    if (!result.canceled && result.assets?.[0]) setPhotoUri(result.assets[0].uri);
+    if (!result.canceled && result.assets?.[0]) setPhoto(result.assets[0]);
   }
 
   async function onSubmit() {
-    if (!id || !photoUri || reason.trim() === '') return;
+    if (!id || !photo || reason.trim() === '') return;
     setError(null);
     setSubmitting(true);
     try {
-      const photoUrl = await photoUploader.upload(photoUri);
+      const photoUrl = await photoUploader.upload(photo);
       await dataSource.reportProblem(id, reason.trim(), photoUrl);
       router.replace({ pathname: '/reservation/[id]', params: { id } });
     } catch (e) {
@@ -101,8 +101,8 @@ export default function ReportProblemScreen() {
 
         <Text style={styles.label}>Foto del problema *</Text>
         <View style={styles.photoBox}>
-          {photoUri ? (
-            <Image source={{ uri: photoUri }} style={styles.photo} resizeMode="cover" />
+          {photo ? (
+            <Image source={{ uri: photo.uri }} style={styles.photo} resizeMode="cover" />
           ) : (
             <View style={styles.photoPlaceholder}>
               <Ionicons name="camera-outline" size={40} color={Brand.muted} />

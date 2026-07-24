@@ -18,7 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Brand } from '@/constants/brand';
 import { dataSource } from '@/data/data-source';
 import { errorMessage } from '@/data/labels';
-import { photoUploader } from '@/data/photo-uploader';
+import { photoUploader, type LocalPhoto } from '@/data/photo-uploader';
 
 /**
  * Check-in / check-out with photo evidence (contract: photo_url required,
@@ -30,7 +30,7 @@ export default function CheckScreen() {
   const { id, mode } = useLocalSearchParams<{ id: string; mode: string }>();
   const isCheckIn = mode !== 'out';
 
-  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [photo, setPhoto] = useState<LocalPhoto | null>(null);
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -43,7 +43,7 @@ export default function CheckScreen() {
       return;
     }
     const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.7 });
-    if (!result.canceled && result.assets?.[0]) setPhotoUri(result.assets[0].uri);
+    if (!result.canceled && result.assets?.[0]) setPhoto(result.assets[0]);
   }
 
   async function pickFromLibrary() {
@@ -52,15 +52,15 @@ export default function CheckScreen() {
       mediaTypes: ['images'],
       quality: 0.7,
     });
-    if (!result.canceled && result.assets?.[0]) setPhotoUri(result.assets[0].uri);
+    if (!result.canceled && result.assets?.[0]) setPhoto(result.assets[0]);
   }
 
   async function onSubmit() {
-    if (!id || !photoUri) return;
+    if (!id || !photo) return;
     setError(null);
     setSubmitting(true);
     try {
-      const photoUrl = await photoUploader.upload(photoUri);
+      const photoUrl = await photoUploader.upload(photo);
       const trimmedNotes = notes.trim() || undefined;
       if (isCheckIn) {
         await dataSource.checkInReservation(id, photoUrl, trimmedNotes);
@@ -95,8 +95,8 @@ export default function CheckScreen() {
         </Text>
 
         <View style={styles.photoBox}>
-          {photoUri ? (
-            <Image source={{ uri: photoUri }} style={styles.photo} resizeMode="cover" />
+          {photo ? (
+            <Image source={{ uri: photo.uri }} style={styles.photo} resizeMode="cover" />
           ) : (
             <View style={styles.photoPlaceholder}>
               <Ionicons name="camera-outline" size={40} color={Brand.muted} />
@@ -135,8 +135,8 @@ export default function CheckScreen() {
         {error && <Text style={styles.error}>{error}</Text>}
 
         <Pressable
-          style={[styles.cta, (!photoUri || submitting) && styles.ctaDisabled]}
-          disabled={!photoUri || submitting}
+          style={[styles.cta, (!photo || submitting) && styles.ctaDisabled]}
+          disabled={!photo || submitting}
           onPress={onSubmit}>
           {submitting ? (
             <ActivityIndicator color="#fff" />
