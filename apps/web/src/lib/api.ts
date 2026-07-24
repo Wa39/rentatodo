@@ -36,6 +36,14 @@ export interface CreateItemPayload {
 
 export type UpdateItemPayload = Partial<CreateItemPayload>
 
+export type UploadContentType = 'image/jpeg' | 'image/png' | 'image/webp'
+
+export interface PresignResponse {
+  upload_url: string
+  public_url: string
+  expires_in: number
+}
+
 async function request<T>(path: string, options: RequestInit): Promise<T> {
   const baseUrl = import.meta.env.VITE_API_URL
   const response = await fetch(`${baseUrl}${path}`, {
@@ -86,4 +94,12 @@ export function apiUpdateItem(token: string, id: string, data: UpdateItemPayload
 
 export function apiDeleteItem(token: string, id: string): Promise<Item> {
   return request(`/items/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
+}
+
+export function apiPresignUpload(token: string, filename: string, contentType: UploadContentType): Promise<PresignResponse> {
+  return request('/uploads/presign', {
+    method: 'POST',
+    body: JSON.stringify({ filename, content_type: contentType }),
+    headers: { Authorization: `Bearer ${token}` },
+  })
 }

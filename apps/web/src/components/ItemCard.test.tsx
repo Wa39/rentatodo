@@ -93,4 +93,28 @@ describe('ItemCard', () => {
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Calendar' })).not.toBeInTheDocument()
   })
+
+  it('renders the photo_url as the card image when set', () => {
+    const item = { ...mockItems[0], photo_url: 'https://example.com/photo.jpg' }
+    render(
+      <RequestsProvider>
+        <MemoryRouter>
+          <ItemCard item={item} onEdit={vi.fn()} onDelete={vi.fn()} />
+        </MemoryRouter>
+      </RequestsProvider>,
+    )
+    expect(screen.getByRole('img', { name: item.name })).toHaveAttribute('src', 'https://example.com/photo.jpg')
+  })
+
+  it('shows no image when photo_url is empty', () => {
+    const item = { ...mockItems[0], photo_url: '' }
+    render(
+      <RequestsProvider>
+        <MemoryRouter>
+          <ItemCard item={item} onEdit={vi.fn()} onDelete={vi.fn()} />
+        </MemoryRouter>
+      </RequestsProvider>,
+    )
+    expect(screen.queryByRole('img')).not.toBeInTheDocument()
+  })
 })
