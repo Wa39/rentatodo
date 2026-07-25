@@ -45,7 +45,7 @@ export const test = base.extend({
     )
     // RequestsContext (PR #50) calls this on mount — return one pending request
     // so the requests page renders without a real API server.
-    await page.route('**/users/me/requests', (route) =>
+    await page.route('**/users/me/requests?**', (route) =>
       route.fulfill({
         json: { reservations: [MOCK_PENDING_REQUEST], page: 1, limit: 20, total: 1 },
       })

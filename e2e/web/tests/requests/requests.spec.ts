@@ -24,7 +24,7 @@ test('approving a request moves it off the pending tab', async ({ page }) => {
   // Override the fixture's static mock with a stateful one so the refetch
   // after approve returns the updated status (LIFO: this route wins over the
   // global mock registered in fixtures.ts).
-  await page.route('**/users/me/requests', (route) =>
+  await page.route('**/users/me/requests?**', (route) =>
     route.fulfill({
       json: { reservations: [didApprove ? approved : MOCK_PENDING_REQUEST], page: 1, limit: 20, total: 1 },
     })
