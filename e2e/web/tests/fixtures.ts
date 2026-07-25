@@ -30,6 +30,25 @@ export const MOCK_PENDING_REQUEST = {
   updated_at: '2026-07-14T12:00:00Z',
 } as const
 
+// ReservationDetailPage still reads its transaction history from mockTransactions
+// (apps/web/src/lib/mockData.ts), which keys a 'hold' transaction to this id —
+// so this reservation must keep the same id for that page's e2e test to find it.
+export const MOCK_DELIVERED_RESERVATION = {
+  id: '77777777-7777-4777-8777-777777777777',
+  item_id: '33333333-3333-4333-8333-333333333333',
+  item_name: 'Carpa Camping 4 personas',
+  item_photo_url: 'https://storage.example.com/photos/carpa.jpg',
+  renter_id: '88888888-8888-4888-8888-888888888888',
+  renter_name: 'Camila Ríos',
+  start_date: '2026-07-10',
+  end_date: '2026-07-12',
+  status: 'delivered',
+  deposit_amount: 4500,
+  deposit_status: 'held',
+  created_at: '2026-07-08T09:00:00Z',
+  updated_at: '2026-07-10T08:00:00Z',
+} as const
+
 export const test = base.extend({
   page: async ({ page }, use) => {
     await page.route('**/auth/login', (route) =>
@@ -44,10 +63,16 @@ export const test = base.extend({
       route.fulfill({ json: [] })
     )
     // RequestsContext (PR #50) calls this on mount — return one pending request
-    // so the requests page renders without a real API server.
+    // and one delivered reservation so both the requests page and the
+    // reservation-detail page render without a real API server.
     await page.route('**/users/me/requests?**', (route) =>
       route.fulfill({
-        json: { reservations: [MOCK_PENDING_REQUEST], page: 1, limit: 20, total: 1 },
+        json: {
+          reservations: [MOCK_PENDING_REQUEST, MOCK_DELIVERED_RESERVATION],
+          page: 1,
+          limit: 20,
+          total: 2,
+        },
       })
     )
     await use(page)
