@@ -3,7 +3,8 @@ import { test, expect } from '../fixtures'
 // IDs come from mockRequests in apps/web/src/lib/mockData.ts.
 // The page uses RequestsContext (mock data — no real API call needed).
 const REQUESTED_ID = '55555555-5555-4555-8555-555555555555' // Taladro, status=requested, no transactions
-const DELIVERED_ID = '77777777-7777-4777-8777-777777777777' // second item, status=delivered, has a hold tx
+const DELIVERED_ID = '77777777-7777-4777-8777-777777777777' // Carpa, status=delivered, has a hold tx
+const RETURNED_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' // Taladro, status=returned (enables Close button)
 
 test('shows item name, date range and status for a pending reservation', async ({ page }) => {
   await page.goto(`/reservations/${REQUESTED_ID}`)
@@ -38,6 +39,13 @@ test('report form shows confirmation after submit', async ({ page }) => {
   await page.getByLabel('Photo URL').fill('https://example.com/evidence.jpg')
   await page.getByRole('button', { name: 'Submit report' }).click()
   await expect(page.getByText('Report submitted.')).toBeVisible()
+})
+
+test('close reservation button is enabled when status is returned', async ({ page }) => {
+  await page.goto(`/reservations/${RETURNED_ID}`)
+  const closeBtn = page.getByRole('button', { name: 'Close reservation' })
+  await expect(closeBtn).toBeVisible()
+  await expect(closeBtn).toBeEnabled()
 })
 
 test('navigating to a non-existent reservation shows not-found message', async ({ page }) => {
