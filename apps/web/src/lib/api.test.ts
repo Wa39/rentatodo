@@ -8,6 +8,7 @@ import {
   apiListMyItems,
   apiListMyRequests,
   apiLogin,
+  apiPresignUpload,
   apiRegister,
   apiRejectReservation,
   apiUpdateItem,
@@ -397,6 +398,40 @@ describe('api', () => {
       vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ error: { code: 'FORBIDDEN', message: 'Not the item owner' } }, 403))
 
       await expect(apiRejectReservation('tok123', 'r1')).rejects.toMatchObject({ code: 'FORBIDDEN', message: 'Not the item owner' })
+    })
+  })
+
+  describe('apiPresignUpload', () => {
+    it('POSTs to /uploads/presign with filename and content_type, resolves with the presign payload', async () => {
+      const payload = {
+        upload_url: 'https://s3.example.com/upload?sig=abc',
+        public_url: 'https://s3.example.com/uploads/u1/abc.jpg',
+        expires_in: 300,
+      }
+      vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(payload, 200))
+
+      const result = await apiPresignUpload('tok123', 'photo.jpg', 'image/jpeg')
+
+      expect(result).toEqual(payload)
+      expect(fetch).toHaveBeenCalledWith(
+        'http://localhost:8000/uploads/presign',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ filename: 'photo.jpg', content_type: 'image/jpeg' }),
+          headers: expect.objectContaining({ Authorization: 'Bearer tok123' }),
+        }),
+      )
+    })
+
+    it('throws ApiError with the code/message from a 401 response', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(
+        jsonResponse({ error: { code: 'UNAUTHORIZED', message: 'Missing or invalid token' } }, 401),
+      )
+
+      await expect(apiPresignUpload('bad-token', 'photo.jpg', 'image/jpeg')).rejects.toMatchObject({
+        code: 'UNAUTHORIZED',
+        message: 'Missing or invalid token',
+      })
     })
   })
 })

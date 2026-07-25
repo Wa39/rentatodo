@@ -48,6 +48,7 @@ export default function HomeScreen() {
             <Text style={styles.title}>RentaTodo</Text>
 
             <TextInput
+              testID="home-search"
               style={styles.search}
               placeholder="Buscar artículos…"
               placeholderTextColor={Brand.muted}
@@ -59,6 +60,7 @@ export default function HomeScreen() {
               {(['popular', 'recent'] as const).map((s) => (
                 <Pressable
                   key={s}
+                  testID={`home-sort-${s}`}
                   onPress={() => setSort(s)}
                   style={[styles.segButton, sort === s && styles.segActive]}>
                   <Text style={[styles.segText, sort === s && styles.segTextActive]}>
