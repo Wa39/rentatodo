@@ -1,4 +1,4 @@
-import { test, expect } from '../fixtures'
+import { test, expect, MOCK_PENDING_REQUEST } from '../fixtures'
 
 test('requests page shows status filter buttons', async ({ page }) => {
   await page.goto('/requests')
@@ -18,6 +18,22 @@ test('pending tab shows approve and reject buttons for the seeded request', asyn
 })
 
 test('approving a request moves it off the pending tab', async ({ page }) => {
+  const approved = { ...MOCK_PENDING_REQUEST, status: 'approved', deposit_status: 'held' }
+  let didApprove = false
+
+  // Override the fixture's static mock with a stateful one so the refetch
+  // after approve returns the updated status (LIFO: this route wins over the
+  // global mock registered in fixtures.ts).
+  await page.route('**/users/me/requests', (route) =>
+    route.fulfill({
+      json: { reservations: [didApprove ? approved : MOCK_PENDING_REQUEST], page: 1, limit: 20, total: 1 },
+    })
+  )
+  await page.route(`**/reservations/${MOCK_PENDING_REQUEST.id}/approve`, (route) => {
+    didApprove = true
+    route.fulfill({ json: approved })
+  })
+
   await page.goto('/requests')
   await page.getByRole('button', { name: 'Approve' }).click()
   // Approve/Reject buttons should be gone — no more pending requests
