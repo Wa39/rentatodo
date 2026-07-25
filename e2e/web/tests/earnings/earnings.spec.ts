@@ -19,3 +19,12 @@ test('earnings page shows monthly chart and per-item breakdown', async ({ page }
   // selected-item breakdown panel rendered beside the list.
   await expect(page.getByText('Taladro Bosch Professional').first()).toBeVisible()
 })
+
+test('clicking a by-item entry shows its rental breakdown', async ({ page }) => {
+  await page.goto('/earnings')
+  // Taladro is selected by default; click the other item to switch the panel.
+  // locator('button') scopes to the list button, not the heading in the panel.
+  await page.locator('button', { hasText: 'Carpa Camping 4 personas' }).click()
+  await expect(page.getByRole('heading', { name: 'Carpa Camping 4 personas' })).toBeVisible()
+  await expect(page.getByText('2026-06-10 - 2026-06-12')).toBeVisible()
+})
