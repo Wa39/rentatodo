@@ -35,7 +35,7 @@ export default function MyRentalsScreen() {
         <Text style={styles.title}>Mis rentas</Text>
         <View style={styles.tabs}>
           {(['active', 'past'] as const).map((t) => (
-            <Pressable key={t} onPress={() => setTab(t)} style={styles.tab}>
+            <Pressable key={t} testID={`rentals-tab-${t}`} onPress={() => setTab(t)} style={styles.tab}>
               <Text style={[styles.tabText, tab === t && styles.tabActive]}>
                 {t === 'active' ? 'Activas' : 'Pasadas'}
               </Text>
