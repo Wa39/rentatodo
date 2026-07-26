@@ -60,6 +60,7 @@ export default function LoginScreen() {
 
           <Text style={styles.label}>Correo electrónico</Text>
           <TextInput
+            testID="login-email"
             style={styles.input}
             value={email}
             onChangeText={setEmail}
@@ -72,6 +73,7 @@ export default function LoginScreen() {
 
           <Text style={styles.label}>Contraseña</Text>
           <TextInput
+            testID="login-password"
             style={styles.input}
             value={password}
             onChangeText={setPassword}
@@ -81,9 +83,14 @@ export default function LoginScreen() {
             autoComplete="password"
           />
 
-          {error && <Text style={styles.error}>{error}</Text>}
+          {error && (
+            <Text testID="login-error" style={styles.error}>
+              {error}
+            </Text>
+          )}
 
           <Pressable
+            testID="login-submit"
             style={[styles.button, !canSubmit && styles.buttonDisabled]}
             disabled={!canSubmit}
             onPress={onSubmit}>
@@ -96,7 +103,7 @@ export default function LoginScreen() {
 
           <View style={styles.footer}>
             <Text style={styles.footerText}>¿No tiene cuenta?</Text>
-            <Link href="/register" style={styles.footerLink}>
+            <Link testID="login-to-register" href="/register" style={styles.footerLink}>
               Crear cuenta
             </Link>
           </View>

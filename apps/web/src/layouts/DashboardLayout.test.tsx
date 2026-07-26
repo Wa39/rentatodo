@@ -15,6 +15,35 @@ function jsonResponse(body: unknown, status: number) {
   } as Response
 }
 
+function mockFetchRoutes(routes: Record<string, Array<() => Response>>) {
+  const sortedPaths = Object.keys(routes).sort((a, b) => b.length - a.length)
+  vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+    const url = String(input)
+    const path = sortedPaths.find((candidate) => url.endsWith(candidate))
+    const next = path ? routes[path].shift() : undefined
+    if (!next) throw new Error(`Unhandled fetch call: ${url}`)
+    return Promise.resolve(next())
+  })
+}
+
+const PROFILE = { id: 'u1', name: 'María Vargas', email: 'maria@example.com', created_at: '2026-01-01T00:00:00Z' }
+
+const PENDING_RESERVATION = {
+  id: 'r1',
+  item_id: 'i1',
+  item_name: 'Taladro Bosch Professional',
+  item_photo_url: 'https://example.com/p.jpg',
+  renter_id: 'u2',
+  renter_name: 'Jorge Salas',
+  start_date: '2026-07-18',
+  end_date: '2026-07-20',
+  status: 'requested',
+  deposit_amount: 2000,
+  deposit_status: 'none',
+  created_at: '2026-07-14T12:00:00Z',
+  updated_at: '2026-07-14T12:00:00Z',
+}
+
 function renderLayout() {
   render(
     <AuthProvider>
@@ -51,10 +80,16 @@ describe('DashboardLayout', () => {
     expect(screen.getByText('Home content')).toBeInTheDocument()
   })
 
-  it('shows a centered pending-request count badge on the Requests link', () => {
+  it('shows a centered pending-request count badge on the Requests link', async () => {
+    localStorage.setItem('rentatodo_token', 'tok123')
+    vi.spyOn(global, 'fetch')
+    mockFetchRoutes({
+      '/users/me': [() => jsonResponse(PROFILE, 200)],
+      '/users/me/requests?page=1&limit=50': [() => jsonResponse({ reservations: [PENDING_RESERVATION], page: 1, limit: 50, total: 1 }, 200)],
+    })
     renderLayout()
     const requestsLink = screen.getByRole('link', { name: /^Requests/ })
-    expect(requestsLink).toHaveTextContent(/\d+/)
+    await waitFor(() => expect(requestsLink).toHaveTextContent(/\d+/))
     const badge = requestsLink.querySelector('span')!
     expect(badge).toHaveClass('h-6', 'w-6', 'flex', 'items-center', 'justify-center')
   })
@@ -96,9 +131,11 @@ describe('DashboardLayout', () => {
 
   it("shows the authenticated user's real name and initials, not the mock user", async () => {
     localStorage.setItem('rentatodo_token', 'tok123')
-    vi.spyOn(global, 'fetch').mockResolvedValueOnce(
-      jsonResponse({ id: 'u1', name: 'Ana Torres', email: 'ana@example.com', created_at: '2026-01-01T00:00:00Z' }, 200),
-    )
+    vi.spyOn(global, 'fetch')
+    mockFetchRoutes({
+      '/users/me': [() => jsonResponse({ id: 'u1', name: 'Ana Torres', email: 'ana@example.com', created_at: '2026-01-01T00:00:00Z' }, 200)],
+      '/users/me/requests?page=1&limit=50': [() => jsonResponse({ reservations: [], page: 1, limit: 50, total: 0 }, 200)],
+    })
 
     renderLayout()
 

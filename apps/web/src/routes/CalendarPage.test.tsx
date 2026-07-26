@@ -2,7 +2,6 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { mockRequests } from '@/lib/mockData'
 import { AuthProvider } from '@/lib/AuthContext'
 import { ItemsProvider } from '@/lib/ItemsContext'
 import { RequestsProvider } from '@/lib/RequestsContext'
@@ -56,6 +55,32 @@ const ITEMS = [
   },
 ]
 
+const RESERVATION = {
+  id: 'r1',
+  item_id: ITEMS[0].id,
+  item_name: ITEMS[0].name,
+  item_photo_url: ITEMS[0].photo_url,
+  renter_id: 'u2',
+  renter_name: 'Jorge Salas',
+  start_date: '2026-07-18',
+  end_date: '2026-07-20',
+  status: 'requested',
+  deposit_amount: 2000,
+  deposit_status: 'none',
+  created_at: '2026-07-14T12:00:00Z',
+  updated_at: '2026-07-14T12:00:00Z',
+}
+
+function mockFetchOk(overrides: { items?: unknown[]; reservations?: unknown[] } = {}) {
+  const items = overrides.items ?? ITEMS
+  const reservations = overrides.reservations ?? [RESERVATION]
+  mockFetchRoutes({
+    '/users/me': [() => jsonResponse(PROFILE, 200)],
+    '/users/me/items': [() => jsonResponse(items, 200)],
+    '/users/me/requests?page=1&limit=50': [() => jsonResponse({ reservations, page: 1, limit: 50, total: reservations.length }, 200)],
+  })
+}
+
 function renderPage(initialEntry = '/requests/calendar') {
   localStorage.setItem('rentatodo_token', 'tok123')
   render(
@@ -84,19 +109,19 @@ describe('CalendarPage', () => {
   })
 
   it('defaults to the first item when no item is preselected', async () => {
-    mockFetchRoutes({ '/users/me': [() => jsonResponse(PROFILE, 200)], '/users/me/items': [() => jsonResponse(ITEMS, 200)] })
+    mockFetchOk()
     renderPage()
     await waitFor(() => expect(screen.getByRole('combobox')).toHaveValue(ITEMS[0].id))
   })
 
   it('preselects the item from the ?item= query param', async () => {
-    mockFetchRoutes({ '/users/me': [() => jsonResponse(PROFILE, 200)], '/users/me/items': [() => jsonResponse(ITEMS, 200)] })
+    mockFetchOk()
     renderPage(`/requests/calendar?item=${ITEMS[1].id}`)
     await waitFor(() => expect(screen.getByRole('combobox')).toHaveValue(ITEMS[1].id))
   })
 
   it('switches items when a different one is picked from the dropdown', async () => {
-    mockFetchRoutes({ '/users/me': [() => jsonResponse(PROFILE, 200)], '/users/me/items': [() => jsonResponse(ITEMS, 200)] })
+    mockFetchOk()
     const user = userEvent.setup()
     renderPage()
     await waitFor(() => expect(screen.getByRole('combobox')).toHaveValue(ITEMS[0].id))
@@ -105,23 +130,20 @@ describe('CalendarPage', () => {
   })
 
   it("lists this item's reservations below the calendar", async () => {
-    mockFetchRoutes({ '/users/me': [() => jsonResponse(PROFILE, 200)], '/users/me/items': [() => jsonResponse(ITEMS, 200)] })
+    mockFetchOk()
     renderPage()
-    const reservation = mockRequests.find((r) => r.item_id === ITEMS[0].id)
-    if (reservation) {
-      await waitFor(() => expect(screen.getByText(new RegExp(reservation.renter_name))).toBeInTheDocument())
-    }
+    await waitFor(() => expect(screen.getByText(new RegExp(RESERVATION.renter_name))).toBeInTheDocument())
   })
 
   it('shows a not-found message instead of silently falling back for an invalid ?item=', async () => {
-    mockFetchRoutes({ '/users/me': [() => jsonResponse(PROFILE, 200)], '/users/me/items': [() => jsonResponse(ITEMS, 200)] })
+    mockFetchOk()
     renderPage('/requests/calendar?item=does-not-exist')
     await waitFor(() => expect(screen.getByText("This item doesn't exist or is no longer yours.")).toBeInTheDocument())
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
   })
 
   it('renders each month at a fixed compact width instead of stretching full-width', async () => {
-    mockFetchRoutes({ '/users/me': [() => jsonResponse(PROFILE, 200)], '/users/me/items': [() => jsonResponse(ITEMS, 200)] })
+    mockFetchOk()
     renderPage()
     await waitFor(() => expect(screen.getAllByText(/2026$/)).toHaveLength(2))
     const monthHeadings = screen.getAllByText(/2026$/)
@@ -134,6 +156,8 @@ describe('CalendarPage', () => {
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
       const url = String(input)
       if (url.endsWith('/users/me')) return Promise.resolve(jsonResponse(PROFILE, 200))
+      if (url.endsWith('/users/me/requests?page=1&limit=50'))
+        return Promise.resolve(jsonResponse({ reservations: [], page: 1, limit: 50, total: 0 }, 200))
       if (url.endsWith('/users/me/items')) return new Promise<Response>(() => {})
       throw new Error(`Unhandled fetch call: ${url}`)
     })
@@ -142,7 +166,7 @@ describe('CalendarPage', () => {
   })
 
   it('shows an empty-state message instead of crashing when there are no items at all', async () => {
-    mockFetchRoutes({ '/users/me': [() => jsonResponse(PROFILE, 200)], '/users/me/items': [() => jsonResponse([], 200)] })
+    mockFetchOk({ items: [] })
     renderPage()
     await waitFor(() => expect(screen.getByText("You don't have any items yet. Publish one to see its calendar.")).toBeInTheDocument())
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
@@ -152,6 +176,7 @@ describe('CalendarPage', () => {
     mockFetchRoutes({
       '/users/me': [() => jsonResponse(PROFILE, 200)],
       '/users/me/items': [() => jsonResponse({ error: { code: 'SERVER_ERROR', message: 'Server exploded' } }, 500)],
+      '/users/me/requests?page=1&limit=50': [() => jsonResponse({ reservations: [], page: 1, limit: 50, total: 0 }, 200)],
     })
     renderPage()
     await waitFor(() => expect(screen.getByText('Server exploded')).toBeInTheDocument())
