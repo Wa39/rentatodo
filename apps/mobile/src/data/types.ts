@@ -65,6 +65,23 @@ export type Reservation = {
   updated_at: string;
 };
 
+/** Deposit movement types (contract TransactionTypeEnum). */
+export type TransactionType = 'hold' | 'release' | 'freeze';
+
+/**
+ * A deposit movement (contract TransactionResponse) — the immutable audit
+ * trail behind a reservation's deposit_status: hold on approval, release
+ * on close, freeze on a problem report.
+ */
+export type Transaction = {
+  id: string;
+  reservation_id: string;
+  type: TransactionType;
+  /** USD cents. */
+  amount: number;
+  created_at: string;
+};
+
 /** Problem report (contract ReportResponse). Creating one freezes the deposit. */
 export type Report = {
   id: string;

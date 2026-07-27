@@ -7,8 +7,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBadge } from '@/components/status-badge';
 import { Brand } from '@/constants/brand';
 import { dataSource } from '@/data/data-source';
-import { DEPOSIT_LABELS, STATUS_META, errorMessage } from '@/data/labels';
-import { formatUSD, type Reservation } from '@/data/types';
+import { DEPOSIT_LABELS, STATUS_META, TRANSACTION_META, errorMessage } from '@/data/labels';
+import { formatUSD, type Reservation, type Transaction } from '@/data/types';
 import { usePolling } from '@/hooks/use-polling';
 import { countDaysInclusive, formatDateRangeEs } from '@/utils/dates';
 
@@ -22,6 +22,7 @@ import { countDaysInclusive, formatDateRangeEs } from '@/utils/dates';
 export default function ReservationDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [reservation, setReservation] = useState<Reservation | undefined>();
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [confirming, setConfirming] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,6 +31,9 @@ export default function ReservationDetailScreen() {
     useCallback(() => {
       if (!id) return;
       dataSource.listReservations().then((all) => setReservation(all.find((r) => r.id === id)));
+      // The deposit audit trail can change on the owner's side (release on
+      // close) or ours (freeze on report), so refresh it on the same tick.
+      dataSource.listTransactions(id).then(setTransactions).catch(() => setTransactions([]));
     }, [id]),
   );
 
@@ -108,6 +112,39 @@ export default function ReservationDetailScreen() {
             </Text>
           </View>
         </View>
+
+        {transactions.length > 0 && (
+          <View style={styles.card}>
+            <Text style={styles.historyTitle}>Movimientos del depósito</Text>
+            {transactions.map((t, i) => {
+              const meta = TRANSACTION_META[t.type];
+              return (
+                <View
+                  key={t.id}
+                  style={[styles.txRow, i === transactions.length - 1 && styles.rowLast]}>
+                  <Ionicons
+                    name={meta.icon as React.ComponentProps<typeof Ionicons>['name']}
+                    size={17}
+                    color={meta.color}
+                  />
+                  <View style={styles.txInfo}>
+                    <Text style={styles.txLabel}>{meta.label}</Text>
+                    <Text style={styles.txDate}>
+                      {new Date(t.created_at).toLocaleDateString('es-CR', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      })}
+                    </Text>
+                  </View>
+                  <Text style={[styles.txAmount, { color: meta.color }]}>
+                    {formatUSD(t.amount)}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        )}
 
         <Link
           href={{ pathname: '/item/[id]', params: { id: reservation.item_id } }}
@@ -270,6 +307,25 @@ const styles = StyleSheet.create({
   rowLast: { borderBottomWidth: 0 },
   label: { fontSize: 12.5, color: Brand.muted },
   value: { fontSize: 12.5, fontWeight: '700', color: Brand.ink },
+  historyTitle: {
+    fontSize: 12.5,
+    fontWeight: '800',
+    color: Brand.ink,
+    paddingTop: 12,
+    paddingBottom: 4,
+  },
+  txRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 11,
+    paddingVertical: 11,
+    borderBottomWidth: 1,
+    borderBottomColor: Brand.line,
+  },
+  txInfo: { flex: 1, minWidth: 0 },
+  txLabel: { fontSize: 12.5, fontWeight: '700', color: Brand.ink },
+  txDate: { fontSize: 11, color: Brand.muted, marginTop: 1 },
+  txAmount: { fontSize: 13, fontWeight: '800' },
   linkRow: {
     flexDirection: 'row',
     alignItems: 'center',

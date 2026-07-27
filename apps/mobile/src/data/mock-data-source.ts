@@ -1,6 +1,6 @@
 import { ApiRequestError } from '@/data/api/http';
 import type { DataSource } from '@/data/data-source';
-import type { Item, ItemDetail, Report, Reservation } from '@/data/types';
+import type { Item, ItemDetail, Report, Reservation, Transaction } from '@/data/types';
 import { countDaysInclusive, expandRanges, rangeHasUnavailable } from '@/utils/dates';
 
 /**
@@ -86,6 +86,24 @@ const RESERVATIONS: Reservation[] = [
   },
 ];
 
+/**
+ * Deposit audit trail per reservation (contract: transactions). Seeded from
+ * each reservation's current deposit state so the mock stays self-consistent:
+ * a held deposit has a HOLD, released adds a RELEASE, frozen adds a FREEZE.
+ */
+const TRANSACTIONS: Record<string, Transaction[]> = {};
+for (const r of RESERVATIONS) {
+  const list: Transaction[] = [];
+  if (r.deposit_status !== 'none') {
+    list.push({ id: `tx-h-${r.id}`, reservation_id: r.id, type: 'hold', amount: r.deposit_amount, created_at: r.created_at });
+    if (r.deposit_status === 'released')
+      list.push({ id: `tx-r-${r.id}`, reservation_id: r.id, type: 'release', amount: r.deposit_amount, created_at: r.updated_at });
+    if (r.deposit_status === 'frozen')
+      list.push({ id: `tx-f-${r.id}`, reservation_id: r.id, type: 'freeze', amount: r.deposit_amount, created_at: r.updated_at });
+  }
+  TRANSACTIONS[r.id] = list;
+}
+
 /** Normalizes for search: lowercase, no accents (contract behavior). */
 function normalize(s: string): string {
   return s
@@ -162,9 +180,15 @@ export class MockDataSource implements DataSource {
       updated_at: now,
     };
     RESERVATIONS.unshift(reservation);
+    TRANSACTIONS[reservation.id] = []; // no deposit movement until approved
     // Requested reservations already block the dates (contract behavior).
     item.unavailable_dates.push({ start_date: startDate, end_date: endDate });
     return { ...reservation };
+  }
+
+  /** Mirrors GET /reservations/{id}/transactions: the deposit audit trail. */
+  async listTransactions(reservationId: string): Promise<Transaction[]> {
+    return [...(TRANSACTIONS[reservationId] ?? [])];
   }
 
   /**
@@ -184,7 +208,13 @@ export class MockDataSource implements DataSource {
       );
     }
     reservation.status = 'cancelled';
-    if (reservation.deposit_status === 'held') reservation.deposit_status = 'released';
+    if (reservation.deposit_status === 'held') {
+      reservation.deposit_status = 'released';
+      TRANSACTIONS[reservationId]?.push({
+        id: `tx-r-${Date.now()}`, reservation_id: reservationId, type: 'release',
+        amount: reservation.deposit_amount, created_at: new Date().toISOString(),
+      });
+    }
     reservation.updated_at = new Date().toISOString();
     // Cancelled reservations no longer block the item's dates.
     const item = ITEMS.find((a) => a.id === reservation.item_id);
@@ -220,6 +250,10 @@ export class MockDataSource implements DataSource {
     }
     this.reportedReservations.add(reservationId);
     reservation.deposit_status = 'frozen';
+    TRANSACTIONS[reservationId]?.push({
+      id: `tx-f-${Date.now()}`, reservation_id: reservationId, type: 'freeze',
+      amount: reservation.deposit_amount, created_at: new Date().toISOString(),
+    });
     reservation.updated_at = new Date().toISOString();
     return {
       id: `rep-${Date.now()}`,
