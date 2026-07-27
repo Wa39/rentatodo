@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { FlatList, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ItemCard } from '@/components/item-card';
+import { ListState } from '@/components/list-state';
 import { ReservationRow } from '@/components/reservation-row';
 import { Brand } from '@/constants/brand';
 import { dataSource } from '@/data/data-source';
+import { errorMessage } from '@/data/labels';
 import type { Item, Reservation } from '@/data/types';
 
 type Sort = 'popular' | 'recent';
@@ -19,19 +21,45 @@ export default function HomeScreen() {
   const [sort, setSort] = useState<Sort>('popular');
   const [query, setQuery] = useState('');
   const [items, setItems] = useState<Item[]>([]);
+  const [itemsLoading, setItemsLoading] = useState(true);
+  const [itemsError, setItemsError] = useState<string | null>(null);
   const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    if (query.trim() === '') {
-      dataSource.listItems(sort).then(setItems);
-    } else {
-      dataSource.searchItems(query).then(setItems);
-    }
+  const loadItems = useCallback(() => {
+    const request = query.trim() === '' ? dataSource.listItems(sort) : dataSource.searchItems(query);
+    return request
+      .then((data) => {
+        setItems(data);
+        setItemsError(null);
+      })
+      .catch((e) => setItemsError(errorMessage(e)))
+      .finally(() => setItemsLoading(false));
   }, [sort, query]);
 
   useEffect(() => {
-    dataSource.listReservations().then((r) => setReservations(r.slice(0, 3)));
-  }, []);
+    loadItems();
+  }, [loadItems]);
+
+  const loadReservations = useCallback(
+    () => dataSource.listReservations().then((r) => setReservations(r.slice(0, 3))).catch(() => {}),
+    [],
+  );
+
+  useEffect(() => {
+    loadReservations();
+  }, [loadReservations]);
+
+  const onRetryItems = useCallback(() => {
+    setItemsLoading(true);
+    setItemsError(null);
+    loadItems();
+  }, [loadItems]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    Promise.all([loadItems(), loadReservations()]).finally(() => setRefreshing(false));
+  }, [loadItems, loadReservations]);
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -43,6 +71,15 @@ export default function HomeScreen() {
             <ReservationRow reservation={item} />
           </View>
         )}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={Brand.primary}
+            colors={[Brand.primary]}
+          />
+        }
+        ListEmptyComponent={<Text style={styles.sideEmpty}>Aún no tiene solicitudes.</Text>}
         ListHeaderComponent={
           <View style={styles.content}>
             <Text style={styles.title}>RentaTodo</Text>
@@ -77,7 +114,16 @@ export default function HomeScreen() {
               renderItem={({ item }) => <ItemCard item={item} />}
               showsHorizontalScrollIndicator={false}
               style={styles.rail}
-              ListEmptyComponent={<Text style={styles.empty}>Sin resultados para “{query}”.</Text>}
+              ListEmptyComponent={
+                <ListState
+                  loading={itemsLoading}
+                  error={itemsError}
+                  emptyText={
+                    query.trim() === '' ? 'No hay artículos.' : `Sin resultados para “${query}”.`
+                  }
+                  onRetry={onRetryItems}
+                />
+              }
             />
 
             <View style={styles.section}>
@@ -95,6 +141,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: Brand.paper },
   content: { padding: 16, paddingBottom: 0 },
   side: { paddingHorizontal: 16 },
+  sideEmpty: { fontSize: 13, color: Brand.muted, paddingHorizontal: 16, paddingBottom: 20 },
   title: { fontSize: 20, fontWeight: '800', color: Brand.ink, marginBottom: 12 },
   search: {
     height: 42,
@@ -122,7 +169,6 @@ const styles = StyleSheet.create({
   segText: { fontSize: 12, fontWeight: '600', color: Brand.muted },
   segTextActive: { color: '#fff' },
   rail: { marginTop: 12 },
-  empty: { fontSize: 13, color: Brand.muted, paddingVertical: 20 },
   section: {
     flexDirection: 'row',
     justifyContent: 'space-between',
