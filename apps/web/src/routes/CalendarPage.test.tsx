@@ -183,4 +183,17 @@ describe('CalendarPage', () => {
     expect(screen.queryByText("You don't have any items yet. Publish one to see its calendar.")).not.toBeInTheDocument()
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
   })
+
+  it('shows the requests fetch error instead of silently rendering an empty reservations list', async () => {
+    mockFetchRoutes({
+      '/users/me': [() => jsonResponse(PROFILE, 200)],
+      '/users/me/items': [() => jsonResponse(ITEMS, 200)],
+      '/users/me/requests?page=1&limit=50': [
+        () => jsonResponse({ error: { code: 'SERVER_ERROR', message: 'Requests server exploded' } }, 500),
+      ],
+    })
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Requests server exploded')).toBeInTheDocument())
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+  })
 })
