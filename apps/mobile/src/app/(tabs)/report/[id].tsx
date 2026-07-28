@@ -78,7 +78,7 @@ export default function ReportProblemScreen() {
           <Pressable onPress={() => router.back()} style={styles.backButton} hitSlop={8}>
             <Ionicons name="chevron-back" size={22} color={Brand.ink} />
           </Pressable>
-          <Text style={styles.topBarTitle}>Reportar problema</Text>
+          <Text testID="report-title" style={styles.topBarTitle}>Reportar problema</Text>
         </View>
 
         <View style={styles.warning}>

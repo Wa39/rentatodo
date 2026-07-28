@@ -5,6 +5,8 @@
 appId: host.exp.Exponent
 ---
 - launchApp
+- assertVisible:
+    id: "login-brand"
 - tapOn:
     id: "login-email"
 - inputText:

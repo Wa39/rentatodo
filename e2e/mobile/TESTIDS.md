@@ -134,6 +134,7 @@ Buttons are state-dependent — only the ones the contract allows are rendered:
 
 | testID | Element |
 |---|---|
+| `report-title` | "Reportar problema" screen heading |
 | `report-reason` | Reason field |
 | `report-pick-camera` | "Tomar foto" (native only) |
 | `report-pick-library` | "Elegir de galería" / "Elegir archivo" |
