@@ -4,10 +4,12 @@
 appId: host.exp.Exponent
 ---
 - launchApp
-- assertVisible: "RentaTodo"
+- assertVisible:
+    id: "login-brand"
 - tapOn:
     id: "login-to-register"
-- assertVisible: "Solo se necesita nombre, correo y contraseña"
+- assertVisible:
+    id: "register-subtitle"
 - tapOn:
     id: "register-name"
 - inputText:

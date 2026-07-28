@@ -20,7 +20,7 @@ export default function ProfileScreen() {
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{(user?.name ?? 'Z').charAt(0).toUpperCase()}</Text>
           </View>
-          <Text style={styles.name}>{user?.name ?? 'Persona arrendataria'}</Text>
+          <Text testID="profile-user-name" style={styles.name}>{user?.name ?? 'Persona arrendataria'}</Text>
           <Text style={styles.email}>{user?.email ?? ''}</Text>
         </View>
 

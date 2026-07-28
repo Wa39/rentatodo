@@ -15,7 +15,8 @@ appId: host.exp.Exponent
     text: "Rentatodo2026!"
 - tapOn:
     id: "login-submit"
-- assertVisible: "RentaTodo"
+- assertVisible:
+    id: "home-title"
 - tapOn:
     id: "home-search"
 - inputText:

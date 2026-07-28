@@ -79,7 +79,7 @@ export default function ReservationDetailScreen() {
             <Text style={styles.initial}>{reservation.item_name.charAt(0)}</Text>
           </View>
           <View style={styles.headerInfo}>
-            <Text style={styles.name}>{reservation.item_name}</Text>
+            <Text testID="reservation-item-name" style={styles.name}>{reservation.item_name}</Text>
             <Text style={styles.dates}>
               {formatDateRangeEs(reservation.start_date, reservation.end_date)} · {days}{' '}
               {days === 1 ? 'día' : 'días'}
@@ -90,11 +90,11 @@ export default function ReservationDetailScreen() {
 
         <View style={styles.card}>
           <View style={styles.rowLine}>
-            <Text style={styles.label}>Estado</Text>
+            <Text testID="reservation-label-status" style={styles.label}>Estado</Text>
             <Text style={styles.value}>{STATUS_META[reservation.status].label}</Text>
           </View>
           <View style={styles.rowLine}>
-            <Text style={styles.label}>Depósito</Text>
+            <Text testID="reservation-label-deposit" style={styles.label}>Depósito</Text>
             <Text style={styles.value}>
               {formatUSD(reservation.deposit_amount)} · {DEPOSIT_LABELS[reservation.deposit_status]}
             </Text>

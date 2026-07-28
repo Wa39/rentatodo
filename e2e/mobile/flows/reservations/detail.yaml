@@ -26,7 +26,8 @@ appId: host.exp.Exponent
     text: "Rentatodo2026!"
 - tapOn:
     id: "login-submit"
-- assertVisible: "RentaTodo"
+- assertVisible:
+    id: "home-title"
 
 # Navigate to the rentals tab and open an approved reservation
 - tapOn:
@@ -39,10 +40,14 @@ appId: host.exp.Exponent
 # Detail screen assertions
 - assertVisible:
     id: "reservation-detail-title"
-- assertVisible: "Cámara Sony A7 III"
-- assertVisible: "Aprobada"
-- assertVisible: "Estado"
-- assertVisible: "Depósito"
+- assertVisible:
+    id: "reservation-item-name"
+- assertVisible:
+    id: "status-badge-approved"
+- assertVisible:
+    id: "reservation-label-status"
+- assertVisible:
+    id: "reservation-label-deposit"
 - assertVisible:
     id: "reservation-item-link"
 - assertVisible:

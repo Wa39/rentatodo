@@ -28,7 +28,8 @@ appId: host.exp.Exponent
     text: "Rentatodo2026!"
 - tapOn:
     id: "login-submit"
-- assertVisible: "RentaTodo"
+- assertVisible:
+    id: "home-title"
 
 # Navigate to item detail via name (seeded by infra/seed.py)
 - tapOn:
@@ -54,4 +55,5 @@ appId: host.exp.Exponent
 # App navigates to /rentals after a successful request
 - assertVisible:
     id: "tab-rentals"
-- assertVisible: "Solicitada"
+- assertVisible:
+    id: "status-badge-requested"

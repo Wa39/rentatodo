@@ -29,7 +29,8 @@ appId: host.exp.Exponent
     text: "Rentatodo2026!"
 - tapOn:
     id: "login-submit"
-- assertVisible: "RentaTodo"
+- assertVisible:
+    id: "home-title"
 
 # Navigate to the rentals tab
 - tapOn:
@@ -40,4 +41,5 @@ appId: host.exp.Exponent
     id: "rentals-tab-past"
 
 # Verify at least one active reservation badge is shown
-- assertVisible: "Aprobada"
+- assertVisible:
+    id: "status-badge-approved"

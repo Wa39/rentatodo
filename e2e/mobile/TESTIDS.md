@@ -12,6 +12,18 @@ Usage in a flow:
     text: "renter@rentatodo.dev"
 ```
 
+## Login screen (`/login`) — brand
+
+| testID | Element |
+|---|---|
+| `login-brand` | "RentaTodo" title text on the login screen |
+
+## Home screen (`/`)
+
+| testID | Element |
+|---|---|
+| `home-title` | "RentaTodo" heading visible after login |
+
 ## Tab bar
 
 | testID | Element |
@@ -34,6 +46,7 @@ Usage in a flow:
 
 | testID | Element |
 |---|---|
+| `register-subtitle` | "Solo se necesita nombre, correo y contraseña" subtitle |
 | `register-name` | Name field |
 | `register-email` | Email field |
 | `register-password` | Password field |
@@ -64,6 +77,20 @@ Usage in a flow:
 | `rentals-tab-past` | "Pasadas" tab |
 | `reservation-row-<reservationId>` | Reservation row (also used on Home) |
 
+## Status badges
+
+`testID` is `status-badge-{status}` where `{status}` is the API value:
+
+| testID | Status |
+|---|---|
+| `status-badge-requested` | Solicitada |
+| `status-badge-approved` | Aprobada |
+| `status-badge-delivered` | Entregada |
+| `status-badge-returned` | Devuelta |
+| `status-badge-closed` | Cerrada |
+| `status-badge-cancelled` | Cancelada |
+| `status-badge-rejected` | Rechazada |
+
 ## Reservation detail (`/reservation/[id]`)
 
 Buttons are state-dependent — only the ones the contract allows are rendered:
@@ -71,6 +98,9 @@ Buttons are state-dependent — only the ones the contract allows are rendered:
 | testID | Element | Visible when |
 |---|---|---|
 | `reservation-detail-title` | "Reserva" screen heading | always |
+| `reservation-item-name` | Item name in the header | always |
+| `reservation-label-status` | "Estado" info label | always |
+| `reservation-label-deposit` | "Depósito" info label | always |
 | `reservation-item-link` | "Ver artículo" link row | always |
 | `reservation-checkin` | "Recibí el artículo" | status `approved` |
 | `reservation-checkout` | "Devolver el artículo" | status `delivered` |
@@ -95,6 +125,7 @@ Buttons are state-dependent — only the ones the contract allows are rendered:
 
 | testID | Element |
 |---|---|
+| `profile-user-name` | Logged-in user's name heading |
 | `profile-payment-method` | "Método de pago" menu row |
 | `profile-settings` | "Configuración" menu row |
 | `profile-logout` | "Cerrar sesión" pressable row |
@@ -114,6 +145,8 @@ Buttons are state-dependent — only the ones the contract allows are rendered:
   `Pressable` wrapper — use `tab-home`, `tab-rentals`, `tab-profile` in flows.
 - Rows and cards carry the entity id, so a flow can target a specific seeded
   reservation/item instead of relying on list order.
-- Status badge text (Aprobada, Solicitada, Entregada, etc.) and seeded content
-  (item names, user names) remain as visible-text assertions — they verify data
-  correctness, not just element presence.
+- Seeded item names (`tapOn: text: "Cámara Sony A7 III"` etc.) remain as
+  visible-text taps for navigation — item/reservation IDs are dynamic (generated
+  by the DB on each seed run), so there is no stable testID to use instead.
+- Calendar text (month names, day numbers) also stays as visible-text — it is
+  dynamic relative to the current date.

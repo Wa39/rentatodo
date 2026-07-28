@@ -5,7 +5,8 @@
 appId: host.exp.Exponent  # Expo Go; replace with bundle ID for standalone builds
 ---
 - launchApp
-- assertVisible: "RentaTodo"
+- assertVisible:
+    id: "login-brand"
 - assertVisible:
     id: "login-submit"
 - tapOn:
