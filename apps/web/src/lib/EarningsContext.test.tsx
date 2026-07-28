@@ -1,6 +1,6 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
-import { AuthProvider } from './AuthContext'
+import { AuthProvider, useAuth } from './AuthContext'
 import { EarningsProvider, useEarnings } from './EarningsContext'
 
 function jsonResponse(body: unknown, status: number) {
@@ -26,6 +26,7 @@ const PROFILE = { id: 'u1', name: 'María Vargas', email: 'maria@example.com', c
 
 function Probe() {
   const { earnings, loading, error } = useEarnings()
+  const { logout } = useAuth()
   return (
     <div>
       <span data-testid="loading">{loading ? 'loading' : 'idle'}</span>
@@ -33,6 +34,7 @@ function Probe() {
       <span data-testid="total">{earnings.total_earnings}</span>
       <span data-testid="by-item-count">{earnings.by_item.length}</span>
       <span data-testid="by-month-count">{earnings.by_month.length}</span>
+      <button onClick={logout}>logout</button>
     </div>
   )
 }
@@ -97,6 +99,49 @@ describe('EarningsContext', () => {
     await waitFor(() => expect(screen.getByTestId('total')).toHaveTextContent('7000'))
     expect(screen.getByTestId('by-item-count')).toHaveTextContent('1')
     expect(screen.getByTestId('by-month-count')).toHaveTextContent('6')
+  })
+
+  it('discards a stale in-flight response if the token changes before it resolves', async () => {
+    let resolveEarnings: (r: Response) => void = () => {}
+    const earningsPromise = new Promise<Response>((resolve) => {
+      resolveEarnings = resolve
+    })
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.endsWith('/users/me')) return Promise.resolve(jsonResponse(PROFILE, 200))
+      if (url.includes('/users/me/earnings')) return earningsPromise
+      throw new Error(`Unhandled fetch call: ${url}`)
+    })
+
+    renderWithToken()
+
+    expect(screen.getByTestId('loading')).toHaveTextContent('loading')
+
+    act(() => screen.getByText('logout').click())
+    expect(screen.getByTestId('total')).toHaveTextContent('0')
+
+    await act(async () => {
+      resolveEarnings(
+        jsonResponse(
+          {
+            total_earnings: 9999,
+            by_item: [
+              {
+                item_id: 'i1',
+                item_name: 'Taladro',
+                total: 9999,
+                rentals: [{ start_date: '2026-07-01', end_date: '2026-07-03', amount: 9999 }],
+              },
+            ],
+          },
+          200,
+        ),
+      )
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(screen.getByTestId('total')).toHaveTextContent('0')
   })
 
   it('sets an error message when the fetch fails, without throwing', async () => {
