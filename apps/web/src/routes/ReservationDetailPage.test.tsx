@@ -97,7 +97,7 @@ describe('ReservationDetailPage', () => {
   })
 
   it('submits the report form via POST /reservations/{id}/report, then refetches transactions', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     mockFetchRoutes({
       '/users/me': [() => jsonResponse(PROFILE, 200)],
       '/users/me/requests?page=1&limit=50': [() => jsonResponse({ reservations: [RESERVATION], page: 1, limit: 50, total: 1 }, 200)],
@@ -133,7 +133,7 @@ describe('ReservationDetailPage', () => {
   })
 
   it('shows a report-submit error and keeps the form visible so the user can retry', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     mockFetchRoutes({
       '/users/me': [() => jsonResponse(PROFILE, 200)],
       '/users/me/requests?page=1&limit=50': [() => jsonResponse({ reservations: [RESERVATION], page: 1, limit: 50, total: 1 }, 200)],
@@ -155,7 +155,7 @@ describe('ReservationDetailPage', () => {
   })
 
   it('shows a transactions-refresh error (without hiding the report-submitted success) when the report succeeds but the post-submit refetch fails', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     mockFetchRoutes({
       '/users/me': [() => jsonResponse(PROFILE, 200)],
       '/users/me/requests?page=1&limit=50': [() => jsonResponse({ reservations: [RESERVATION], page: 1, limit: 50, total: 1 }, 200)],
