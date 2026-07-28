@@ -5,12 +5,14 @@ import {
   apiCreateItem,
   apiDeleteItem,
   apiGetMe,
+  apiGetTransactions,
   apiListMyItems,
   apiListMyRequests,
   apiLogin,
   apiPresignUpload,
   apiRegister,
   apiRejectReservation,
+  apiReportProblem,
   apiUpdateItem,
 } from './api'
 
@@ -431,6 +433,79 @@ describe('api', () => {
       await expect(apiPresignUpload('bad-token', 'photo.jpg', 'image/jpeg')).rejects.toMatchObject({
         code: 'UNAUTHORIZED',
         message: 'Missing or invalid token',
+      })
+    })
+  })
+
+  describe('apiGetTransactions', () => {
+    it('GETs /reservations/{id}/transactions with a Bearer token and resolves with the array of transactions', async () => {
+      const payload = [
+        { id: 't1', reservation_id: 'r1', type: 'hold', amount: 4500, created_at: '2026-07-10T08:00:00Z' },
+      ]
+      vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(payload, 200))
+
+      const result = await apiGetTransactions('tok123', 'r1')
+
+      expect(result).toEqual(payload)
+      expect(fetch).toHaveBeenCalledWith(
+        'http://localhost:8000/reservations/r1/transactions',
+        expect.objectContaining({ method: 'GET', headers: expect.objectContaining({ Authorization: 'Bearer tok123' }) }),
+      )
+    })
+
+    it('throws ApiError with the code/message from a 500 response', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(
+        jsonResponse({ error: { code: 'SERVER_ERROR', message: 'Transactions server exploded' } }, 500),
+      )
+
+      await expect(apiGetTransactions('tok123', 'r1')).rejects.toMatchObject({
+        code: 'SERVER_ERROR',
+        message: 'Transactions server exploded',
+      })
+    })
+  })
+
+  describe('apiReportProblem', () => {
+    it('POSTs to /reservations/{id}/report with a Bearer token and resolves with the created report', async () => {
+      const payload = {
+        id: 'rep1',
+        reservation_id: 'r1',
+        reported_by: 'u1',
+        reason: 'The drill bit was broken',
+        photo_url: 'https://storage.example.com/photos/broken.jpg',
+        created_at: '2026-07-27T10:00:00Z',
+      }
+      vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(payload, 201))
+
+      const result = await apiReportProblem('tok123', 'r1', {
+        reason: 'The drill bit was broken',
+        photo_url: 'https://storage.example.com/photos/broken.jpg',
+      })
+
+      expect(result).toEqual(payload)
+      expect(fetch).toHaveBeenCalledWith(
+        'http://localhost:8000/reservations/r1/report',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({
+            reason: 'The drill bit was broken',
+            photo_url: 'https://storage.example.com/photos/broken.jpg',
+          }),
+          headers: expect.objectContaining({ Authorization: 'Bearer tok123' }),
+        }),
+      )
+    })
+
+    it('throws ApiError with the code/message from a 409 response (report already exists)', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(
+        jsonResponse({ error: { code: 'INVALID_TRANSITION', message: 'Report already exists for this reservation' } }, 409),
+      )
+
+      await expect(
+        apiReportProblem('tok123', 'r1', { reason: 'x', photo_url: 'https://example.com/p.jpg' }),
+      ).rejects.toMatchObject({
+        code: 'INVALID_TRANSITION',
+        message: 'Report already exists for this reservation',
       })
     })
   })

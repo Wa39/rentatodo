@@ -1,4 +1,4 @@
-import type { Category, Item, Reservation } from './types'
+import type { Category, Item, Reservation, Transaction } from './types'
 
 export class ApiError extends Error {
   code: string
@@ -49,6 +49,20 @@ export interface PresignResponse {
   upload_url: string
   public_url: string
   expires_in: number
+}
+
+export interface ReportProblemPayload {
+  reason: string
+  photo_url: string
+}
+
+export interface ReportResponse {
+  id: string
+  reservation_id: string
+  reported_by: string
+  reason: string
+  photo_url: string
+  created_at: string
 }
 
 async function request<T>(path: string, options: RequestInit): Promise<T> {
@@ -119,6 +133,18 @@ export function apiPresignUpload(token: string, filename: string, contentType: U
   return request('/uploads/presign', {
     method: 'POST',
     body: JSON.stringify({ filename, content_type: contentType }),
+    headers: { Authorization: `Bearer ${token}` },
+  })
+}
+
+export function apiGetTransactions(token: string, id: string): Promise<Transaction[]> {
+  return request(`/reservations/${id}/transactions`, { method: 'GET', headers: { Authorization: `Bearer ${token}` } })
+}
+
+export function apiReportProblem(token: string, id: string, data: ReportProblemPayload): Promise<ReportResponse> {
+  return request(`/reservations/${id}/report`, {
+    method: 'POST',
+    body: JSON.stringify(data),
     headers: { Authorization: `Bearer ${token}` },
   })
 }
