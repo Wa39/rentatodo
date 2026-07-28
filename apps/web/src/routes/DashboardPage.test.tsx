@@ -94,15 +94,33 @@ const REJECTED: Reservation = { ...REQUESTED, id: 'r5', renter_id: 'u6', renter_
 
 const RESERVATIONS: Reservation[] = [REQUESTED, DELIVERED, RETURNED, CLOSED, REJECTED]
 
-function mockFetchOk(overrides: { items?: unknown[]; reservations?: unknown[]; profile?: unknown } = {}) {
+// Lifetime total ($90.00) intentionally differs from the current-month total ($30.00) so
+// tests can catch the KPI accidentally rendering total_earnings instead of the current bucket.
+const EARNINGS = {
+  total_earnings: 9000,
+  by_item: [
+    {
+      item_id: 'i1',
+      item_name: 'Taladro',
+      total: 9000,
+      rentals: [
+        { start_date: '2026-06-01', end_date: '2026-06-03', amount: 6000 },
+        { start_date: '2026-07-15', end_date: '2026-07-17', amount: 3000 },
+      ],
+    },
+  ],
+}
+
+function mockFetchOk(overrides: { items?: unknown[]; reservations?: unknown[]; profile?: unknown; earnings?: unknown } = {}) {
   const items = overrides.items ?? []
   const reservations = overrides.reservations ?? RESERVATIONS
   const profile = overrides.profile ?? PROFILE
+  const earnings = overrides.earnings ?? EARNINGS
   mockFetchRoutes({
     '/users/me': [() => jsonResponse(profile, 200)],
     '/users/me/items': [() => jsonResponse(items, 200)],
     '/users/me/requests?page=1&limit=50': [() => jsonResponse({ reservations, page: 1, limit: 50, total: reservations.length }, 200)],
-    '/users/me/earnings': [() => jsonResponse({ total_earnings: 0, by_item: [] }, 200)],
+    '/users/me/earnings': [() => jsonResponse(earnings, 200)],
   })
 }
 
@@ -156,6 +174,15 @@ describe('DashboardPage', () => {
     const earnedCard = screen.getByText('Earned this month').closest('div')!
     expect(earnedCard).toHaveClass('bg-sidebar')
     expect(within(earnedCard).getByText((content) => content.startsWith('$'))).toHaveClass('text-on-dark-accent')
+  })
+
+  it('shows the current-month earnings on the "Earned this month" KPI, not the lifetime total', async () => {
+    localStorage.setItem('rentatodo_token', 'tok123')
+    mockFetchOk()
+    renderDashboard()
+    const earnedCard = screen.getByText('Earned this month').closest('div')!
+    await waitFor(() => expect(within(earnedCard).getByText('$30.00')).toBeInTheDocument())
+    expect(within(earnedCard).queryByText('$90.00')).not.toBeInTheDocument()
   })
 
   it('shows at most 2 pending requests and lets you approve one', async () => {

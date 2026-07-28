@@ -23,6 +23,7 @@ export function DashboardPage() {
   const pendingRequests = requests.filter((r) => r.status === 'requested')
   const activeReservations = requests.filter((r) => RESERVED_STATUSES.includes(r.status)).length
   const recentPending = pendingRequests.slice(0, 2)
+  const currentMonth = earnings.by_month[earnings.by_month.length - 1] ?? { month: '', total: 0 }
 
   async function handleApprove(id: string) {
     setPendingId(id)
@@ -76,7 +77,7 @@ export function DashboardPage() {
           </div>
           <div className="rounded-lg border border-sidebar-border bg-sidebar p-three">
             <p className="text-xs font-medium text-sidebar-foreground/70">{t.dashboard.kpiEarnedThisMonth}</p>
-            <p className="font-display text-2xl font-semibold text-on-dark-accent">{formatCentavos(earnings.total_earnings)}</p>
+            <p className="font-display text-2xl font-semibold text-on-dark-accent">{formatCentavos(currentMonth.total)}</p>
           </div>
         </div>
 
