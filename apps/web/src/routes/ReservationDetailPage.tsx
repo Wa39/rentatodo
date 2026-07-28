@@ -55,11 +55,18 @@ export function ReservationDetailPage() {
     setReportError(null)
     try {
       await apiReportProblem(token, id, { reason, photo_url: photoUrl })
-      setReportSubmitted(true)
-      const refreshed = await apiGetTransactions(token, id)
-      setTransactions(refreshed)
     } catch (err) {
       setReportError(getErrorMessage(err, 'Something went wrong. Please try again.'))
+      setSubmitting(false)
+      return
+    }
+    setReportSubmitted(true)
+    try {
+      const refreshed = await apiGetTransactions(token, id)
+      setTransactions(refreshed)
+      setTransactionsError(null)
+    } catch (err) {
+      setTransactionsError(getErrorMessage(err, "Couldn't refresh the deposit history. Try refreshing the page."))
     } finally {
       setSubmitting(false)
     }

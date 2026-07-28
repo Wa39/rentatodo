@@ -153,4 +153,40 @@ describe('ReservationDetailPage', () => {
     await waitFor(() => expect(screen.getByText('Report already exists for this reservation')).toBeInTheDocument())
     expect(screen.getByRole('button', { name: 'Submit report' })).toBeInTheDocument()
   })
+
+  it('shows a transactions-refresh error (without hiding the report-submitted success) when the report succeeds but the post-submit refetch fails', async () => {
+    const user = userEvent.setup()
+    mockFetchRoutes({
+      '/users/me': [() => jsonResponse(PROFILE, 200)],
+      '/users/me/requests?page=1&limit=50': [() => jsonResponse({ reservations: [RESERVATION], page: 1, limit: 50, total: 1 }, 200)],
+      [`/reservations/${RESERVATION.id}/transactions`]: [
+        () => jsonResponse([TRANSACTION], 200),
+        () => jsonResponse({ error: { code: 'SERVER_ERROR', message: 'Transactions server exploded' } }, 500),
+      ],
+      [`/reservations/${RESERVATION.id}/report`]: [
+        () =>
+          jsonResponse(
+            {
+              id: 'rep1',
+              reservation_id: RESERVATION.id,
+              reported_by: PROFILE.id,
+              reason: 'The drill bit was broken',
+              photo_url: 'https://storage.example.com/photos/broken.jpg',
+              created_at: '2026-07-27T10:00:00Z',
+            },
+            201,
+          ),
+      ],
+    })
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText(TRANSACTION.type)).toBeInTheDocument())
+
+    await user.type(screen.getByLabelText('What went wrong?'), 'The drill bit was broken')
+    await user.type(screen.getByLabelText('Photo URL'), 'https://storage.example.com/photos/broken.jpg')
+    await user.click(screen.getByRole('button', { name: 'Submit report' }))
+
+    await waitFor(() => expect(screen.getByText('Report submitted.')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('Transactions server exploded')).toBeInTheDocument())
+  })
 })
