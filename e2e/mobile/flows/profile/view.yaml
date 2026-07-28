@@ -13,8 +13,8 @@
 appId: host.exp.Exponent
 ---
 - launchApp
-- tapOn:
-    text: "Iniciar sesión"
+- assertVisible:
+    id: "login-submit"
 - tapOn:
     id: "login-email"
 - inputText:
@@ -29,13 +29,16 @@ appId: host.exp.Exponent
 
 # Navigate to profile tab
 - tapOn:
-    text: "Perfil"
+    id: "tab-profile"
 
 # Assert account header
 - assertVisible: "Bob Arrendatario"
 - assertVisible: "renter@rentatodo.dev"
 
 # Assert menu items
-- assertVisible: "Método de pago"
-- assertVisible: "Configuración"
-- assertVisible: "Cerrar sesión"
+- assertVisible:
+    id: "profile-payment-method"
+- assertVisible:
+    id: "profile-settings"
+- assertVisible:
+    id: "profile-logout"

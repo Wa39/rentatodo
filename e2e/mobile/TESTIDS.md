@@ -12,6 +12,14 @@ Usage in a flow:
     text: "renter@rentatodo.dev"
 ```
 
+## Tab bar
+
+| testID | Element |
+|---|---|
+| `tab-home` | "Inicio" tab button |
+| `tab-rentals` | "Mis rentas" tab button |
+| `tab-profile` | "Perfil" tab button |
+
 ## Login (`/login`)
 
 | testID | Element |
@@ -62,19 +70,34 @@ Buttons are state-dependent — only the ones the contract allows are rendered:
 
 | testID | Element | Visible when |
 |---|---|---|
+| `reservation-detail-title` | "Reserva" screen heading | always |
+| `reservation-item-link` | "Ver artículo" link row | always |
 | `reservation-checkin` | "Recibí el artículo" | status `approved` |
 | `reservation-checkout` | "Devolver el artículo" | status `delivered` |
 | `reservation-report` | "Reportar problema" | status `delivered`/`returned`, deposit not frozen |
 | `reservation-cancel` | "Cancelar reserva" | status `requested`/`approved` |
+| `reservation-cancel-dialog` | Inline confirmation box | after tapping cancel |
+| `reservation-cancel-dismiss` | "Volver" button in confirmation | after tapping cancel |
 | `reservation-cancel-confirm` | "Sí, cancelar" in the confirmation | after tapping cancel |
 
 ## Check-in / check-out (`/check/[id]`)
 
 | testID | Element |
 |---|---|
+| `check-title` | Screen heading ("Check-in · Recibir artículo" or "Check-out · Devolver artículo") |
+| `check-photo-hint` | "Una sola foto como evidencia" placeholder text |
+| `check-notes-label` | "Notas sobre el estado (opcional)" label |
 | `check-pick-camera` | "Tomar foto" (native only — hidden on web) |
 | `check-pick-library` | "Elegir de galería" / "Elegir archivo" |
 | `check-submit` | Confirm button (enabled once a photo is picked) |
+
+## Profile (`/profile`)
+
+| testID | Element |
+|---|---|
+| `profile-payment-method` | "Método de pago" menu row |
+| `profile-settings` | "Configuración" menu row |
+| `profile-logout` | "Cerrar sesión" pressable row |
 
 ## Report a problem (`/report/[id]`)
 
@@ -87,7 +110,10 @@ Buttons are state-dependent — only the ones the contract allows are rendered:
 
 ## Notes
 
-- Tab bar labels ("Inicio", "Mis rentas", "Perfil") have no `testID`: they come
-  from expo-router's `Tabs` and are stable enough as visible text.
+- Tab bar buttons use `tabBarButton` in `_layout.tsx` to inject `testID` via a
+  `Pressable` wrapper — use `tab-home`, `tab-rentals`, `tab-profile` in flows.
 - Rows and cards carry the entity id, so a flow can target a specific seeded
   reservation/item instead of relying on list order.
+- Status badge text (Aprobada, Solicitada, Entregada, etc.) and seeded content
+  (item names, user names) remain as visible-text assertions — they verify data
+  correctness, not just element presence.

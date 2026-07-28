@@ -24,7 +24,7 @@ export default function ProfileScreen() {
           <Text style={styles.email}>{user?.email ?? ''}</Text>
         </View>
 
-        <View style={styles.item}>
+        <View testID="profile-payment-method" style={styles.item}>
           <Ionicons name="card-outline" size={19} color={Brand.primary} />
           <View style={styles.itemInfo}>
             <Text style={styles.itemTitle}>Método de pago</Text>
@@ -32,7 +32,7 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        <View style={styles.item}>
+        <View testID="profile-settings" style={styles.item}>
           <Ionicons name="settings-outline" size={19} color={Brand.primary} />
           <View style={styles.itemInfo}>
             <Text style={styles.itemTitle}>Configuración</Text>
@@ -40,7 +40,7 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        <Pressable style={styles.item} onPress={logout}>
+        <Pressable testID="profile-logout" style={styles.item} onPress={logout}>
           <Ionicons name="log-out-outline" size={19} color={Brand.red} />
           <View style={styles.itemInfo}>
             <Text style={[styles.itemTitle, { color: Brand.red }]}>Cerrar sesión</Text>

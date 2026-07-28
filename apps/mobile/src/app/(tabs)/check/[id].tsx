@@ -83,7 +83,7 @@ export default function CheckScreen() {
           <Pressable onPress={() => router.back()} style={styles.backButton} hitSlop={8}>
             <Ionicons name="chevron-back" size={22} color={Brand.ink} />
           </Pressable>
-          <Text style={styles.topBarTitle}>
+          <Text testID="check-title" style={styles.topBarTitle}>
             {isCheckIn ? 'Check-in · Recibir artículo' : 'Check-out · Devolver artículo'}
           </Text>
         </View>
@@ -100,7 +100,7 @@ export default function CheckScreen() {
           ) : (
             <View style={styles.photoPlaceholder}>
               <Ionicons name="camera-outline" size={40} color={Brand.muted} />
-              <Text style={styles.photoHint}>Una sola foto como evidencia</Text>
+              <Text testID="check-photo-hint" style={styles.photoHint}>Una sola foto como evidencia</Text>
             </View>
           )}
         </View>
@@ -120,7 +120,7 @@ export default function CheckScreen() {
           </Pressable>
         </View>
 
-        <Text style={styles.label}>Notas sobre el estado (opcional)</Text>
+        <Text testID="check-notes-label" style={styles.label}>Notas sobre el estado (opcional)</Text>
         <TextInput
           style={styles.notes}
           value={notes}

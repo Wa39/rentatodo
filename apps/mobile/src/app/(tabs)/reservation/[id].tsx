@@ -71,7 +71,7 @@ export default function ReservationDetailScreen() {
           <Pressable onPress={() => router.back()} style={styles.backButton} hitSlop={8}>
             <Ionicons name="chevron-back" size={22} color={Brand.ink} />
           </Pressable>
-          <Text style={styles.topBarTitle}>Reserva</Text>
+          <Text testID="reservation-detail-title" style={styles.topBarTitle}>Reserva</Text>
         </View>
 
         <View style={styles.header}>
@@ -149,7 +149,7 @@ export default function ReservationDetailScreen() {
         <Link
           href={{ pathname: '/item/[id]', params: { id: reservation.item_id } }}
           asChild>
-          <Pressable style={styles.linkRow}>
+          <Pressable testID="reservation-item-link" style={styles.linkRow}>
             <Ionicons name="cube-outline" size={18} color={Brand.primary} />
             <Text style={styles.linkText}>Ver artículo</Text>
             <Ionicons name="chevron-forward" size={16} color={Brand.muted} />
@@ -212,7 +212,7 @@ export default function ReservationDetailScreen() {
         )}
 
         {cancellable && confirming && (
-          <View style={styles.confirmBox}>
+          <View testID="reservation-cancel-dialog" style={styles.confirmBox}>
             <Text style={styles.confirmText}>
               ¿Cancelar esta reserva?
               {reservation.deposit_status === 'held'
@@ -222,6 +222,7 @@ export default function ReservationDetailScreen() {
             </Text>
             <View style={styles.confirmRow}>
               <Pressable
+                testID="reservation-cancel-dismiss"
                 style={[styles.confirmButton, styles.confirmNo]}
                 disabled={submitting}
                 onPress={() => setConfirming(false)}>

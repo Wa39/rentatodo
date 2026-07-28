@@ -6,7 +6,7 @@ appId: host.exp.Exponent
 - launchApp
 - assertVisible: "RentaTodo"
 - tapOn:
-    text: "Crear cuenta"
+    id: "login-to-register"
 - assertVisible: "Solo se necesita nombre, correo y contraseña"
 - tapOn:
     id: "register-name"
@@ -22,6 +22,9 @@ appId: host.exp.Exponent
     text: "Rentatodo2026!"
 - tapOn:
     id: "register-submit"
-- assertVisible: "Inicio"
-- assertVisible: "Mis rentas"
-- assertVisible: "Perfil"
+- assertVisible:
+    id: "tab-home"
+- assertVisible:
+    id: "tab-rentals"
+- assertVisible:
+    id: "tab-profile"

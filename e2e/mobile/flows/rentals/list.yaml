@@ -17,8 +17,8 @@
 appId: host.exp.Exponent
 ---
 - launchApp
-- tapOn:
-    text: "Iniciar sesión"
+- assertVisible:
+    id: "login-submit"
 - tapOn:
     id: "login-email"
 - inputText:
@@ -33,7 +33,7 @@ appId: host.exp.Exponent
 
 # Navigate to the rentals tab
 - tapOn:
-    text: "Mis rentas"
+    id: "tab-rentals"
 - assertVisible:
     id: "rentals-tab-active"
 - assertVisible:

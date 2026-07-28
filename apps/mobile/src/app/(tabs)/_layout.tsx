@@ -1,5 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Redirect, Tabs } from 'expo-router';
+import { Pressable } from 'react-native';
 
 import { Brand } from '@/constants/brand';
 import { useSession } from '@/context/session-context';
@@ -30,6 +31,7 @@ export default function TabLayout() {
         options={{
           title: 'Inicio',
           tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" color={color} size={size} />,
+          tabBarButton: (props) => <Pressable testID="tab-home" {...props} />,
         }}
       />
       <Tabs.Screen
@@ -37,6 +39,7 @@ export default function TabLayout() {
         options={{
           title: 'Mis rentas',
           tabBarIcon: ({ color, size }) => <Ionicons name="cube-outline" color={color} size={size} />,
+          tabBarButton: (props) => <Pressable testID="tab-rentals" {...props} />,
         }}
       />
       <Tabs.Screen
@@ -46,6 +49,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person-circle-outline" color={color} size={size} />
           ),
+          tabBarButton: (props) => <Pressable testID="tab-profile" {...props} />,
         }}
       />
       {/* Internal routes, hidden from the tab bar */}

@@ -17,8 +17,8 @@
 appId: host.exp.Exponent
 ---
 - launchApp
-- tapOn:
-    text: "Iniciar sesión"
+- assertVisible:
+    id: "login-submit"
 - tapOn:
     id: "login-email"
 - inputText:
@@ -33,10 +33,11 @@ appId: host.exp.Exponent
 
 # Navigate to reservation detail via rentals list
 - tapOn:
-    text: "Mis rentas"
+    id: "tab-rentals"
 - tapOn:
     text: "Carpa 4 personas Coleman"
-- assertVisible: "Reserva"
+- assertVisible:
+    id: "reservation-detail-title"
 - assertVisible: "Entregada"
 - assertVisible:
     id: "reservation-checkout"
@@ -46,10 +47,13 @@ appId: host.exp.Exponent
     id: "reservation-checkout"
 
 # Assert check-out screen elements
-- assertVisible: "Check-out · Devolver artículo"
-- assertVisible: "Una sola foto como evidencia"
+- assertVisible:
+    id: "check-title"
+- assertVisible:
+    id: "check-photo-hint"
 - assertVisible:
     id: "check-pick-camera"
-- assertVisible: "Notas sobre el estado (opcional)"
+- assertVisible:
+    id: "check-notes-label"
 - assertVisible:
     id: "check-submit"

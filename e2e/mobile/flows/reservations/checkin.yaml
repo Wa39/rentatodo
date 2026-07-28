@@ -18,8 +18,8 @@
 appId: host.exp.Exponent
 ---
 - launchApp
-- tapOn:
-    text: "Iniciar sesión"
+- assertVisible:
+    id: "login-submit"
 - tapOn:
     id: "login-email"
 - inputText:
@@ -34,10 +34,11 @@ appId: host.exp.Exponent
 
 # Navigate to reservation detail via rentals list
 - tapOn:
-    text: "Mis rentas"
+    id: "tab-rentals"
 - tapOn:
     text: "Cámara Sony A7 III"
-- assertVisible: "Reserva"
+- assertVisible:
+    id: "reservation-detail-title"
 - assertVisible:
     id: "reservation-checkin"
 
@@ -46,10 +47,13 @@ appId: host.exp.Exponent
     id: "reservation-checkin"
 
 # Assert check-in screen elements
-- assertVisible: "Check-in · Recibir artículo"
-- assertVisible: "Una sola foto como evidencia"
+- assertVisible:
+    id: "check-title"
+- assertVisible:
+    id: "check-photo-hint"
 - assertVisible:
     id: "check-pick-camera"
-- assertVisible: "Notas sobre el estado (opcional)"
+- assertVisible:
+    id: "check-notes-label"
 - assertVisible:
     id: "check-submit"

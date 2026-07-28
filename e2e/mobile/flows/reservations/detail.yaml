@@ -14,8 +14,8 @@
 appId: host.exp.Exponent
 ---
 - launchApp
-- tapOn:
-    text: "Iniciar sesión"
+- assertVisible:
+    id: "login-submit"
 - tapOn:
     id: "login-email"
 - inputText:
@@ -30,19 +30,21 @@ appId: host.exp.Exponent
 
 # Navigate to the rentals tab and open an approved reservation
 - tapOn:
-    text: "Mis rentas"
+    id: "tab-rentals"
 - assertVisible:
     id: "rentals-tab-active"
 - tapOn:
     text: "Cámara Sony A7 III"
 
 # Detail screen assertions
-- assertVisible: "Reserva"
+- assertVisible:
+    id: "reservation-detail-title"
 - assertVisible: "Cámara Sony A7 III"
 - assertVisible: "Aprobada"
 - assertVisible: "Estado"
 - assertVisible: "Depósito"
-- assertVisible: "Ver artículo"
+- assertVisible:
+    id: "reservation-item-link"
 - assertVisible:
     id: "reservation-checkin"
 - assertVisible:
