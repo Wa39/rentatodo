@@ -16,15 +16,15 @@ appId: host.exp.Exponent
 - tapOn:
     text: "Iniciar sesión"
 - tapOn:
-    placeholder: "correo@ejemplo.com"
+    id: "login-email"
 - inputText:
     text: "renter@rentatodo.dev"
 - tapOn:
-    placeholder: "••••••••"
+    id: "login-password"
 - inputText:
     text: "Rentatodo2026!"
 - tapOn:
-    text: "Iniciar sesión"
+    id: "login-submit"
 - assertVisible: "RentaTodo"
 
 # Navigate to profile tab

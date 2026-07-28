@@ -20,15 +20,15 @@ appId: host.exp.Exponent
 - tapOn:
     text: "Iniciar sesión"
 - tapOn:
-    placeholder: "correo@ejemplo.com"
+    id: "login-email"
 - inputText:
     text: "renter@rentatodo.dev"
 - tapOn:
-    placeholder: "••••••••"
+    id: "login-password"
 - inputText:
     text: "Rentatodo2026!"
 - tapOn:
-    text: "Iniciar sesión"
+    id: "login-submit"
 - assertVisible: "RentaTodo"
 
 # Navigate to reservation detail via rentals list
@@ -38,15 +38,18 @@ appId: host.exp.Exponent
     text: "Carpa 4 personas Coleman"
 - assertVisible: "Reserva"
 - assertVisible: "Entregada"
-- assertVisible: "Devolver el artículo (check-out)"
+- assertVisible:
+    id: "reservation-checkout"
 
 # Open the check-out screen
 - tapOn:
-    text: "Devolver el artículo (check-out)"
+    id: "reservation-checkout"
 
 # Assert check-out screen elements
 - assertVisible: "Check-out · Devolver artículo"
 - assertVisible: "Una sola foto como evidencia"
-- assertVisible: "Tomar foto"
+- assertVisible:
+    id: "check-pick-camera"
 - assertVisible: "Notas sobre el estado (opcional)"
-- assertVisible: "Confirmar devolución"
+- assertVisible:
+    id: "check-submit"

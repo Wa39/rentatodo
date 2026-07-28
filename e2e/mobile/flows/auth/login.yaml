@@ -8,16 +8,17 @@ appId: host.exp.Exponent  # Expo Go; replace with bundle ID for standalone build
 - assertVisible: "RentaTodo"
 - tapOn:
     text: "Iniciar sesión"
-- clearText:
-    placeholder: "correo@ejemplo.com"
+- tapOn:
+    id: "login-email"
+- clearText
 - inputText:
     text: "renter@rentatodo.dev"
 - tapOn:
-    placeholder: "••••••••"
+    id: "login-password"
 - inputText:
     text: "Rentatodo2026!"
 - tapOn:
-    text: "Iniciar sesión"
+    id: "login-submit"
 - assertVisible: "Inicio"
 - assertVisible: "Mis rentas"
 - assertVisible: "Perfil"

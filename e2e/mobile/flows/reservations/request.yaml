@@ -19,15 +19,15 @@ appId: host.exp.Exponent
 - tapOn:
     text: "Iniciar sesión"
 - tapOn:
-    placeholder: "correo@ejemplo.com"
+    id: "login-email"
 - inputText:
     text: "renter@rentatodo.dev"
 - tapOn:
-    placeholder: "••••••••"
+    id: "login-password"
 - inputText:
     text: "Rentatodo2026!"
 - tapOn:
-    text: "Iniciar sesión"
+    id: "login-submit"
 - assertVisible: "RentaTodo"
 
 # Navigate to item detail via name (seeded by infra/seed.py)
@@ -48,7 +48,7 @@ appId: host.exp.Exponent
 
 # Submit the request
 - tapOn:
-    text: "Solicitar alquiler"
+    id: "item-request-submit"
 
 # App navigates to /rentals after a successful request
 - assertVisible: "Mis rentas"

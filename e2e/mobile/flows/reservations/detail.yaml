@@ -17,21 +17,22 @@ appId: host.exp.Exponent
 - tapOn:
     text: "Iniciar sesión"
 - tapOn:
-    placeholder: "correo@ejemplo.com"
+    id: "login-email"
 - inputText:
     text: "renter@rentatodo.dev"
 - tapOn:
-    placeholder: "••••••••"
+    id: "login-password"
 - inputText:
     text: "Rentatodo2026!"
 - tapOn:
-    text: "Iniciar sesión"
+    id: "login-submit"
 - assertVisible: "RentaTodo"
 
 # Navigate to the rentals tab and open an approved reservation
 - tapOn:
     text: "Mis rentas"
-- assertVisible: "Activas"
+- assertVisible:
+    id: "rentals-tab-active"
 - tapOn:
     text: "Cámara Sony A7 III"
 
@@ -42,5 +43,7 @@ appId: host.exp.Exponent
 - assertVisible: "Estado"
 - assertVisible: "Depósito"
 - assertVisible: "Ver artículo"
-- assertVisible: "Recibí el artículo (check-in)"
-- assertVisible: "Cancelar reserva"
+- assertVisible:
+    id: "reservation-checkin"
+- assertVisible:
+    id: "reservation-cancel"
