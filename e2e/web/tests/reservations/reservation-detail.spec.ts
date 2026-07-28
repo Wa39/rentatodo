@@ -34,7 +34,8 @@ test('delivered reservation shows a hold transaction row in the deposit history'
 })
 
 test('report form shows confirmation after submit', async ({ page }) => {
-  await page.goto(`/reservations/${REQUESTED_ID}`)
+  // Report form is only shown for delivered/returned reservations (API enforces this).
+  await page.goto(`/reservations/${DELIVERED_ID}`)
   await expect(page.getByRole('heading', { name: 'Report a problem' })).toBeVisible()
   await page.getByLabel('What went wrong?').fill('Item was damaged on arrival')
   await page.getByLabel('Photo URL').fill('https://example.com/evidence.jpg')
