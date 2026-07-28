@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { mockEarnings } from '@/lib/mockData'
+import { useEarnings } from '@/lib/EarningsContext'
 import { formatCentavos } from '@/lib/format'
 import { getErrorMessage } from '@/lib/api'
 import { useAuth } from '@/lib/AuthContext'
@@ -17,6 +17,7 @@ export function DashboardPage() {
   const { user } = useAuth()
   const { items, error: itemsError } = useItems()
   const { requests, error: requestsError, approveRequest, rejectRequest } = useRequests()
+  const { earnings, error: earningsError } = useEarnings()
   const [pendingId, setPendingId] = useState<string | null>(null)
   const activeItems = items.filter((item) => item.is_active).length
   const pendingRequests = requests.filter((r) => r.status === 'requested')
@@ -59,6 +60,7 @@ export function DashboardPage() {
       <div className="p-four space-y-four">
         <AuthErrorBanner message={itemsError} />
         <AuthErrorBanner message={requestsError} />
+        <AuthErrorBanner message={earningsError} />
         <div className="grid grid-cols-4 gap-three">
           <div className="rounded-lg border border-border bg-card p-three">
             <p className="text-xs font-medium text-muted-foreground">{t.dashboard.kpiActiveItems}</p>
@@ -74,7 +76,7 @@ export function DashboardPage() {
           </div>
           <div className="rounded-lg border border-sidebar-border bg-sidebar p-three">
             <p className="text-xs font-medium text-sidebar-foreground/70">{t.dashboard.kpiEarnedThisMonth}</p>
-            <p className="font-display text-2xl font-semibold text-on-dark-accent">{formatCentavos(mockEarnings.total_earnings)}</p>
+            <p className="font-display text-2xl font-semibold text-on-dark-accent">{formatCentavos(earnings.total_earnings)}</p>
           </div>
         </div>
 

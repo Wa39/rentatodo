@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthProvider } from '@/lib/AuthContext'
+import { EarningsProvider } from '@/lib/EarningsContext'
 import { ItemsProvider } from '@/lib/ItemsContext'
 import { RequestsProvider } from '@/lib/RequestsContext'
 import { RESERVED_STATUSES } from '@/lib/availability'
@@ -101,6 +102,7 @@ function mockFetchOk(overrides: { items?: unknown[]; reservations?: unknown[]; p
     '/users/me': [() => jsonResponse(profile, 200)],
     '/users/me/items': [() => jsonResponse(items, 200)],
     '/users/me/requests?page=1&limit=50': [() => jsonResponse({ reservations, page: 1, limit: 50, total: reservations.length }, 200)],
+    '/users/me/earnings': [() => jsonResponse({ total_earnings: 0, by_item: [] }, 200)],
   })
 }
 
@@ -109,9 +111,11 @@ function renderDashboard() {
     <AuthProvider>
       <ItemsProvider>
         <RequestsProvider>
-          <MemoryRouter>
-            <DashboardPage />
-          </MemoryRouter>
+          <EarningsProvider>
+            <MemoryRouter>
+              <DashboardPage />
+            </MemoryRouter>
+          </EarningsProvider>
         </RequestsProvider>
       </ItemsProvider>
     </AuthProvider>,
@@ -174,6 +178,7 @@ describe('DashboardPage', () => {
           ),
       ],
       '/reservations/r1/approve': [() => jsonResponse({ ...REQUESTED, status: 'approved', deposit_status: 'held' }, 200)],
+      '/users/me/earnings': [() => jsonResponse({ total_earnings: 0, by_item: [] }, 200)],
     })
     renderDashboard()
     const row = await screen.findByText(new RegExp(REQUESTED.renter_name))
@@ -210,6 +215,7 @@ describe('DashboardPage', () => {
           ),
         )
       }
+      if (url.endsWith('/users/me/earnings')) return Promise.resolve(jsonResponse({ total_earnings: 0, by_item: [] }, 200))
       throw new Error(`Unhandled fetch call: ${url}`)
     })
 
@@ -262,6 +268,7 @@ describe('DashboardPage', () => {
       '/users/me': [() => jsonResponse(PROFILE, 200)],
       '/users/me/items': [() => jsonResponse({ error: { code: 'SERVER_ERROR', message: 'Server exploded' } }, 500)],
       '/users/me/requests?page=1&limit=50': [() => jsonResponse({ reservations: [], page: 1, limit: 50, total: 0 }, 200)],
+      '/users/me/earnings': [() => jsonResponse({ total_earnings: 0, by_item: [] }, 200)],
     })
     renderDashboard()
     await waitFor(() => expect(screen.getByText('Server exploded')).toBeInTheDocument())
@@ -278,6 +285,7 @@ describe('DashboardPage', () => {
       '/users/me/requests?page=1&limit=50': [
         () => jsonResponse({ error: { code: 'SERVER_ERROR', message: 'Requests server exploded' } }, 500),
       ],
+      '/users/me/earnings': [() => jsonResponse({ total_earnings: 0, by_item: [] }, 200)],
     })
     renderDashboard()
     await waitFor(() => expect(screen.getByText('Requests server exploded')).toBeInTheDocument())
@@ -313,15 +321,18 @@ describe('DashboardPage', () => {
           ),
       ],
       '/reservations/r1/approve': [() => jsonResponse({ ...REQUESTED, status: 'approved', deposit_status: 'held' }, 200)],
+      '/users/me/earnings': [() => jsonResponse({ total_earnings: 0, by_item: [] }, 200)],
     })
     render(
       <AuthProvider>
         <ItemsProvider>
           <RequestsProvider>
-            <MemoryRouter>
-              <DashboardPage />
-              <RequestsPage />
-            </MemoryRouter>
+            <EarningsProvider>
+              <MemoryRouter>
+                <DashboardPage />
+                <RequestsPage />
+              </MemoryRouter>
+            </EarningsProvider>
           </RequestsProvider>
         </ItemsProvider>
       </AuthProvider>,
