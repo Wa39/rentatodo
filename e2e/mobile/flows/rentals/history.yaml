@@ -16,28 +16,31 @@
 appId: host.exp.Exponent
 ---
 - launchApp
+- assertVisible:
+    id: "login-submit"
 - tapOn:
-    text: "Iniciar sesión"
-- tapOn:
-    placeholder: "correo@ejemplo.com"
+    id: "login-email"
 - inputText:
     text: "renter@rentatodo.dev"
 - tapOn:
-    placeholder: "••••••••"
+    id: "login-password"
 - inputText:
     text: "Rentatodo2026!"
 - tapOn:
-    text: "Iniciar sesión"
-- assertVisible: "RentaTodo"
+    id: "login-submit"
+- assertVisible:
+    id: "home-title"
 
 # Navigate to the rentals tab
 - tapOn:
-    text: "Mis rentas"
-- assertVisible: "Activas"
+    id: "tab-rentals"
+- assertVisible:
+    id: "rentals-tab-active"
 
 # Switch to history tab
 - tapOn:
-    text: "Pasadas"
+    id: "rentals-tab-past"
 
 # Verify at least one past reservation badge is shown
-- assertVisible: "Cerrada"
+- assertVisible:
+    id: "status-badge-closed"

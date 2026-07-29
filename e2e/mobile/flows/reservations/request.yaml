@@ -16,24 +16,26 @@
 appId: host.exp.Exponent
 ---
 - launchApp
+- assertVisible:
+    id: "login-submit"
 - tapOn:
-    text: "Iniciar sesión"
-- tapOn:
-    placeholder: "correo@ejemplo.com"
+    id: "login-email"
 - inputText:
     text: "renter@rentatodo.dev"
 - tapOn:
-    placeholder: "••••••••"
+    id: "login-password"
 - inputText:
     text: "Rentatodo2026!"
 - tapOn:
-    text: "Iniciar sesión"
-- assertVisible: "RentaTodo"
+    id: "login-submit"
+- assertVisible:
+    id: "home-title"
 
 # Navigate to item detail via name (seeded by infra/seed.py)
 - tapOn:
     text: "Karaoke profesional con 2 micrófonos"
-- assertVisible: "Solicitar alquiler"
+- assertVisible:
+    id: "item-request-submit"
 
 # Advance to next month so selected dates are always in the future
 - tapOn:
@@ -48,8 +50,10 @@ appId: host.exp.Exponent
 
 # Submit the request
 - tapOn:
-    text: "Solicitar alquiler"
+    id: "item-request-submit"
 
 # App navigates to /rentals after a successful request
-- assertVisible: "Mis rentas"
-- assertVisible: "Solicitada"
+- assertVisible:
+    id: "tab-rentals"
+- assertVisible:
+    id: "status-badge-requested"

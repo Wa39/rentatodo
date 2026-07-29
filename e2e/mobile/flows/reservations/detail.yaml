@@ -14,33 +14,43 @@
 appId: host.exp.Exponent
 ---
 - launchApp
+- assertVisible:
+    id: "login-submit"
 - tapOn:
-    text: "Iniciar sesión"
-- tapOn:
-    placeholder: "correo@ejemplo.com"
+    id: "login-email"
 - inputText:
     text: "renter@rentatodo.dev"
 - tapOn:
-    placeholder: "••••••••"
+    id: "login-password"
 - inputText:
     text: "Rentatodo2026!"
 - tapOn:
-    text: "Iniciar sesión"
-- assertVisible: "RentaTodo"
+    id: "login-submit"
+- assertVisible:
+    id: "home-title"
 
 # Navigate to the rentals tab and open an approved reservation
 - tapOn:
-    text: "Mis rentas"
-- assertVisible: "Activas"
+    id: "tab-rentals"
+- assertVisible:
+    id: "rentals-tab-active"
 - tapOn:
     text: "Cámara Sony A7 III"
 
 # Detail screen assertions
-- assertVisible: "Reserva"
-- assertVisible: "Cámara Sony A7 III"
-- assertVisible: "Aprobada"
-- assertVisible: "Estado"
-- assertVisible: "Depósito"
-- assertVisible: "Ver artículo"
-- assertVisible: "Recibí el artículo (check-in)"
-- assertVisible: "Cancelar reserva"
+- assertVisible:
+    id: "reservation-detail-title"
+- assertVisible:
+    id: "reservation-item-name"
+- assertVisible:
+    id: "status-badge-approved"
+- assertVisible:
+    id: "reservation-label-status"
+- assertVisible:
+    id: "reservation-label-deposit"
+- assertVisible:
+    id: "reservation-item-link"
+- assertVisible:
+    id: "reservation-checkin"
+- assertVisible:
+    id: "reservation-cancel"

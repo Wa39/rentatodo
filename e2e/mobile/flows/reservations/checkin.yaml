@@ -18,35 +18,43 @@
 appId: host.exp.Exponent
 ---
 - launchApp
+- assertVisible:
+    id: "login-submit"
 - tapOn:
-    text: "Iniciar sesión"
-- tapOn:
-    placeholder: "correo@ejemplo.com"
+    id: "login-email"
 - inputText:
     text: "renter@rentatodo.dev"
 - tapOn:
-    placeholder: "••••••••"
+    id: "login-password"
 - inputText:
     text: "Rentatodo2026!"
 - tapOn:
-    text: "Iniciar sesión"
-- assertVisible: "RentaTodo"
+    id: "login-submit"
+- assertVisible:
+    id: "home-title"
 
 # Navigate to reservation detail via rentals list
 - tapOn:
-    text: "Mis rentas"
+    id: "tab-rentals"
 - tapOn:
     text: "Cámara Sony A7 III"
-- assertVisible: "Reserva"
-- assertVisible: "Recibí el artículo (check-in)"
+- assertVisible:
+    id: "reservation-detail-title"
+- assertVisible:
+    id: "reservation-checkin"
 
 # Open the check-in screen
 - tapOn:
-    text: "Recibí el artículo (check-in)"
+    id: "reservation-checkin"
 
 # Assert check-in screen elements
-- assertVisible: "Check-in · Recibir artículo"
-- assertVisible: "Una sola foto como evidencia"
-- assertVisible: "Tomar foto"
-- assertVisible: "Notas sobre el estado (opcional)"
-- assertVisible: "Confirmar recepción"
+- assertVisible:
+    id: "check-title"
+- assertVisible:
+    id: "check-photo-hint"
+- assertVisible:
+    id: "check-pick-camera"
+- assertVisible:
+    id: "check-notes-label"
+- assertVisible:
+    id: "check-submit"

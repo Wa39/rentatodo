@@ -5,19 +5,22 @@
 appId: host.exp.Exponent
 ---
 - launchApp
+- assertVisible:
+    id: "login-brand"
 - tapOn:
-    placeholder: "correo@ejemplo.com"
+    id: "login-email"
 - inputText:
     text: "renter@rentatodo.dev"
 - tapOn:
-    placeholder: "••••••••"
+    id: "login-password"
 - inputText:
     text: "Rentatodo2026!"
 - tapOn:
-    text: "Iniciar sesión"
-- assertVisible: "RentaTodo"
+    id: "login-submit"
+- assertVisible:
+    id: "home-title"
 - tapOn:
-    placeholder: "Buscar artículos…"
+    id: "home-search"
 - inputText:
     text: "bicicleta"
 - assertVisible: "Bicicleta de montaña Trek"

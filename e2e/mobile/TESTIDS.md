@@ -12,6 +12,26 @@ Usage in a flow:
     text: "renter@rentatodo.dev"
 ```
 
+## Login screen (`/login`) — brand
+
+| testID | Element |
+|---|---|
+| `login-brand` | "RentaTodo" title text on the login screen |
+
+## Home screen (`/`)
+
+| testID | Element |
+|---|---|
+| `home-title` | "RentaTodo" heading visible after login |
+
+## Tab bar
+
+| testID | Element |
+|---|---|
+| `tab-home` | "Inicio" tab button |
+| `tab-rentals` | "Mis rentas" tab button |
+| `tab-profile` | "Perfil" tab button |
+
 ## Login (`/login`)
 
 | testID | Element |
@@ -26,6 +46,7 @@ Usage in a flow:
 
 | testID | Element |
 |---|---|
+| `register-subtitle` | "Solo se necesita nombre, correo y contraseña" subtitle |
 | `register-name` | Name field |
 | `register-email` | Email field |
 | `register-password` | Password field |
@@ -56,30 +77,64 @@ Usage in a flow:
 | `rentals-tab-past` | "Pasadas" tab |
 | `reservation-row-<reservationId>` | Reservation row (also used on Home) |
 
+## Status badges
+
+`testID` is `status-badge-{status}` where `{status}` is the API value:
+
+| testID | Status |
+|---|---|
+| `status-badge-requested` | Solicitada |
+| `status-badge-approved` | Aprobada |
+| `status-badge-delivered` | Entregada |
+| `status-badge-returned` | Devuelta |
+| `status-badge-closed` | Cerrada |
+| `status-badge-cancelled` | Cancelada |
+| `status-badge-rejected` | Rechazada |
+
 ## Reservation detail (`/reservation/[id]`)
 
 Buttons are state-dependent — only the ones the contract allows are rendered:
 
 | testID | Element | Visible when |
 |---|---|---|
+| `reservation-detail-title` | "Reserva" screen heading | always |
+| `reservation-item-name` | Item name in the header | always |
+| `reservation-label-status` | "Estado" info label | always |
+| `reservation-label-deposit` | "Depósito" info label | always |
+| `reservation-item-link` | "Ver artículo" link row | always |
 | `reservation-checkin` | "Recibí el artículo" | status `approved` |
 | `reservation-checkout` | "Devolver el artículo" | status `delivered` |
 | `reservation-report` | "Reportar problema" | status `delivered`/`returned`, deposit not frozen |
 | `reservation-cancel` | "Cancelar reserva" | status `requested`/`approved` |
+| `reservation-cancel-dialog` | Inline confirmation box | after tapping cancel |
+| `reservation-cancel-dismiss` | "Volver" button in confirmation | after tapping cancel |
 | `reservation-cancel-confirm` | "Sí, cancelar" in the confirmation | after tapping cancel |
 
 ## Check-in / check-out (`/check/[id]`)
 
 | testID | Element |
 |---|---|
+| `check-title` | Screen heading ("Check-in · Recibir artículo" or "Check-out · Devolver artículo") |
+| `check-photo-hint` | "Una sola foto como evidencia" placeholder text |
+| `check-notes-label` | "Notas sobre el estado (opcional)" label |
 | `check-pick-camera` | "Tomar foto" (native only — hidden on web) |
 | `check-pick-library` | "Elegir de galería" / "Elegir archivo" |
 | `check-submit` | Confirm button (enabled once a photo is picked) |
+
+## Profile (`/profile`)
+
+| testID | Element |
+|---|---|
+| `profile-user-name` | Logged-in user's name heading |
+| `profile-payment-method` | "Método de pago" menu row |
+| `profile-settings` | "Configuración" menu row |
+| `profile-logout` | "Cerrar sesión" pressable row |
 
 ## Report a problem (`/report/[id]`)
 
 | testID | Element |
 |---|---|
+| `report-title` | "Reportar problema" screen heading |
 | `report-reason` | Reason field |
 | `report-pick-camera` | "Tomar foto" (native only) |
 | `report-pick-library` | "Elegir de galería" / "Elegir archivo" |
@@ -87,7 +142,12 @@ Buttons are state-dependent — only the ones the contract allows are rendered:
 
 ## Notes
 
-- Tab bar labels ("Inicio", "Mis rentas", "Perfil") have no `testID`: they come
-  from expo-router's `Tabs` and are stable enough as visible text.
+- Tab bar buttons use `tabBarButton` in `_layout.tsx` to inject `testID` via a
+  `Pressable` wrapper — use `tab-home`, `tab-rentals`, `tab-profile` in flows.
 - Rows and cards carry the entity id, so a flow can target a specific seeded
   reservation/item instead of relying on list order.
+- Seeded item names (`tapOn: text: "Cámara Sony A7 III"` etc.) remain as
+  visible-text taps for navigation — item/reservation IDs are dynamic (generated
+  by the DB on each seed run), so there is no stable testID to use instead.
+- Calendar text (month names, day numbers) also stays as visible-text — it is
+  dynamic relative to the current date.

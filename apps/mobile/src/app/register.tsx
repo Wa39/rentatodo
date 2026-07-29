@@ -57,7 +57,7 @@ export default function RegisterScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.content}>
           <Text style={styles.title}>Crear cuenta</Text>
-          <Text style={styles.subtitle}>Solo se necesita nombre, correo y contraseña</Text>
+          <Text testID="register-subtitle" style={styles.subtitle}>Solo se necesita nombre, correo y contraseña</Text>
 
           <Text style={styles.label}>Nombre</Text>
           <TextInput

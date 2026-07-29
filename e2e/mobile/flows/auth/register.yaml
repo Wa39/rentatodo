@@ -4,24 +4,29 @@
 appId: host.exp.Exponent
 ---
 - launchApp
-- assertVisible: "RentaTodo"
+- assertVisible:
+    id: "login-brand"
 - tapOn:
-    text: "Crear cuenta"
-- assertVisible: "Solo se necesita nombre, correo y contraseña"
+    id: "login-to-register"
+- assertVisible:
+    id: "register-subtitle"
 - tapOn:
-    placeholder: "Nombre y apellido"
+    id: "register-name"
 - inputText:
     text: "Test User"
 - tapOn:
-    placeholder: "correo@ejemplo.com"
+    id: "register-email"
 - inputText:
     text: "test+${maestro.timestamp}@rentatodo.dev"
 - tapOn:
-    placeholder: "Mínimo 8 caracteres"
+    id: "register-password"
 - inputText:
     text: "Rentatodo2026!"
 - tapOn:
-    text: "Crear cuenta"
-- assertVisible: "Inicio"
-- assertVisible: "Mis rentas"
-- assertVisible: "Perfil"
+    id: "register-submit"
+- assertVisible:
+    id: "tab-home"
+- assertVisible:
+    id: "tab-rentals"
+- assertVisible:
+    id: "tab-profile"

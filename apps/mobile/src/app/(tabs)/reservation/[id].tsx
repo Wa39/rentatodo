@@ -71,7 +71,7 @@ export default function ReservationDetailScreen() {
           <Pressable onPress={() => router.back()} style={styles.backButton} hitSlop={8}>
             <Ionicons name="chevron-back" size={22} color={Brand.ink} />
           </Pressable>
-          <Text style={styles.topBarTitle}>Reserva</Text>
+          <Text testID="reservation-detail-title" style={styles.topBarTitle}>Reserva</Text>
         </View>
 
         <View style={styles.header}>
@@ -79,7 +79,7 @@ export default function ReservationDetailScreen() {
             <Text style={styles.initial}>{reservation.item_name.charAt(0)}</Text>
           </View>
           <View style={styles.headerInfo}>
-            <Text style={styles.name}>{reservation.item_name}</Text>
+            <Text testID="reservation-item-name" style={styles.name}>{reservation.item_name}</Text>
             <Text style={styles.dates}>
               {formatDateRangeEs(reservation.start_date, reservation.end_date)} · {days}{' '}
               {days === 1 ? 'día' : 'días'}
@@ -90,11 +90,11 @@ export default function ReservationDetailScreen() {
 
         <View style={styles.card}>
           <View style={styles.rowLine}>
-            <Text style={styles.label}>Estado</Text>
+            <Text testID="reservation-label-status" style={styles.label}>Estado</Text>
             <Text style={styles.value}>{STATUS_META[reservation.status].label}</Text>
           </View>
           <View style={styles.rowLine}>
-            <Text style={styles.label}>Depósito</Text>
+            <Text testID="reservation-label-deposit" style={styles.label}>Depósito</Text>
             <Text style={styles.value}>
               {formatUSD(reservation.deposit_amount)} · {DEPOSIT_LABELS[reservation.deposit_status]}
             </Text>
@@ -149,7 +149,7 @@ export default function ReservationDetailScreen() {
         <Link
           href={{ pathname: '/item/[id]', params: { id: reservation.item_id } }}
           asChild>
-          <Pressable style={styles.linkRow}>
+          <Pressable testID="reservation-item-link" style={styles.linkRow}>
             <Ionicons name="cube-outline" size={18} color={Brand.primary} />
             <Text style={styles.linkText}>Ver artículo</Text>
             <Ionicons name="chevron-forward" size={16} color={Brand.muted} />
@@ -212,7 +212,7 @@ export default function ReservationDetailScreen() {
         )}
 
         {cancellable && confirming && (
-          <View style={styles.confirmBox}>
+          <View testID="reservation-cancel-dialog" style={styles.confirmBox}>
             <Text style={styles.confirmText}>
               ¿Cancelar esta reserva?
               {reservation.deposit_status === 'held'
@@ -222,6 +222,7 @@ export default function ReservationDetailScreen() {
             </Text>
             <View style={styles.confirmRow}>
               <Pressable
+                testID="reservation-cancel-dismiss"
                 style={[styles.confirmButton, styles.confirmNo]}
                 disabled={submitting}
                 onPress={() => setConfirming(false)}>

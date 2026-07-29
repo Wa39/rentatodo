@@ -54,7 +54,7 @@ export default function LoginScreen() {
             <View style={styles.logo}>
               <Text style={styles.logoText}>R</Text>
             </View>
-            <Text style={styles.title}>RentaTodo</Text>
+            <Text testID="login-brand" style={styles.title}>RentaTodo</Text>
             <Text style={styles.subtitle}>Alquile artículos cerca suyo</Text>
           </View>
 

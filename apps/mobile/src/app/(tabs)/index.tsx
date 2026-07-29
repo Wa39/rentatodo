@@ -82,7 +82,7 @@ export default function HomeScreen() {
         ListEmptyComponent={<Text style={styles.sideEmpty}>Aún no tiene solicitudes.</Text>}
         ListHeaderComponent={
           <View style={styles.content}>
-            <Text style={styles.title}>RentaTodo</Text>
+            <Text testID="home-title" style={styles.title}>RentaTodo</Text>
 
             <TextInput
               testID="home-search"
