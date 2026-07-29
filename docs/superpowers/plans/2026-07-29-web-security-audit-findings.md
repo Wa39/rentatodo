@@ -299,3 +299,64 @@ Scanned `apps/web/src` for hardcoded credentials (keys, tokens, passwords, secre
 - **Status:** No action needed — verified complete.
 
 ---
+
+## Task 7: Route & authorization guards
+
+### Summary
+
+Read `apps/web/src/routes/index.tsx` in full and listed every route's guard status. Read `apps/web/src/components/RequireAuth.tsx` to confirm what it actually checks. Then traced the "owner-only UI" pattern in `ItemsPage.tsx`/`ItemCard.tsx` and `ReservationDetailPage.tsx` back to its data source (`ItemsContext.tsx`, `RequestsContext.tsx`) and forward into `apps/api` (`apps/api/app/routers/items.py`, `apps/api/app/services/items.py`, `apps/api/app/services/reservations.py`, `apps/api/app/services/reports.py`) to confirm — by reading the actual enforcement code, not just the contract — that ownership/participant checks are real server-side controls. Finally ran the brief's role/permission grep. No Medium+ findings; one clarifying correction to the brief's framing and one Low informational item below.
+
+### Finding 7.1 — No action needed
+
+**Title:** Every dashboard route is wrapped by `RequireAuth`; only `/login` and `/register` are reachable without a token
+
+- **Severity:** N/A (verified correct, no action needed)
+- **Evidence:**
+  - Full route list from `apps/web/src/routes/index.tsx:14-34`:
+
+    | Path | Guarded by `RequireAuth`? |
+    |---|---|
+    | `/` | N/A — `<Navigate to="/dashboard" replace />`, immediately redirects into the guarded branch below |
+    | `/login` | No (intentionally public) |
+    | `/register` | No (intentionally public) |
+    | `/dashboard` | Yes |
+    | `/items` | Yes |
+    | `/items/publish` | Yes |
+    | `/requests` | Yes |
+    | `/requests/calendar` | Yes |
+    | `/reservations/:id` | Yes |
+    | `/earnings` | Yes |
+
+    All seven authenticated routes are declared as `children` of a single parent route object (`index.tsx:18-33`) whose `element` is `<RequireAuth><DashboardLayout /></RequireAuth>` — there is no per-page opt-out; a new route added under that `children` array inherits the guard automatically, and a route accidentally added as a sibling at the top level (like `/login`/`/register`) would NOT be guarded, so this is a "wrap in the right array" convention, not a per-route decorator, and is exactly the design already in place for all 7 dashboard routes.
+  - `apps/web/src/components/RequireAuth.tsx:5-11` — `RequireAuth` renders `<Navigate to="/login" replace />` when `!isAuthenticated`, otherwise renders its `children`. Per Task 2's Finding 2.1, `isAuthenticated` is `token !== null` — presence-only, no expiry/format validation — which is a session-handling nuance already logged in Task 2, not a routing gap; the routing layer itself correctly gates on the auth state it's given.
+  - No other route table exists: `grep -rn "createBrowserRouter\|<Route\b" apps/web/src` (checked manually while reading the file) shows `index.tsx` is the single source of the route tree; `DashboardLayout` (rendered only inside the guard) is what renders the nav and the `<Outlet />` the child routes mount into, so there's no secondary/unguarded router instance mounted elsewhere.
+  - No catch-all (`path: '*'`) route is defined. This isn't a security gap — an unmatched path just hits `react-router`'s default not-found behavior, it doesn't expose any protected content — but noting it since the brief asked for every route to be listed; worth a product/UX decision on adding a proper 404 page, not a security finding.
+- **Description:** The route guard is structurally sound: one `RequireAuth` wrapper protects one parent route, all seven dashboard pages nest under it, and the only two unauthenticated-reachable routes (`/login`, `/register`) are exactly the two the brief expects. There's no route that's unintentionally public.
+- **Recommendation:** None for security. Optional UX polish: add a `path: '*'` route with a proper 404 page.
+- **Status:** No action needed — verified complete.
+
+### Finding 7.2 — No action needed (with a correction to the brief's framing)
+
+**Title:** Owner-only Edit/Delete/Report UI is backed by real server-side ownership/participant checks — confirmed by reading `apps/api`'s enforcement code directly, not just the contract; and the "hide via client-side ownership comparison" pattern the brief describes doesn't actually exist in the current code — the lists themselves are already server-scoped
+
+- **Severity:** N/A (verified correct, no action needed)
+- **Evidence:**
+  - **Items — no client-side ownership comparison exists at all, because the list is already server-scoped.** `apps/web/src/lib/ItemsContext.tsx:48` calls `apiListMyItems(currentToken)`, which is `apiListMyItems` → `GET /users/me/items` (`apps/web/src/lib/api.ts:104-106`). Server-side, `apps/api/app/routers/items.py:162-177`'s `list_my_items_endpoint` calls `list_my_items(db, owner_id=current_user.id)` → `apps/api/app/services/items.py:295-310`, `.where(Item.owner_id == owner_id)`. So every `Item` that ever reaches `ItemsPage.tsx`/`ItemCard.tsx` already belongs to the logged-in user — there is no "compare `item.owner_id` to my id, then hide the button" logic anywhere in `apps/web/src` (confirmed: no such comparison exists in `ItemCard.tsx` or `ItemsPage.tsx`, read in full). `ItemCard.tsx:65,78`'s Edit/Delete buttons are instead gated only on a `readOnly` prop, which is passed `true` in exactly one place — `apps/web/src/routes/PublishItemPage.tsx:140`, `<ItemCard item={previewItem} readOnly />` — the live preview of a not-yet-created item while filling out the publish form, unrelated to ownership.
+  - **Backend enforces ownership independently and correctly regardless.** `apps/api/app/routers/items.py:120-159` — `update_item_endpoint`/`delete_item_endpoint` both resolve `current_user` via `Depends(get_current_user)` (JWT-derived, never from the request body) and pass `owner_id=current_user.id` into `apps/api/app/services/items.py:225-249` (`update_item`) and `:266-292` (`delete_item`). Both read the real row first (`db.scalar(select(Item).where(Item.id == item_id))`) then explicitly check `if item.owner_id != owner_id: raise AppError(403, "FORBIDDEN", "You do not own this item")` (`items.py:248-249`, `287-288`) — a real, unconditional 403 for any authenticated user attempting to edit/delete another owner's item, whether or not the frontend's UI ever would have shown them the button (it wouldn't, since the item wouldn't be in their `/users/me/items` list to begin with — this is defense-in-depth, not the only barrier).
+  - **Reservations — same server-scoping pattern, plus a genuine participant check on the two reservation-detail actions.** `apps/web/src/lib/RequestsContext.tsx:38` calls `apiListMyRequests` → `GET /users/me/requests` (`apps/web/src/lib/api.ts:120-122`), scoped server-side the same way. `ReservationDetailPage.tsx:18` does `requests.find((r) => r.id === id)`; if the URL's `:id` isn't in the caller's own list, `reservation` is `undefined` and the component renders `"Reservation not found."` (`ReservationDetailPage.tsx:42-44`) instead of the deposit-history/report UI. However, the `useEffect` that fetches deposit history (`ReservationDetailPage.tsx:27-40`, calling `apiGetTransactions(token, id)`) runs unconditionally off the raw URL param — before the `if (!reservation)` early return, since hooks always execute in declaration order — so it fires even for a reservation id that isn't the caller's own. This is safe: `GET /reservations/{id}/transactions` (`apps/api/app/routers/reservations.py:259-277`) calls `get_transactions(db, reservation_id=..., user_id=current_user.id)` → `apps/api/app/services/reservations.py:457-477`, which calls `_assert_participant(reservation, user_id)` (`reservations.py:152-...`) — a real check that the caller is either the reservation's renter or the rented item's owner, 403 otherwise. Same pattern for `POST /reservations/{id}/report` → `apps/api/app/services/reports.py:18-41`, `_assert_participant(reservation, reporter_id)` before any write. A non-participant hitting either endpoint via a crafted `:id` in the URL (or a raw `fetch`, bypassing the UI entirely) gets a 403, not data or a report accepted on someone else's reservation. The only client-visible effect of firing the transactions fetch for a not-found reservation is a discarded `transactionsError` state that's never rendered (the component already returned early) — no information disclosure, just a wasted network call.
+  - **No path where `PATCH`/`DELETE /items/{id}` or the reservation endpoints are reachable without a valid JWT:** all of `update_item_endpoint`, `delete_item_endpoint`, `get_transactions_endpoint`, and the report endpoint require `current_user: User = Depends(get_current_user)` — confirmed by reading the router signatures directly, not assumed.
+- **Description:** The brief's premise — "the UI hides owner-only buttons based on client state, confirm the backend is the real boundary" — holds in spirit (the backend absolutely is the real, independently-enforced boundary in every case checked), but the specific mechanism described (comparing `item.owner_id`/participant status client-side to decide what to render) doesn't exist in the current codebase for items: the `/items` and `/requests` lists are pre-filtered server-side to the caller's own resources, so there's no other-owner's-item ever reaching `ItemCard`'s editable render path to begin with, and `readOnly` is an unrelated preview-mode flag. The one place a raw URL id could plausibly point at someone else's resource (`/reservations/:id`) does have a real backend participant check on both actions available there (view transactions, submit a report), confirmed by reading `apps/api`'s service code directly rather than only trusting the OpenAPI contract's documented `403`s.
+- **Recommendation:** None — this is correctly designed (server-side scoping + defense-in-depth ownership checks on the mutation endpoints). No action needed in `apps/web`.
+- **Status:** No action needed — verified complete; brief's framing corrected above for future reference.
+
+### Finding 7.3 — No action needed
+
+**Title:** No client-only role/permission flag exists anywhere in `apps/web/src`
+
+- **Severity:** N/A (verified correct, no action needed)
+- **Evidence:** `grep -rn "role\|isAdmin\|isOwner" apps/web/src --include="*.tsx" --include="*.ts" | grep -v ".test."` returns exactly two matches, both in `apps/web/src/components/ui/table.tsx:76,91` — CSS selectors targeting the HTML/ARIA accessibility attribute `[role=checkbox]` on table components (unrelated to authorization; standard shadcn/ui table styling). There is no `role`, `isAdmin`, `isOwner`, or similar permission/entitlement flag anywhere else in the app — no such field exists on the `User` type (`apps/web/src/lib/types.ts`, checked), nothing is derived from JWT claims client-side beyond `token`/basic user profile fields, and nothing in `AuthContext.tsx` exposes a role.
+- **Description:** Consistent with the app currently having a single user type (owner) end-to-end, there is no role/permission gate implemented client-side that a server-side check doesn't also enforce independently — because there is no client-side role/permission gate at all. Nothing to re-validate server-side that isn't already the case (auth presence + resource ownership, both covered in Findings 7.1/7.2).
+- **Recommendation:** None. If a second role (e.g., renter, admin) is ever introduced, apply the same principle already used correctly elsewhere in this app: any role-based UI hiding must be backed by an independent server-side check, not trusted as the boundary.
+- **Status:** No action needed — verified complete.
+
+---
