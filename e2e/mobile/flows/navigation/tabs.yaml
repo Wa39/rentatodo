@@ -1,0 +1,56 @@
+# Tab bar navigation — verifies all three tab buttons work after login.
+# Exercises the tabBarButton testID wrappers added in PR #59
+# (tab-home, tab-rentals, tab-profile via Pressable wrappers).
+#
+# Prerequisites:
+#   - API running: uvicorn app.main:app --reload (apps/api/)
+#   - DB seeded: python infra/seed.py
+#   - Expo Go open on device/simulator pointed at dev server
+#
+# Run: maestro test e2e/mobile/flows/navigation/tabs.yaml
+
+appId: host.exp.Exponent
+---
+- launchApp
+- assertVisible:
+    id: "login-submit"
+- tapOn:
+    id: "login-email"
+- inputText:
+    text: "renter@rentatodo.dev"
+- tapOn:
+    id: "login-password"
+- inputText:
+    text: "Rentatodo2026!"
+- tapOn:
+    id: "login-submit"
+
+# Lands on Inicio tab
+- assertVisible:
+    id: "home-title"
+- assertVisible:
+    id: "tab-home"
+- assertVisible:
+    id: "tab-rentals"
+- assertVisible:
+    id: "tab-profile"
+
+# Navigate to Mis rentas
+- tapOn:
+    id: "tab-rentals"
+- assertVisible:
+    id: "rentals-tab-active"
+- assertVisible:
+    id: "rentals-tab-past"
+
+# Navigate to Perfil
+- tapOn:
+    id: "tab-profile"
+- assertVisible:
+    id: "profile-user-name"
+
+# Navigate back to Inicio
+- tapOn:
+    id: "tab-home"
+- assertVisible:
+    id: "home-title"
