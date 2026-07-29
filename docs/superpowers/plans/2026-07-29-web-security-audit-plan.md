@@ -6,7 +6,7 @@
 
 **Architecture:** Each task is a self-contained investigation of one risk area: run a concrete command or grep, read the exact file(s) it points at, and append a findings entry to a single running report file using a fixed template. No task fixes anything by default — findings against `apps/web` that are trivial, low-risk, and self-contained may be fixed inline (own sub-step, own commit, own test); everything else — and anything touching `apps/api`, `apps/mobile`, or `packages/contracts/openapi.yaml` — is logged only and handed off. The final task rolls everything into a prioritized remediation backlog that becomes the input for the "polishing" work that follows this audit.
 
-**Tech Stack:** Vite + React 19 + TypeScript, Vitest + Testing Library, `npm audit`, ripgrep-style `grep` for pattern scans.
+**Tech Stack:** Vite + React 19 + TypeScript, Vitest + Testing Library, `pnpm audit` (pnpm workspace, root `pnpm-lock.yaml`), ripgrep-style `grep` for pattern scans.
 
 ## Global Constraints
 
@@ -42,7 +42,7 @@ If a task area has zero findings, still add one entry with `Status: No action ne
 
 **Files:**
 - Create: `docs/superpowers/plans/2026-07-29-web-security-audit-findings.md`
-- Read: `apps/web/package.json`, `apps/web/package-lock.json`
+- Read: `apps/web/package.json`, `pnpm-lock.yaml` (repo root — this is a pnpm workspace, `packageManager: pnpm@9.15.0` per root `package.json`; there is no `apps/web/package-lock.json`)
 
 **Interfaces:**
 - Produces: the findings report file every later task appends to, seeded with a header and a Task 1 section.
@@ -60,24 +60,20 @@ Scope: apps/web only (per root CLAUDE.md ownership split). apps/api/apps/mobile 
 ## Task 1: Dependency vulnerability scan
 ```
 
-- [ ] **Step 2: Run npm audit from apps/web**
+- [ ] **Step 2: Run pnpm audit scoped to the apps/web workspace project**
 
-Run: `cd apps/web && npm audit --json > /tmp/npm-audit-web.json && npm audit`
-Expected: command completes (even if it reports vulnerabilities — a non-zero exit code from `npm audit` here is expected and fine, don't treat it as a step failure).
+Run (from repo root, since the lockfile lives there): `pnpm --filter @rentatodo/web audit --json > /tmp/pnpm-audit-web.json; pnpm --filter @rentatodo/web audit`
+(Check `apps/web/package.json`'s `name` field for the exact filter string if it isn't `@rentatodo/web`.)
+Expected: command completes (even if it reports vulnerabilities — a non-zero exit code here is expected and fine, don't treat it as a step failure).
 
 - [ ] **Step 3: For every advisory at High or Critical severity, add a finding entry**
 
-For each one, capture: package name, current vs. patched version range, and whether a fix is available via `npm audit fix` without a major version bump (check the advisory's `fixAvailable` field in the JSON). Use the template above. Set `Status` to `Flagged — needs product decision` for anything requiring a major bump (major bumps need the "clear justification in the PR description" the root CLAUDE.md requires), or fix inline only if `npm audit fix` (no `--force`) resolves it with a patch/minor bump.
+For each one, capture: package name, current vs. patched version range, and whether it's a direct or transitive dependency of `apps/web` (check `apps/web/package.json`'s `dependencies`/`devDependencies` — pnpm's audit output distinguishes this). This task is investigation-only: do **not** run any automated fix command. `pnpm` doesn't have a direct equivalent to `npm audit fix`, and per root `CLAUDE.md`, dependency upgrades need "a clear justification in the PR description" — that's a decision for whoever reviews the findings report, not something to apply unilaterally mid-audit. Set every advisory's `Status` to `Flagged — needs product decision` (patch-level bumps included), with the recommended target version noted in the finding.
 
-- [ ] **Step 4: If Step 3 found patch/minor-only fixes, apply them**
-
-Run: `cd apps/web && npm audit fix`
-Then: `npx vitest run` and `npx tsc -b` — both must stay clean. If either breaks, revert (`git checkout -- package.json package-lock.json`) and downgrade that finding's `Status` to `Flagged — needs manual fix`, noting what broke.
-
-- [ ] **Step 5: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
-git add docs/superpowers/plans/2026-07-29-web-security-audit-findings.md apps/web/package.json apps/web/package-lock.json
+git add docs/superpowers/plans/2026-07-29-web-security-audit-findings.md
 git commit -m "chore(web): security audit task 1 - dependency scan"
 ```
 
@@ -401,7 +397,7 @@ git commit -m "docs(web): summarize security audit findings and remediation back
 
 ```bash
 git push -u origin <branch-name>
-gh pr create --base develop --title "docs(web): apps/web security audit findings" --body "Security audit of apps/web per team request, ahead of the next round of UX polishing. See docs/superpowers/plans/2026-07-29-web-security-audit-findings.md for the full report — summary table at the top. No behavioral changes beyond any patch-level npm audit fix and whatever trivial in-scope fixes were applied inline (see report for exactly which, and their commit SHAs)."
+gh pr create --base develop --title "docs(web): apps/web security audit findings" --body "Security audit of apps/web per team request, ahead of the next round of UX polishing. See docs/superpowers/plans/2026-07-29-web-security-audit-findings.md for the full report — summary table at the top. This audit is investigation-only: dependency upgrades from Task 1 are flagged, not applied (per CLAUDE.md's justification requirement). No behavioral changes beyond whatever trivial in-scope fixes were applied inline (see report for exactly which, and their commit SHAs)."
 ```
 
 Do not merge — per this repo's PR ownership convention, open it and let the team review.
