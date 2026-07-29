@@ -199,3 +199,76 @@ Bottom line: every field the web UI can submit is also independently validated b
 - **Description:** Two minor gaps, both non-security: (1) no client-side password length ceiling, but the backend enforces one and the error surfaces correctly, so this is pure UX robustness, not a bypass; (2) whitespace-only item names/descriptions pass both client and backend checks identically (both only check raw length ≥ 1), so this isn't a client-vs-backend mismatch at all — it's a shared minor data-quality gap in the contract itself, out of scope for an `apps/web`-only fix.
 - **Recommendation:** Optional UX polish: add `maxLength={72}` to the password `<Input>` with an inline counter/hint. The whitespace-only-name gap, if worth fixing at all, belongs in the shared contract/backend validation (e.g., a `pattern` or backend `.strip()` check), not in `apps/web` alone.
 - **Status:** No action needed in `apps/web` — informational.
+
+---
+
+## Task 5: File upload security
+
+### Summary
+
+Traced the full upload path: `apps/web/src/components/PhotoUploadField.tsx` → `apps/web/src/lib/uploadPhoto.ts` → `apiPresignUpload` in `apps/web/src/lib/api.ts` → `POST /uploads/presign` → `apps/api/app/routers/uploads.py` → `apps/api/app/services/uploads.py`'s `generate_presign` (read-only reference, not modified). Confirmed the client never supplies or influences the S3 key/bucket (server-generated from `user_id` + a fresh UUID), and confirmed the presigned-PUT content-length gap still exists in `apps/api` as an open `TODO`, tracked here per the task brief. One documentation inconsistency found between the OpenAPI contract and the actual `apps/api` implementation (informational, `apps/api`-owned).
+
+### Finding 5.1 — Info
+
+**Title:** Client-side file-type/size checks in the upload path are real but explicitly documented as UX-only, not a security boundary — correctly designed
+
+- **Severity:** Info
+- **Evidence:**
+  - `apps/web/src/components/PhotoUploadField.tsx:65-73` — the `<input type="file">` itself only has `accept="image/jpeg,image/png,image/webp"` (line 69); `grep -n "accept=\|type\.startsWith\|size\|MAX" apps/web/src/components/PhotoUploadField.tsx` confirms no size cap and no MIME-type re-check live in this component — the `accept` attribute is a file-picker UI filter only (trivially bypassed via "All Files" or a renamed extension) and this component doesn't pretend otherwise.
+  - The actual client-side checks live one layer down, in `apps/web/src/lib/uploadPhoto.ts`, which `PhotoUploadField.tsx:42` calls: `MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024` (line 3), an allow-list `isUploadContentType` check against `file.type` (lines 17-19, 47-49), a real magic-byte signature check per content type (`SIGNATURE_CHECKS`, lines 7-15, invoked at lines 53-55), and an actual browser decode via `createImageBitmap(file)` (lines 56-60) — stronger than the typical "just check `accept`" pattern.
+  - `apps/web/src/lib/uploadPhoto.ts:35-45` — the function's own docstring states this explicitly: *"These client-side checks are a UX safeguard against accidental/casual misuse... they are NOT a security boundary. Anyone can call POST /uploads/presign and PUT directly, bypassing all of this. Real content/malware scanning needs to happen server-side (apps/api or infra), out of scope here."*
+- **Description:** The client-side validation is more thorough than a bare `accept=` attribute (magic-byte + decode checks catch a renamed non-image file, not just a mislabeled `Content-Type`), but it's still enforced entirely in JS that an attacker fully controls — anyone can skip `apps/web` and call `POST /uploads/presign` plus the resulting presigned `PUT` directly (e.g., via curl), sending any `content_type` in the enum and any actual bytes. The code already documents this correctly and doesn't claim otherwise.
+- **Recommendation:** None for `apps/web` — the checks are correctly scoped as UX-only and the code says so. Real content-type/malware enforcement, if desired, is an `apps/api`/infra decision (out of scope here).
+- **Status:** No action needed — verified correctly designed and honestly documented.
+
+### Finding 5.2 — No action needed
+
+**Title:** Presign flow cannot be abused for path traversal or arbitrary bucket/key writes — client only ever sends `filename` (informational, unused) and `content_type`; the S3 key is entirely server-generated
+
+- **Severity:** N/A (verified correct, no action needed)
+- **Evidence:**
+  - `apps/web/src/lib/uploadPhoto.ts:62` — `const presign = await apiPresignUpload(token, file.name, file.type)`.
+  - `apps/web/src/lib/api.ts:132-138` — `apiPresignUpload(token, filename, contentType)` POSTs `JSON.stringify({ filename, content_type: contentType })` to `/uploads/presign` with the caller's bearer token; `apps/web/src/lib/api.ts:46,48-52` — `UploadContentType` is a closed union (`'image/jpeg' | 'image/png' | 'image/webp'`) and `PresignResponse` only exposes `upload_url`, `public_url`, `expires_in` back to the client — there is no `key`, `bucket`, or path field the client sends or receives that it could manipulate.
+  - `apps/api/app/routers/uploads.py:13-30` — `presign_upload` requires `current_user: User = Depends(get_current_user)` (i.e., a valid JWT — presign cannot be called anonymously) and calls `generate_presign(user_id=current_user.id, content_type=data.content_type.value)`; `current_user.id` comes from the resolved JWT, never from the request body.
+  - `apps/api/app/services/uploads.py:25-41` (read-only, confirmed by reading, not from memory) — `generate_presign`'s `key = f"uploads/{user_id}/{uuid.uuid4()}.{extension}"` is built entirely from the server-resolved `user_id` and a freshly generated `uuid.uuid4()`; `extension` comes only from `CONTENT_TYPE_EXTENSIONS[content_type]` (lines 14-18), a fixed server-side map (`{"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}`), never from the client-supplied `filename`. The module's own comment at lines 19-22 states this is intentional: *"The extension always comes from here, never from the client-supplied filename — avoids path traversal / unsafe characters entirely."*
+  - `apps/api/app/schemas/upload.py:18-26` — `PresignRequest.filename` is accepted (`min_length=1`) but its `Field(...)` description says outright: *"Not used to derive the S3 key in this implementation — the key is built from the authenticated user's id and a generated identifier instead."* `grep -rn "filename" apps/api/app/schemas/upload.py apps/api/app/routers/uploads.py` confirms `filename` is never read anywhere past the schema field itself (the router docstring at `uploads.py:20-21` calls it "informational only").
+- **Description:** There is no client-controllable input anywhere in this flow that reaches the S3 key, bucket, or path. The client sends `filename` (accepted by the schema but provably discarded) and `content_type` (validated against a closed enum before use); the server derives the entire key from server-side state (`user_id` from the JWT, a fresh UUID, and a fixed extension lookup). A malicious `filename` like `../../../other-user/secret.jpg` or a path-traversal payload has no effect — it's never read. This fully prevents path traversal, overwriting another user's object, or writing outside the `uploads/{user_id}/` prefix.
+- **Recommendation:** None. This is a well-designed, defense-in-depth key-generation scheme (ignoring client input entirely rather than trying to sanitize it) and should be kept as the pattern for any future presigned-upload endpoints.
+- **Status:** No action needed — verified complete.
+
+### Finding 5.3 — Info
+
+**Title:** OpenAPI contract's description of `PresignRequest.filename` contradicts the actual (safer) `apps/api` implementation — documentation-only inconsistency, `apps/api`-owned
+
+- **Severity:** Info
+- **Evidence:**
+  - `packages/contracts/openapi.yaml:392-396` — `PresignRequest.filename` is documented as: `description: "Original filename. Used to derive the S3 key."`
+  - `apps/api/app/services/uploads.py:19-22` and `apps/api/app/schemas/upload.py:21-25` (both read-only, confirmed above in Finding 5.2) — the actual implementation explicitly does **not** use `filename` to derive the key; the extension comes from a fixed `content_type` → extension map, and the key is `uploads/{user_id}/{uuid4()}.{extension}`.
+- **Description:** The contract text is stale/inaccurate relative to what `apps/api` actually built (and the actual behavior is the more secure of the two — it's the contract's wording that's wrong, not the code). This has no security impact on `apps/web` today since `apps/web` doesn't rely on the contract's claim for anything, but it's worth flagging so a future contributor reading only the contract doesn't assume `filename` is meaningful/trusted server input.
+- **Recommendation:** Update `packages/contracts/openapi.yaml:395`'s description to match the real behavior (e.g., "Original filename, informational only — not used to derive the S3 key"). This is a `packages/contracts/openapi.yaml` change and, per root `CLAUDE.md`, requires an approved PR reviewed by all consumers (apps/api, apps/web, apps/mobile) — not something to change unilaterally in this `apps/web`-scoped audit.
+- **Status:** Flagged — documentation fix needed in `packages/contracts/openapi.yaml` (out of scope to apply here; apps/api-owned code confirms the safer actual behavior).
+
+### Finding 5.4 — Medium
+
+**Title:** Presigned S3 `PUT` has no server-side content-length enforcement — confirmed still open in `apps/api`'s own `TODO`; `apps/web`'s 5 MB client check is trivially bypassable since anyone can call the presign endpoint directly
+
+- **Severity:** Medium
+- **Evidence:**
+  - `apps/api/app/services/uploads.py:43-48` (read-only, confirmed by reading the current file, not from memory of a prior session):
+    ```python
+    # TODO: presigned PUT does not support a ContentLengthRange condition —
+    # S3 will accept an upload of any size. To enforce a size cap (e.g. 10 MB)
+    # switch to generate_presigned_post() (presigned POST supports a
+    # content-length-range policy condition). That change requires updating
+    # the PresignResponse schema and the /uploads/presign contract in
+    # packages/contracts/openapi.yaml.
+    ```
+    This TODO is still present and unresolved as of 2026-07-29; `generate_presigned_url("put_object", ...)` (lines 49-57) is called with no size constraint of any kind.
+  - `apps/web/src/lib/uploadPhoto.ts:3,50-52` — `apps/web`'s only size guard is `MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024` checked client-side before calling `apiPresignUpload`. Per Finding 5.1/5.2, this check (and the whole `apps/web` app) is entirely bypassable: any authenticated user (presign requires a valid JWT per `apps/api/app/routers/uploads.py:16`, confirmed in Finding 5.2) can call `POST /uploads/presign` directly and then `PUT` a file of any size to the returned `upload_url` — S3 will accept it since the signed policy carries no `ContentLengthRange`.
+  - `grep -rln "rate.?limit\|RateLimit\|slowapi\|limiter" apps/api` — zero matches; there is no rate limiting anywhere in `apps/api` that would otherwise throttle repeated presign/upload calls and cap the blast radius of this gap.
+- **Description:** A malicious authenticated user can presign and upload arbitrarily large objects (e.g., multi-GB files) to the app's S3 bucket, repeatedly, with no server-side size cap and no rate limit to slow them down. This is a storage-cost / resource-exhaustion (DoS-by-cost) risk, not a data-confidentiality issue — it doesn't let anyone read another user's data or escape the `uploads/{user_id}/` prefix (Finding 5.2 already confirms that boundary holds). Severity is Medium rather than High because it requires authentication (not open to anonymous callers) and doesn't compromise other users' data, but it's a real, unauthenticated-by-size resource abuse vector with no mitigating control anywhere in the stack today.
+  This is entirely `apps/api` code (`generate_presign` in `apps/api/app/services/uploads.py`) — `apps/web` has no ability to fix it from its side beyond the client-side 5 MB check it already has, which is correctly UX-only per Finding 5.1 and cannot be the real enforcement point.
+- **Recommendation:** `apps/api`-owned fix, already scoped in its own TODO: switch to `generate_presigned_post()` with a `content-length-range` policy condition (e.g., cap at 5-10 MB to match `apps/web`'s existing UX expectation), which requires updating `PresignResponse`'s schema and the `/uploads/presign` contract in `packages/contracts/openapi.yaml` (per root `CLAUDE.md`, needs an approved cross-consumer PR). Until then, consider this an accepted/tracked risk. Not fixable within this `apps/web`-scoped audit.
+- **Status:** Flagged — needs `apps/api` fix (tracked here per task brief; pre-existing gap, not introduced or fixable by `apps/web`).
+
+---
