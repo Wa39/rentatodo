@@ -272,3 +272,30 @@ Traced the full upload path: `apps/web/src/components/PhotoUploadField.tsx` → 
 - **Status:** Flagged — needs `apps/api` fix (tracked here per task brief; pre-existing gap, not introduced or fixable by `apps/web`).
 
 ---
+
+## Task 6: Secrets & environment hygiene
+
+### Summary
+
+Scanned `apps/web/src` for hardcoded credentials (keys, tokens, passwords, secrets) using regex grep with a minimum 8-character threshold to filter out test fixtures. Verified `.env` is gitignored and `.env.example` contains only placeholders. Confirmed Vite's `VITE_` prefix convention is used correctly for the single required environment variable, exposing no sensitive data to the client bundle. No credentials found.
+
+### Findings
+
+#### Finding 6.1 — No action needed
+
+**Title:** Environment variables and secrets handling — no hardcoded credentials found; .env properly gitignored; VITE_ prefix correctly applied
+
+- **Severity:** N/A (verified correct, no action needed)
+- **Evidence:**
+  - **Hardcoded secrets grep:** `grep -rniE "(api[_-]?key|secret|password|token)\s*[:=]\s*['\"][^'\"]{8,}" apps/web/src --include="*.ts" --include="*.tsx" | grep -v ".test.ts"` returned only two matches in `apps/web/src/lib/i18n/en.ts:21` and `:31`, both being UI labels (`password: 'Password'` in i18n translation objects), not credentials. No real API keys, tokens, passwords, or secrets found in production code.
+  - **No hardcoded URLs:** `grep -rn "localhost:8000\|localhost:3000\|localhost:5000" apps/web/src --include="*.ts" --include="*.tsx"` returned zero matches in production code; `localhost:8000` appears only in test files (`apps/web/src/lib/api.test.ts` and `apps/web/src/uploadPhoto.test.ts`), which is expected and correct.
+  - **No process.env usage:** `grep -rn "process.env" apps/web/src --include="*.ts" --include="*.tsx"` returned zero matches; the app uses only `import.meta.env.VITE_API_URL`, the correct Vite pattern for client-exposed env vars.
+  - **VITE_ prefix scope:** `grep -rn "VITE_" apps/web` confirms only one env var is defined: `VITE_API_URL` in `apps/web/.env.example` (value: `http://localhost:8000`, a safe local dev default, not a secret). The TypeScript env interface at `apps/web/src/vite-env.d.ts:4` declares only this one var, preventing accidental exposure of other env vars. Confirmed in `apps/web/src/lib/api.ts:69` that `import.meta.env.VITE_API_URL` is read and used as `baseUrl` for all API calls.
+  - **`.env` gitignored:** `git check-ignore apps/web/.env` returns `apps/web/.env`, confirming the file is ignored. Root `.gitignore:14` explicitly lists `.env` (with comment: "Environment — .env.example is intentionally NOT ignored"), and app-level `.env.example` exists and is committed.
+  - **`.env.example` contains only placeholders:** `apps/web/.env.example` contains a single line of configuration: `VITE_API_URL=http://localhost:8000`, which is a local development default, not a real secret or production credential.
+  - **Token handling:** JWT access tokens are stored in `localStorage` (covered in Task 2, Finding 2.1) and transmitted via `Authorization: Bearer {token}` headers (confirmed in `apps/web/src/lib/api.ts:93-152`), never hardcoded or in env vars.
+- **Description:** All secrets-hygiene requirements are met: no hardcoded credentials in source code, environment files properly git-ignored, and the single public env var (`VITE_API_URL`) is safely scoped via Vite's `VITE_` prefix and exposed only to the client bundle intentionally. The app has no server-side secrets of its own (it's a pure SPA that authenticates to `apps/api` via JWT in the Authorization header, not an API key), so this is correctly implemented.
+- **Recommendation:** None — current implementation is secure and correct. Continue the pattern for any future env vars: use the `VITE_` prefix for public values only, never expose sensitive data, and commit `.env.example` with placeholders while keeping `.env` gitignored.
+- **Status:** No action needed — verified complete.
+
+---
