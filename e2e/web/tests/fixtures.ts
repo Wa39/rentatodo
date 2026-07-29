@@ -106,6 +106,32 @@ export const ALL_MOCK_RESERVATIONS = [
   MOCK_REJECTED_RESERVATION,
 ] as const
 
+export const MOCK_EARNINGS = {
+  total_earnings: 7000,
+  by_item: [
+    {
+      item_id: '22222222-2222-4222-8222-222222222222',
+      item_name: 'Taladro Bosch Professional',
+      total: 3000,
+      rentals: [{ start_date: '2026-06-01', end_date: '2026-06-03', amount: 3000 }],
+    },
+    {
+      item_id: '33333333-3333-4333-8333-333333333333',
+      item_name: 'Carpa Camping 4 personas',
+      total: 4000,
+      rentals: [{ start_date: '2026-06-10', end_date: '2026-06-12', amount: 4000 }],
+    },
+  ],
+} as const
+
+export const MOCK_HOLD_TRANSACTION = {
+  id: 'tttttttt-tttt-4ttt-8ttt-tttttttttttt',
+  reservation_id: MOCK_DELIVERED_RESERVATION.id,
+  type: 'hold',
+  amount: MOCK_DELIVERED_RESERVATION.deposit_amount,
+  created_at: '2026-07-10T08:00:00Z',
+} as const
+
 export const test = base.extend({
   page: async ({ page }, use) => {
     await page.route('**/auth/login', (route) =>
@@ -128,6 +154,25 @@ export const test = base.extend({
           page: 1,
           limit: 20,
           total: ALL_MOCK_RESERVATIONS.length,
+        },
+      })
+    )
+    await page.route('**/users/me/earnings', (route) =>
+      route.fulfill({ json: MOCK_EARNINGS })
+    )
+    await page.route('**/reservations/*/transactions', (route) =>
+      route.fulfill({ json: [MOCK_HOLD_TRANSACTION] })
+    )
+    await page.route('**/reservations/*/report', (route) =>
+      route.fulfill({
+        status: 201,
+        json: {
+          id: 'rrrrrrrr-rrrr-4rrr-8rrr-rrrrrrrrrrrr',
+          reservation_id: MOCK_DELIVERED_RESERVATION.id,
+          reported_by: MOCK_USER.id,
+          reason: 'Item was damaged on arrival',
+          photo_url: 'https://example.com/evidence.jpg',
+          created_at: '2026-07-28T10:00:00Z',
         },
       })
     )
