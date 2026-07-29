@@ -5,6 +5,23 @@ Scope: apps/web only (per root CLAUDE.md ownership split). apps/api/apps/mobile 
 
 ---
 
+## Summary & Remediation Backlog
+
+This table rolls up every finding from Tasks 1-9 that is not "No action needed," ordered Critical → High → Medium → Low → Info. Each underlying section (below) has its own full evidence trail; this table is the fast-read entry point. Note: sections use two different findings-template styles (Task 1 is flat, Tasks 2-9 use a `**Title:**` + dash-bullet style) — that drift is a cosmetic, already-accepted issue in the sections themselves and is not repeated here; this table's format is normalized regardless of which style the section below it uses.
+
+| # | Area | Severity | Status | Owner |
+|---|------|----------|--------|-------|
+| 1 | Dependency: `vitest` <3.2.6 — arbitrary file read/execution when the Vitest UI server is listening ([GHSA-5xrq-8626-4rwp](https://github.com/advisories/GHSA-5xrq-8626-4rwp)); see Finding 1.1 | Critical | Flagged — needs a product decision to upgrade to `vitest` >=3.2.6 | apps/web |
+| 2 | Dependency: `vite` <=6.4.2 (transitive, via `vitest`) — `server.fs.deny` bypass on Windows alternate paths ([GHSA-fx2h-pf6j-xcff](https://github.com/advisories/GHSA-fx2h-pf6j-xcff)); see Finding 1.2 | High | Flagged — needs a product decision; resolved by upgrading `vitest` to a version that pulls in a patched `vite` | apps/web |
+| 3 | Auth: JWT access token stored in `localStorage`, readable by any JS on the origin; client only discovers expiry reactively (no proactive `expires_in` check) — see Finding 2.1 | Medium | Flagged — real fix (httpOnly/Secure/SameSite cookie) needs a coordinated `apps/api` change (login/refresh endpoints, CORS `credentials` mode); no in-scope `apps/web`-only fix without weakening UX | apps/web / apps/api |
+| 4 | File upload: presigned S3 `PUT` has no server-side content-length enforcement; `apps/web`'s 5 MB client-side check is UX-only and trivially bypassed by calling `POST /uploads/presign` directly — see Finding 5.4 | Medium | Flagged — needs `apps/api` fix (switch to `generate_presigned_post()` with a `content-length-range` policy condition); already tracked as an open `TODO` in `apps/api/app/services/uploads.py` | apps/api |
+| 5 | XSS: `photo_url` is rendered via `<img src>` in `ItemCard.tsx` with no client-side scheme check; `apps/api`'s `AnyUrl` validation is syntax-only and does not restrict to `http`/`https` (confirmed accepts `javascript:`, `data:`, `file:`, `ftp:`) — see Finding in Task 3 ("`photo_url` rendered as `<img src>`...") and Finding 9.4 | Low | No action needed in `apps/web` today — the current sink (`<img src>`) does not execute `javascript:` URIs, so this is inert; `apps/api` hardening recommended (restrict `photo_url` scheme, or switch to `HttpUrl`) so the gap isn't inherited silently by a future sink | apps/api |
+| 6 | Contract docs: `packages/contracts/openapi.yaml`'s `PresignRequest.filename` description says it's "used to derive the S3 key," which contradicts the actual (safer) `apps/api` implementation — the key is always server-generated from `user_id` + a UUID, `filename` is discarded — see Finding 5.3 | Info | Flagged — documentation fix needed in `openapi.yaml` (out of scope here; requires an approved cross-consumer contract PR per root CLAUDE.md) | apps/api |
+
+**Not included above (verified "No action needed" or accepted report-polish minors, not re-litigated here):** Task 2's `logout()` cleanup (2.2); Task 3's absence of unsafe DOM sinks; Task 4's price/validation/error-surfacing findings (4.1-4.4, all confirmed backend-enforced with correct error surfacing); Task 5's client-side upload UX checks (5.1) and server-generated S3 key (5.2); Task 6's secrets/env hygiene (6.1); Task 7's route guards and ownership/participant checks (7.1-7.3); Task 8's error-message handling and absence of `console.*` logging (8.1-8.3); Task 9's JWT/CORS configuration (9.1-9.2) and the JWT-lifetime confirmation (9.3). Also excluded: the cosmetic report-polish items already logged in the SDD ledger (pnpm command deviation, citation-range imprecisions, findings-template drift, minor citation offsets) — these are documentation nits about the audit report itself, not app security issues, and don't warrant backlog rows.
+
+---
+
 ## Task 1: Dependency vulnerability scan
 
 ### Summary
