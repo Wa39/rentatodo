@@ -75,7 +75,7 @@ describe('ItemCard', () => {
     expect(onDelete).toHaveBeenCalledWith(item)
   })
 
-  it('shows only Edit for an inactive item, with no Delete, Calendar, or Reactivate button', () => {
+  it('shows no action buttons for an inactive item', () => {
     const item = mockItems.find((i) => !i.is_active)!
     render(
       <AuthProvider>
@@ -87,7 +87,7 @@ describe('ItemCard', () => {
       </AuthProvider>,
     )
     expect(screen.getByText('Inactive · not visible in search')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Calendar' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Reactivate' })).not.toBeInTheDocument()

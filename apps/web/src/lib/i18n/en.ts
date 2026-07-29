@@ -85,6 +85,17 @@ export const en = {
     searchPlaceholder: 'Search by name or category…',
     loadError: "Couldn't load your items. Try refreshing the page.",
     loading: 'Loading your items…',
+    deleteDialog: {
+      title: 'Delete this item?',
+      descriptionPrefix: (name: string) => `Deleting "${name}" is `,
+      descriptionEmphasis1: 'permanent',
+      descriptionMiddle: '. It will disappear from public search and ',
+      descriptionEmphasis2: 'there is no way to bring it back',
+      descriptionSuffix: " — to offer it again later, you'll need to publish it as a new item.",
+      cancel: 'Cancel',
+      confirm: 'Delete permanently',
+      deleting: 'Deleting…',
+    },
   },
   publish: {
     title: 'Publish item',
