@@ -428,3 +428,102 @@ Traced `apps/web/src/lib/api.ts`'s `request()` function end to end, then followe
 - **Status:** No action needed — verified complete.
 
 ---
+
+## Task 9: Cross-boundary (apps/api) findings affecting apps/web
+
+### Summary
+
+Read (never modified) `apps/api/app/services/auth.py`, `apps/api/app/config.py`, `apps/api/app/main.py`, `apps/api/.env.example`, and `apps/api/app/schemas/item.py` to verify the JWT/CORS configuration that `apps/web` depends on, and to resolve two items Tasks 2 and 3 explicitly deferred to this task. Also cross-checked `apps/web/vite.config.ts`'s actual dev-server port against `apps/api`'s CORS allow-list, since a mismatch there would silently break every real request `apps/web` makes (not something either task's own scope would have caught in isolation). Bottom line: JWT signing, secret sourcing, and CORS are all configured correctly and match what `apps/web` needs; both deferred items are now resolved with confirmed answers below.
+
+### Finding 9.1 — No action needed
+
+**Title:** JWT signing uses HS256 with the secret sourced from the `JWT_SECRET` env var (never hardcoded); `.env.example`'s value is an obvious non-production placeholder
+
+- **Severity:** N/A (verified correct, no action needed)
+- **Evidence:**
+  - `apps/api/app/services/auth.py:66` — `jwt.encode(payload, settings.jwt_secret, algorithm="HS256")`; `apps/api/app/services/auth.py:83` — `jwt.decode(token, settings.jwt_secret, algorithms=["HS256"])`. Same algorithm used symmetrically for signing and verification, both read from `settings.jwt_secret` — no algorithm string appears anywhere else in the file, and there's no `"none"`/asymmetric-algorithm fallback path.
+  - `apps/api/app/config.py:34,37` — `Settings` is a `pydantic_settings.BaseSettings` with `model_config = SettingsConfigDict(env_file=".env", extra="ignore")`, and `jwt_secret: str` has **no default value** — it's a required field, meaning the app fails to start rather than silently falling back to a baked-in secret if `JWT_SECRET` is unset in the environment/`.env`. Confirmed by reading the full `Settings` class: no hardcoded secret string exists anywhere in `apps/api/app/config.py` or `auth.py`.
+  - `apps/api/.env.example:15-17`:
+    ```
+    # JWT signing (app/config.py). Generate a real random value for production;
+    # any long string is fine for local dev.
+    JWT_SECRET=change-me-in-production-use-random-64-chars
+    ```
+    The placeholder value literally spells out "change-me-in-production" — unambiguous that it's not meant to be used as-is, and the accompanying comment reinforces it.
+- **Description:** JWT signing/verification is symmetric HS256 with the secret exclusively sourced from the environment (required, no fallback), and the example file's placeholder value is self-documenting as a non-production stand-in, not something that could be mistaken for (or accidentally deployed as) a real secret.
+- **Recommendation:** None — this is correctly designed. Keep `jwt_secret` a required field with no default so a missing `JWT_SECRET` fails loudly (app won't start) rather than silently signing tokens with an empty/predictable value.
+- **Status:** No action needed — verified complete.
+
+### Finding 9.2 — No action needed
+
+**Title:** `CORS_ORIGINS` is an explicit, non-wildcard origin list; `allow_credentials` is not set (defaults to `False`), consistent with `apps/web`'s header-based (not cookie-based) auth
+
+- **Severity:** N/A (verified correct, no action needed)
+- **Evidence:**
+  - `apps/api/.env.example:21` — `CORS_ORIGINS=http://localhost:8081` (a single concrete origin, not `*`).
+  - `apps/api/app/config.py:39,46-49`:
+    ```python
+    cors_origins: str = "http://localhost:8081"
+    ...
+    @property
+    def cors_origins_list(self) -> list[str]:
+        """``cors_origins`` split into individual origin strings."""
+        return [origin.strip() for origin in self.cors_origins.split(",")]
+    ```
+    Kept as a comma-separated string (a deliberate design choice, per `apps/api/ROADMAP.md:148`: *"Simpler for teammates to edit `.env` by hand than JSON-escaping a list"*) and split into a real Python list before use — there is no code path where an unsplit `"*"` string or a raw wildcard could reach `CORSMiddleware` short of someone explicitly setting `CORS_ORIGINS=*` in their own `.env` (which would produce `["*"]` — the code doesn't special-case or block that value, but the shipped default and `.env.example` both use a concrete origin, not `*`).
+  - `apps/api/app/main.py:14-19`:
+    ```python
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origins_list,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    ```
+    `allow_credentials` is not passed at all, so Starlette's `CORSMiddleware` uses its default, `False`. This matters for the wildcard-plus-credentials concern the brief raises: even in the hypothetical case above where someone sets `CORS_ORIGINS=*`, `allow_credentials=False` means the browser wouldn't attach cookies/credentials to the cross-origin request anyway — and separately, `apps/web` doesn't rely on cookies at all (per Finding 2.1/6.1, the JWT is sent manually via an `Authorization: Bearer` header, which isn't gated by `allow_credentials`), so there's no credentialed-CORS attack surface here regardless of the `CORS_ORIGINS` value.
+  - Cross-checked against `apps/web`'s actual dev server: `apps/web/vite.config.ts:13-16` — `server: { port: 8081, strictPort: true }`. This deliberately overrides Vite's usual default port (5173) to `8081` (matching Expo web's conventional dev port) and `strictPort: true` means Vite refuses to silently fall back to a different port if 8081 is taken — so `apps/web`'s dev server origin (`http://localhost:8081`) always matches `CORS_ORIGINS`'s default exactly. No mismatch exists between the two configs today.
+- **Description:** `CORS_ORIGINS` is built from an explicit origin string (not a wildcard) in both its shipped default and `.env.example`, `allow_credentials` is never enabled, and `apps/web`'s dev server is deliberately pinned to the same port `apps/api` expects — so the browser-enforced same-origin/CORS boundary and the actual dev configuration line up correctly today, and there's no code-level reliance on browser wildcard-blocking behavior as the only defense (there's no wildcard configured to begin with).
+- **Recommendation:** None for current config. If `CORS_ORIGINS` is ever changed to include a wildcard for convenience, do not simultaneously enable `allow_credentials=True` — but this isn't a live risk in the current setup.
+- **Status:** No action needed — verified complete.
+
+### Finding 9.3 — Deferred item resolved (Task 2, Finding 2.1): JWT lifetime is exactly 24 hours, confirmed from real code, not memory
+
+- **Severity:** N/A (verification only)
+- **Evidence:**
+  - `apps/api/app/services/auth.py:60-66`:
+    ```python
+    now = datetime.now(timezone.utc)
+    payload = {
+        "sub": str(user_id),
+        "iat": now,
+        "exp": now + timedelta(hours=settings.jwt_expiration_hours),
+    }
+    return jwt.encode(payload, settings.jwt_secret, algorithm="HS256")
+    ```
+  - `apps/api/app/config.py:38` — `jwt_expiration_hours: int = 24` (default).
+  - `apps/api/.env.example:16` — `JWT_EXPIRATION_HOURS=24`, explicitly set to match the default (not left unset/relying on the fallback).
+- **Description:** Task 2's Finding 2.1 cited "24h token lifetime... confirmed separately in Task 9" — this is now confirmed exactly: the `exp` claim is `iat + settings.jwt_expiration_hours` hours, and that setting is `24` both as the code default and as the explicit value in `.env.example`. Nothing in `apps/web` overrides or is even aware of this value beyond the unused `expires_in` field already noted in Finding 2.1.
+- **Recommendation:** None (informational confirmation only).
+- **Status:** Deferred item resolved — no discrepancy found.
+
+### Finding 9.4 — Deferred item resolved (Task 3): `apps/api`'s `photo_url` validation is syntax-only — it does NOT block `javascript:`/other non-http(s) schemes
+
+- **Severity:** Low (matches the severity already assigned in Task 3's finding; this is confirmation of the previously-unverified half of it, not a new/separate issue)
+- **Evidence:**
+  - `apps/api/app/schemas/item.py:33` — `CreateItemRequest.photo_url: AnyUrl = Field(..., description="URL to the item's photo.")`; `apps/api/app/schemas/item.py:48` — `UpdateItemRequest.photo_url: AnyUrl | None = Field(None, ...)`. Both use Pydantic v2's `AnyUrl` type (via `pydantic-settings>=2.4,<3.0`'s pydantic 2.x dependency, per `apps/api/requirements.txt:6`), with no custom `field_validator`/scheme allow-list anywhere in the file — confirmed via `grep -n "validator\|field_validator\|scheme" apps/api/app/schemas/item.py apps/api/app/services/items.py`, zero matches.
+  - I verified empirically what `AnyUrl` actually accepts, rather than assuming from the type's name: installed `pydantic>=2,<3` (matching the project's actual dependency range) into an isolated scratch directory (outside the repo, nothing under `apps/api/` touched) and ran `TypeAdapter(AnyUrl).validate_python(...)` against several payloads:
+    ```
+    'javascript:alert(1)'                  -> OK  -> javascript:alert(1)
+    'javascript://alert(1)'                -> OK  -> javascript://alert(1)
+    'data:image/png;base64,AAAA'           -> OK  -> data:image/png;base64,AAAA
+    'http://example.com/a.png'             -> OK  -> http://example.com/a.png
+    'ftp://x/y'                             -> OK  -> ftp://x/y
+    'file:///etc/passwd'                    -> OK  -> file:///etc/passwd
+    ```
+    Every one of these validates successfully — `AnyUrl` (true to its name) enforces general URI *structure* only ("scheme:" plus whatever that scheme's grammar allows), not an `http`/`https` allow-list. `javascript:alert(1)` in particular passes with no error.
+  - `apps/api/app/models/item.py:69` — `photo_url: Mapped[str] = mapped_column(String, nullable=False)` at the DB layer: no `CheckConstraint` on `photo_url`'s value (unlike `price_per_day`'s constraint noted in Task 4) — confirmed via reading the full model and the corresponding Alembic migration; the column is a plain unconstrained string.
+- **Description:** This resolves Task 3's explicitly deferred question: `apps/api`'s `photo_url` field, wherever it's typed `AnyUrl` (create/update item requests), performs URI-syntax validation only and does not restrict the scheme to `http`/`https`. A `javascript:` (or `data:`, `file:`, `ftp:`, etc.) value would be **accepted** by `apps/api`'s schema if a client sent one directly (bypassing `apps/web`'s upload flow, which per Task 3 can never itself produce such a value). This confirms the residual risk Task 3 already flagged as Low severity is real, not hypothetical — but the severity conclusion there still holds: `apps/web`'s only sink for this field is `<img src={item.photo_url}>` (`ItemCard.tsx`), and browsers do not execute `javascript:` URIs assigned to `<img src>` (unlike `<a href>`, which `apps/web` doesn't use dynamically anywhere per Task 3). So a malicious non-`http(s)` `photo_url` reaching `apps/web` today would fail to render as an image, not execute script — Low, not Medium/High.
+- **Recommendation:** `apps/api`-owned, optional defense-in-depth: add a `field_validator` on `photo_url` restricting `AnyUrl.scheme` to `{"http", "https"}` (or switch to Pydantic's stricter `HttpUrl` type, which does enforce this). This closes the gap at the source for every client (`apps/web`, `apps/mobile`, direct API callers), rather than relying on each frontend's rendering sink to happen to be safe. Not an `apps/web` change and not urgent given the current sink is inert against this payload class, but worth a ticket since a future `apps/web` change (e.g., rendering `photo_url` in a link, or a new sink elsewhere) would inherit this gap silently.
+- **Status:** Deferred item resolved — confirms Task 3's suspicion; flagged as optional `apps/api` hardening, not blocking.
+
+---
