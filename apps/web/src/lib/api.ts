@@ -1,4 +1,4 @@
-import type { Category, Item, Reservation, Transaction } from './types'
+import type { Category, EarningsSummary, Item, Reservation, Transaction } from './types'
 
 export class ApiError extends Error {
   code: string
@@ -135,6 +135,10 @@ export function apiPresignUpload(token: string, filename: string, contentType: U
     body: JSON.stringify({ filename, content_type: contentType }),
     headers: { Authorization: `Bearer ${token}` },
   })
+}
+
+export function apiGetEarnings(token: string): Promise<EarningsSummary> {
+  return request('/users/me/earnings', { method: 'GET', headers: { Authorization: `Bearer ${token}` } })
 }
 
 export function apiGetTransactions(token: string, id: string): Promise<Transaction[]> {

@@ -90,8 +90,11 @@ export interface EarningsByMonth {
   total: number
 }
 
-export interface Earnings {
+export interface EarningsSummary {
   total_earnings: number
   by_item: EarningsByItem[]
+}
+
+export interface Earnings extends EarningsSummary {
   by_month: EarningsByMonth[]
 }

@@ -3,7 +3,7 @@ import { Calendar, DollarSign, LayoutGrid, MessageSquare, Package, Plus } from '
 import { useAuth } from '@/lib/AuthContext'
 import { useTranslation } from '@/lib/i18n'
 import { formatCentavos, getInitials } from '@/lib/format'
-import { mockEarnings } from '@/lib/mockData'
+import { useEarnings } from '@/lib/EarningsContext'
 import { useRequests } from '@/lib/RequestsContext'
 import { Button } from '@/components/ui/button'
 
@@ -12,8 +12,9 @@ export function DashboardLayout() {
   const location = useLocation()
   const t = useTranslation()
   const { requests } = useRequests()
+  const { earnings } = useEarnings()
   const pendingCount = requests.filter((r) => r.status === 'requested').length
-  const months = mockEarnings.by_month
+  const months = earnings.by_month
   const currentMonth = months[months.length - 1]
   const previousMonth = months.length >= 2 ? months[months.length - 2] : undefined
   const deltaPct =

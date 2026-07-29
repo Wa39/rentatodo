@@ -122,6 +122,8 @@ export const en = {
   earnings: {
     title: 'Earnings',
     subtitle: 'Track what each item earns you.',
+    loading: 'Loading your earnings…',
+    loadError: "Couldn't load your earnings. Try refreshing the page.",
     kpiTotal: 'Total earned',
     kpiThisMonth: 'This month',
     kpiClosedCount: 'Closed reservations',

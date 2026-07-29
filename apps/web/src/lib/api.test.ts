@@ -4,6 +4,7 @@ import {
   apiApproveReservation,
   apiCreateItem,
   apiDeleteItem,
+  apiGetEarnings,
   apiGetMe,
   apiGetTransactions,
   apiListMyItems,
@@ -437,6 +438,37 @@ describe('api', () => {
     })
   })
 
+  describe('apiGetEarnings', () => {
+    it('GETs /users/me/earnings with a Bearer token and resolves with the summary', async () => {
+      const payload = {
+        total_earnings: 7000,
+        by_item: [
+          {
+            item_id: 'i1',
+            item_name: 'Taladro Bosch Professional',
+            total: 3000,
+            rentals: [{ start_date: '2026-07-01', end_date: '2026-07-03', amount: 3000 }],
+          },
+        ],
+      }
+      vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(payload, 200))
+
+      const result = await apiGetEarnings('tok123')
+
+      expect(result).toEqual(payload)
+      expect(fetch).toHaveBeenCalledWith(
+        'http://localhost:8000/users/me/earnings',
+        expect.objectContaining({ method: 'GET', headers: expect.objectContaining({ Authorization: 'Bearer tok123' }) }),
+      )
+    })
+
+    it('throws ApiError on a 401 response', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ error: { code: 'UNAUTHORIZED', message: 'Not authenticated' } }, 401))
+
+      await expect(apiGetEarnings('bad-token')).rejects.toBeInstanceOf(ApiError)
+    })
+  })
+
   describe('apiGetTransactions', () => {
     it('GETs /reservations/{id}/transactions with a Bearer token and resolves with the array of transactions', async () => {
       const payload = [
@@ -461,6 +493,17 @@ describe('api', () => {
       await expect(apiGetTransactions('tok123', 'r1')).rejects.toMatchObject({
         code: 'SERVER_ERROR',
         message: 'Transactions server exploded',
+      })
+    })
+
+    it('throws ApiError with the code/message from a 403 response', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(
+        jsonResponse({ error: { code: 'FORBIDDEN', message: 'Not the owner or renter of this reservation' } }, 403),
+      )
+
+      await expect(apiGetTransactions('tok123', 'r1')).rejects.toMatchObject({
+        code: 'FORBIDDEN',
+        message: 'Not the owner or renter of this reservation',
       })
     })
   })
