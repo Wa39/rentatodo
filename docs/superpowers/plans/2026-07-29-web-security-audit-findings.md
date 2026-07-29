@@ -360,3 +360,71 @@ Read `apps/web/src/routes/index.tsx` in full and listed every route's guard stat
 - **Status:** No action needed — verified complete.
 
 ---
+
+## Task 8: Error handling & information disclosure
+
+### Summary
+
+Traced `apps/web/src/lib/api.ts`'s `request()` function end to end, then followed every one of the 14 `catch` blocks across the app's routes/contexts/components that consume its errors, to confirm none of them surface anything beyond the API's `error.message` or a generic translated fallback. Also ran a case-insensitive `console.*` grep across the entirety of `apps/web` (production and test code, not just `apps/web/src`) to check for logged sensitive data. Bottom line: no raw stack traces, response bodies, or exception text ever reach the DOM, the network-error fallback is correctly generic, and there is zero `console.*` usage anywhere in `apps/web` — nothing to find on the logging check.
+
+### Finding 8.1 — No action needed
+
+**Title:** `request()` only ever surfaces the API's `error.message`; JSON parse failures are swallowed to `null`, never raw response text
+
+- **Severity:** N/A (verified correct, no action needed)
+- **Evidence:**
+  - `apps/web/src/lib/api.ts:68-82`:
+    ```ts
+    async function request<T>(path: string, options: RequestInit): Promise<T> {
+      const baseUrl = import.meta.env.VITE_API_URL
+      const response = await fetch(`${baseUrl}${path}`, {
+        ...options,
+        headers: { 'Content-Type': 'application/json', ...options.headers },
+      })
+      const body = await response.json().catch(() => null)
+      if (!response.ok) {
+        if (body?.error?.code === 'TOKEN_EXPIRED') {
+          window.dispatchEvent(new CustomEvent('rentatodo:token-expired'))
+        }
+        throw new ApiError(body?.error?.code ?? 'UNKNOWN_ERROR', body?.error?.message ?? 'Something went wrong. Please try again.')
+      }
+      return body as T
+    }
+    ```
+    Line 74's `.catch(() => null)` means a non-JSON or unparseable response body (e.g. an HTML 502 page from a proxy, or a truncated body) becomes `null`, not a raw string — so `body?.error?.message` on line 79 falls through to the hardcoded generic fallback `'Something went wrong. Please try again.'` rather than exposing whatever the raw body actually contained. There is no code path in `request()` that reads `response.statusText`, a raw `.text()` body, or any part of the `Response` object other than the parsed `error.code`/`error.message` fields.
+  - `apps/web/src/lib/api.ts:3-14` — `ApiError` only ever carries `code` and `message` (both plain strings from the parsed JSON envelope); it doesn't wrap or expose the underlying `Response` or any stack trace. `getErrorMessage(err, fallback)` (lines 12-14) returns `err.message` only when `err instanceof ApiError` — for any other thrown value (a raw `TypeError` from a failed `fetch`, a `SyntaxError`, etc.) it unconditionally returns the caller-supplied `fallback` string, never the original exception's `.message`.
+  - Confirmed every call site that consumes API errors follows this same `getErrorMessage(err, fallback)` pattern, with 14 total `catch` blocks checked (`grep -n "catch (" apps/web/src --include=*.ts*` across `.ts`/`.tsx`): `AuthContext.tsx:73` (rethrows unmodified, no message extraction), `ItemsContext.tsx:51`, `RequestsContext.tsx:41`, `LoginPage.tsx:28`, `RegisterPage.tsx:43`, `PublishItemPage.tsx:59`, `ItemsPage.tsx:73,85`, `DashboardPage.tsx:32,43`, `RequestsPage.tsx:52,63`, `ReservationDetailPage.tsx:58,68`, and `PhotoUploadField.tsx:44` (maps `ApiError.code` to a translated string via a `knownMessages` lookup first, falling back to `getErrorMessage(err, t.errors.network)` only for unrecognized codes). None of these read `err` directly into a template string, `String(err)`, or `err.stack` — all go through `getErrorMessage` (or, for `PhotoUploadField`, an equivalent code-to-translation map).
+  - The one unrelated `.message` hit found by a broader grep, `apps/web/src/components/ui/form.tsx:148` (`String(error?.message ?? "")`), is dead scaffold code from shadcn/ui's generic `<Form>`/`useFormField` component (react-hook-form field validation, not API errors) — confirmed via `grep -rn "from '@/components/ui/form'"` across `apps/web/src` returning zero matches, i.e. no route or component in the app actually imports/uses it. Not a live sink.
+- **Description:** The error-surfacing pipeline is a single, consistently-applied choke point (`request()` → `ApiError` → `getErrorMessage()`) that structurally cannot leak a raw stack trace, unparsed response body, or internal exception text to the UI: `request()` never keeps a reference to the raw body once JSON-parsing fails, `ApiError` only stores the two string fields the backend explicitly returned for user display, and `getErrorMessage()` refuses to unwrap anything that isn't an `ApiError`. Every one of the 14 catch sites in the app was individually checked and follows this pattern (or a stricter variant, in `PhotoUploadField`'s case).
+- **Recommendation:** None — keep this pattern for any new API-consuming code: always throw/catch through `ApiError` and read messages only via `getErrorMessage()`, never interpolate a caught error directly.
+- **Status:** No action needed — verified complete.
+
+### Finding 8.2 — No action needed
+
+**Title:** Network-error fallback (fetch throwing, e.g. offline) shows a generic translated string, never the raw `TypeError`/exception message
+
+- **Severity:** N/A (verified correct, no action needed)
+- **Evidence:**
+  - `apps/web/src/lib/api.ts:70` — the `fetch()` call inside `request()` has no surrounding `try/catch`; if `fetch` itself rejects (e.g. `TypeError: Failed to fetch` when offline or on a CORS/DNS failure), that rejection propagates unmodified out of `request()` and out of every `api*` wrapper function (`apiLogin`, `apiCreateItem`, etc. — none of them add their own `try/catch` either, confirmed by reading all of `api.ts`).
+  - At every call site, that raw `TypeError` is caught by the page/component's own `catch (err)` block and passed to `getErrorMessage(err, t.errors.network)` (or an equivalent fallback string). Since a `TypeError` is not `instanceof ApiError`, `getErrorMessage` (line 13) unconditionally returns the second argument — the generic fallback — and never touches `err.message`.
+  - `apps/web/src/lib/i18n/en.ts:155` — `network: "Couldn't reach the server. Check your connection and try again."`, confirming the fallback shown to the user is a static, pre-translated string, not anything derived from the exception.
+  - `apps/web/src/lib/uploadPhoto.ts:64-73` independently confirms the same pattern for the separate S3 `PUT` call (outside `request()`): the raw `fetch` to `presign.upload_url` is wrapped in its own `try { ... } catch { throw new ApiError('UPLOAD_FAILED', 'Upload failed.') }` — the caught exception is discarded entirely (no `catch (err)` binding used) and replaced with a fixed, generic `ApiError`.
+  - `apps/web/src/routes/LoginPage.tsx:28-29`, `ItemsPage.tsx:73-74`, `PublishItemPage.tsx:59-60`, `RegisterPage.tsx:43-44`, `DashboardPage.tsx:32-33,43-44`, `RequestsPage.tsx:52-53,63-64` all pass `t.errors.network` as the fallback; `ReservationDetailPage.tsx:58-59,68-69` use page-specific hardcoded English fallback strings (`'Something went wrong. Please try again.'`, `"Couldn't refresh the deposit history. Try refreshing the page."`) instead of the shared `t.errors.network` i18n key — a minor i18n-consistency gap (not localized for non-English locales), not a security issue, since the string is still a fixed generic message either way, never the raw exception.
+- **Description:** The offline/network-failure path is correctly generic end-to-end: nothing in the chain from `fetch()` throwing to the message rendered in `AuthErrorBanner`/`window.alert` ever reads the raw `TypeError`'s `.message` (which could otherwise vary by browser and occasionally include internal detail like a resolved URL). The two `ReservationDetailPage.tsx` call sites use inline hardcoded strings rather than the shared `t.errors.network` key, which is a translation-completeness nit worth flagging but doesn't change the security conclusion — both are still fixed, non-sensitive strings.
+- **Recommendation:** None for security. Optional polish: have `ReservationDetailPage.tsx:59,69` use `t.errors.network` (or dedicated i18n keys) instead of hardcoded English literals, for translation consistency with the rest of the app.
+- **Status:** No action needed — verified complete.
+
+### Finding 8.3 — No action needed
+
+**Title:** Zero `console.log`/`console.error`/`console.warn` (or any `console.*`) calls exist anywhere in `apps/web` — nothing to check for sensitive-data logging
+
+- **Severity:** N/A (verified correct, no action needed)
+- **Evidence:**
+  - `grep -rn "console\.(log|error|warn)" apps/web/src --include="*.tsx" --include="*.ts" | grep -v ".test."` (the brief's exact command) — zero matches.
+  - Widened to any `console\.(log|error|warn|info|debug|trace)` across all of `apps/web/src` (including test files this time) — zero matches.
+  - Widened further to the bare substring `console` (no method restriction, would catch `console['error']`, a wrapped/aliased console call, etc.) across the entire `apps/web` directory (not just `src` — includes config files, `e2e`-adjacent web fixtures if any, everything) — zero matches. Ran this last check myself rather than trusting the brief's narrower command, per the "trace fully, don't assume" instruction.
+- **Description:** There is no console logging of any kind in `apps/web`, so there's no possibility of a `console.*` call logging a full request/response object, an `Authorization` header, a token, or a password field — the entire category of risk the brief asks about doesn't exist in this codebase today. This is a clean, verified negative result, not an assumption from a partial grep.
+- **Recommendation:** None. If logging is added in the future (e.g. for debugging), keep the same discipline already used in `getErrorMessage`/`ApiError` — log only sanitized, user-facing messages or error codes, never the full request options object (which would include the `Authorization: Bearer ${token}` header set in most `api*` functions in `apps/web/src/lib/api.ts`, e.g. lines 93, 100-101, 112-113, 117, 121, 125, 129, 136-137, 141, 145, 152-153) or raw form values (e.g. `password` state in `LoginPage.tsx`/`RegisterPage.tsx`).
+- **Status:** No action needed — verified complete.
+
+---
