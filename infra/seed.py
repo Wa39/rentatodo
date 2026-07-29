@@ -27,6 +27,36 @@ Test credentials (both users share the same password):
 
 Items are seeded under owner@rentatodo.dev — one per CategoryEnum value.
 Reservations cover every ReservationStatusEnum state (one per item).
+
+Fixed UUIDs
+-----------
+All primary keys are fixed so Maestro flows and other test tooling can
+reference them by ID without breaking after a DB reset.  The IDs are only
+guaranteed on a *fresh* database — if you re-run the seed against an
+existing DB, rows that already exist keep their original IDs (idempotency
+check skips them).
+
+  Users
+    owner@rentatodo.dev   00000001-0000-4000-8000-000000000001
+    renter@rentatodo.dev  00000002-0000-4000-8000-000000000002
+
+  Items (match ITEM_IDS below by position)
+    Taladro percutor 18V              00000011-0000-4000-8000-000000000011
+    Cámara Sony A7 III               00000012-0000-4000-8000-000000000012
+    Carpa 4 personas Coleman          00000013-0000-4000-8000-000000000013
+    Bicicleta de montaña Trek         00000014-0000-4000-8000-000000000014
+    Proyector Epson 3000 lúmenes      00000015-0000-4000-8000-000000000015
+    Aspiradora industrial Karcher     00000016-0000-4000-8000-000000000016
+    Karaoke profesional con 2 mics    00000017-0000-4000-8000-000000000017
+
+  Reservations (same item order, 20-series)
+    Taladro → requested               00000021-0000-4000-8000-000000000021
+    Cámara → approved                 00000022-0000-4000-8000-000000000022
+    Carpa → delivered                 00000023-0000-4000-8000-000000000023
+    Bicicleta → returned              00000024-0000-4000-8000-000000000024
+    Proyector → closed                00000025-0000-4000-8000-000000000025
+    Aspiradora → rejected             00000026-0000-4000-8000-000000000026
+    Karaoke → cancelled               00000027-0000-4000-8000-000000000027
 """
 
 import struct
@@ -51,6 +81,31 @@ from app.models.user import User  # noqa: E402
 _PASSWORD = "Rentatodo2026!"
 _PLACEHOLDER_PHOTO = "https://placehold.co/800x600/png"
 
+# Fixed UUIDs — stable across DB resets (applies on fresh databases only;
+# existing rows are skipped by the idempotency checks and keep their IDs).
+_OWNER_ID  = uuid.UUID("00000001-0000-4000-8000-000000000001")
+_RENTER_ID = uuid.UUID("00000002-0000-4000-8000-000000000002")
+
+_ITEM_IDS: dict[str, uuid.UUID] = {
+    "Taladro percutor 18V":                 uuid.UUID("00000011-0000-4000-8000-000000000011"),
+    "Cámara Sony A7 III":                   uuid.UUID("00000012-0000-4000-8000-000000000012"),
+    "Carpa 4 personas Coleman":             uuid.UUID("00000013-0000-4000-8000-000000000013"),
+    "Bicicleta de montaña Trek":            uuid.UUID("00000014-0000-4000-8000-000000000014"),
+    "Proyector Epson 3000 lúmenes":         uuid.UUID("00000015-0000-4000-8000-000000000015"),
+    "Aspiradora industrial Karcher":        uuid.UUID("00000016-0000-4000-8000-000000000016"),
+    "Karaoke profesional con 2 micrófonos": uuid.UUID("00000017-0000-4000-8000-000000000017"),
+}
+
+_RESERVATION_IDS: dict[str, uuid.UUID] = {
+    "Taladro percutor 18V":                 uuid.UUID("00000021-0000-4000-8000-000000000021"),
+    "Cámara Sony A7 III":                   uuid.UUID("00000022-0000-4000-8000-000000000022"),
+    "Carpa 4 personas Coleman":             uuid.UUID("00000023-0000-4000-8000-000000000023"),
+    "Bicicleta de montaña Trek":            uuid.UUID("00000024-0000-4000-8000-000000000024"),
+    "Proyector Epson 3000 lúmenes":         uuid.UUID("00000025-0000-4000-8000-000000000025"),
+    "Aspiradora industrial Karcher":        uuid.UUID("00000026-0000-4000-8000-000000000026"),
+    "Karaoke profesional con 2 micrófonos": uuid.UUID("00000027-0000-4000-8000-000000000027"),
+}
+
 # Solid-color (64×64) PNG per category — generated at runtime, no Pillow needed.
 _CATEGORY_COLORS: dict[str, tuple[int, int, int]] = {
     "tools":       (210, 140,  60),
@@ -63,8 +118,8 @@ _CATEGORY_COLORS: dict[str, tuple[int, int, int]] = {
 }
 
 TEST_USERS = [
-    {"name": "Ana Dueña", "email": "owner@rentatodo.dev"},
-    {"name": "Bob Arrendatario", "email": "renter@rentatodo.dev"},
+    {"id": _OWNER_ID,  "name": "Ana Dueña",         "email": "owner@rentatodo.dev"},
+    {"id": _RENTER_ID, "name": "Bob Arrendatario",  "email": "renter@rentatodo.dev"},
 ]
 
 # One item per CategoryEnum value — covers all filter paths in E2E tests.
@@ -231,14 +286,14 @@ def seed() -> None:
         users_by_email: dict[str, User] = {}
         if new_users:
             inserted = [
-                User(name=u["name"], email=u["email"], password_hash=_hash(_PASSWORD))
+                User(id=u["id"], name=u["name"], email=u["email"], password_hash=_hash(_PASSWORD))
                 for u in new_users
             ]
             session.add_all(inserted)
             session.flush()
             print(f"Seeded {len(inserted)} user(s):")
             for u in new_users:
-                print(f"  {u['email']}  /  {_PASSWORD}")
+                print(f"  {u['email']}  /  {_PASSWORD}  (id: {u['id']})")
         else:
             print("Users already seeded.")
 
@@ -269,6 +324,7 @@ def seed() -> None:
                     photo_url = _PLACEHOLDER_PHOTO
 
                 items.append(Item(
+                    id=_ITEM_IDS[i["name"]],
                     owner_id=owner.id,
                     name=i["name"],
                     description=i["description"],
@@ -281,7 +337,7 @@ def seed() -> None:
             session.flush()
             print(f"Seeded {len(items)} item(s):")
             for i in new_items:
-                print(f"  [{i['category']}] {i['name']} — ${i['price_per_day'] / 100:.2f}/día")
+                print(f"  [{i['category']}] {i['name']} — ${i['price_per_day'] / 100:.2f}/día  (id: {_ITEM_IDS[i['name']]})")
         else:
             print("Items already seeded.")
 
@@ -356,8 +412,10 @@ def seed() -> None:
 
             days = _days(spec["start"], spec["end"])
             deposit = item.price_per_day * days
+            res_id = _RESERVATION_IDS[spec["item_name"]]
 
             reservation = Reservation(
+                id=res_id,
                 item_id=item.id,
                 renter_id=renter.id,
                 start_date=spec["start"],
@@ -378,7 +436,7 @@ def seed() -> None:
             print(
                 f"  [{spec['status']:10}] {spec['item_name']} "
                 f"{spec['start']} → {spec['end']} "
-                f"(${deposit / 100:.2f}, {days}d)"
+                f"(${deposit / 100:.2f}, {days}d)  (id: {res_id})"
             )
 
         session.commit()
