@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 import { apiGetMe, apiLogin, apiRegister, ApiError } from './api'
 
 const TOKEN_KEY = 'rentatodo_token'
+const TOKEN_EXPIRY_KEY = 'rentatodo_token_expiry'
 
 interface AuthUser {
   id: string
@@ -28,6 +29,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // token that is no longer current (e.g. logout() or a fresh login()/
   // register() happened while the request was in flight) is discarded.
   const tokenRef = useRef(token)
+  const expiryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     tokenRef.current = token
@@ -43,13 +45,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   function logout() {
+    if (expiryTimerRef.current !== null) {
+      clearTimeout(expiryTimerRef.current)
+      expiryTimerRef.current = null
+    }
     setToken(null)
     setUser(null)
     localStorage.removeItem(TOKEN_KEY)
+    localStorage.removeItem(TOKEN_EXPIRY_KEY)
+  }
+
+  // Schedules an automatic logout at `expiresAtMs`. If the deadline is already
+  // past, it logs out immediately (handles stale tokens restored from storage).
+  function scheduleExpiry(expiresAtMs: number) {
+    if (expiryTimerRef.current !== null) clearTimeout(expiryTimerRef.current)
+    const delay = expiresAtMs - Date.now()
+    if (delay <= 0) {
+      logout()
+      return
+    }
+    expiryTimerRef.current = setTimeout(logout, delay)
   }
 
   useEffect(() => {
     if (!token) return
+    const stored = localStorage.getItem(TOKEN_EXPIRY_KEY)
+    if (stored !== null) {
+      const expiresAt = Number(stored)
+      if (Date.now() >= expiresAt) {
+        logout()
+        return
+      }
+      scheduleExpiry(expiresAt)
+    }
     const mountToken = token
     apiGetMe(mountToken)
       .then((profile) => {
@@ -65,8 +93,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function login(email: string, password: string) {
     const result = await apiLogin(email, password)
+    const expiresAt = Date.now() + result.expires_in * 1000
     setToken(result.access_token)
     localStorage.setItem(TOKEN_KEY, result.access_token)
+    localStorage.setItem(TOKEN_EXPIRY_KEY, String(expiresAt))
+    scheduleExpiry(expiresAt)
     try {
       const profile = await apiGetMe(result.access_token)
       setUser({ id: profile.id, name: profile.name, email: profile.email })
@@ -80,8 +111,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const profile = await apiRegister(name, email, password)
     try {
       const result = await apiLogin(email, password)
+      const expiresAt = Date.now() + result.expires_in * 1000
       setToken(result.access_token)
       localStorage.setItem(TOKEN_KEY, result.access_token)
+      localStorage.setItem(TOKEN_EXPIRY_KEY, String(expiresAt))
+      scheduleExpiry(expiresAt)
       setUser({ id: profile.id, name: profile.name, email: profile.email })
     } catch {
       throw new ApiError('LOGIN_AFTER_REGISTER_FAILED', 'Account created. Please sign in.')
