@@ -31,7 +31,8 @@ export default function TabLayout() {
         options={{
           title: 'Inicio',
           tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" color={color} size={size} />,
-          tabBarButton: (props) => <Pressable testID="tab-home" {...props} />,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          tabBarButton: (props) => <Pressable testID="tab-home" {...(props as any)} />,
         }}
       />
       <Tabs.Screen
@@ -39,7 +40,8 @@ export default function TabLayout() {
         options={{
           title: 'Mis rentas',
           tabBarIcon: ({ color, size }) => <Ionicons name="cube-outline" color={color} size={size} />,
-          tabBarButton: (props) => <Pressable testID="tab-rentals" {...props} />,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          tabBarButton: (props) => <Pressable testID="tab-rentals" {...(props as any)} />,
         }}
       />
       <Tabs.Screen
@@ -49,7 +51,8 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person-circle-outline" color={color} size={size} />
           ),
-          tabBarButton: (props) => <Pressable testID="tab-profile" {...props} />,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          tabBarButton: (props) => <Pressable testID="tab-profile" {...(props as any)} />,
         }}
       />
       {/* Internal routes, hidden from the tab bar */}
