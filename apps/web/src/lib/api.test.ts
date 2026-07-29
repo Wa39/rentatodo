@@ -470,7 +470,7 @@ describe('api', () => {
   })
 
   describe('apiGetTransactions', () => {
-    it('GETs /reservations/{id}/transactions with a Bearer token and resolves with the array', async () => {
+    it('GETs /reservations/{id}/transactions with a Bearer token and resolves with the array of transactions', async () => {
       const payload = [
         { id: 't1', reservation_id: 'r1', type: 'hold', amount: 4500, created_at: '2026-07-10T08:00:00Z' },
       ]
@@ -483,6 +483,17 @@ describe('api', () => {
         'http://localhost:8000/reservations/r1/transactions',
         expect.objectContaining({ method: 'GET', headers: expect.objectContaining({ Authorization: 'Bearer tok123' }) }),
       )
+    })
+
+    it('throws ApiError with the code/message from a 500 response', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(
+        jsonResponse({ error: { code: 'SERVER_ERROR', message: 'Transactions server exploded' } }, 500),
+      )
+
+      await expect(apiGetTransactions('tok123', 'r1')).rejects.toMatchObject({
+        code: 'SERVER_ERROR',
+        message: 'Transactions server exploded',
+      })
     })
 
     it('throws ApiError with the code/message from a 403 response', async () => {
@@ -498,7 +509,7 @@ describe('api', () => {
   })
 
   describe('apiReportProblem', () => {
-    it('POSTs to /reservations/{id}/report with a Bearer token and resolves with the report', async () => {
+    it('POSTs to /reservations/{id}/report with a Bearer token and resolves with the created report', async () => {
       const payload = {
         id: 'rep1',
         reservation_id: 'r1',
@@ -528,14 +539,17 @@ describe('api', () => {
       )
     })
 
-    it('throws ApiError with the code/message from a 409 response (already reported)', async () => {
+    it('throws ApiError with the code/message from a 409 response (report already exists)', async () => {
       vi.mocked(fetch).mockResolvedValueOnce(
         jsonResponse({ error: { code: 'INVALID_TRANSITION', message: 'Report already exists for this reservation' } }, 409),
       )
 
       await expect(
         apiReportProblem('tok123', 'r1', { reason: 'x', photo_url: 'https://example.com/p.jpg' }),
-      ).rejects.toMatchObject({ code: 'INVALID_TRANSITION', message: 'Report already exists for this reservation' })
+      ).rejects.toMatchObject({
+        code: 'INVALID_TRANSITION',
+        message: 'Report already exists for this reservation',
+      })
     })
   })
 })

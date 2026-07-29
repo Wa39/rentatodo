@@ -51,6 +51,20 @@ export interface PresignResponse {
   expires_in: number
 }
 
+export interface ReportProblemPayload {
+  reason: string
+  photo_url: string
+}
+
+export interface ReportResponse {
+  id: string
+  reservation_id: string
+  reported_by: string
+  reason: string
+  photo_url: string
+  created_at: string
+}
+
 async function request<T>(path: string, options: RequestInit): Promise<T> {
   const baseUrl = import.meta.env.VITE_API_URL
   const response = await fetch(`${baseUrl}${path}`, {
@@ -127,26 +141,12 @@ export function apiGetEarnings(token: string): Promise<EarningsSummary> {
   return request('/users/me/earnings', { method: 'GET', headers: { Authorization: `Bearer ${token}` } })
 }
 
-export function apiGetTransactions(token: string, reservationId: string): Promise<Transaction[]> {
-  return request(`/reservations/${reservationId}/transactions`, { method: 'GET', headers: { Authorization: `Bearer ${token}` } })
+export function apiGetTransactions(token: string, id: string): Promise<Transaction[]> {
+  return request(`/reservations/${id}/transactions`, { method: 'GET', headers: { Authorization: `Bearer ${token}` } })
 }
 
-export interface ReportProblemPayload {
-  reason: string
-  photo_url: string
-}
-
-export interface ReportResponse {
-  id: string
-  reservation_id: string
-  reported_by: string
-  reason: string
-  photo_url: string
-  created_at: string
-}
-
-export function apiReportProblem(token: string, reservationId: string, data: ReportProblemPayload): Promise<ReportResponse> {
-  return request(`/reservations/${reservationId}/report`, {
+export function apiReportProblem(token: string, id: string, data: ReportProblemPayload): Promise<ReportResponse> {
+  return request(`/reservations/${id}/report`, {
     method: 'POST',
     body: JSON.stringify(data),
     headers: { Authorization: `Bearer ${token}` },
