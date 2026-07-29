@@ -2,6 +2,7 @@ import { RouterProvider } from 'react-router-dom'
 import { AuthProvider } from '@/lib/AuthContext'
 import { ItemsProvider } from '@/lib/ItemsContext'
 import { RequestsProvider } from '@/lib/RequestsContext'
+import { EarningsProvider } from '@/lib/EarningsContext'
 import { router } from '@/routes'
 
 function App() {
@@ -9,7 +10,9 @@ function App() {
     <AuthProvider>
       <ItemsProvider>
         <RequestsProvider>
-          <RouterProvider router={router} />
+          <EarningsProvider>
+            <RouterProvider router={router} />
+          </EarningsProvider>
         </RequestsProvider>
       </ItemsProvider>
     </AuthProvider>

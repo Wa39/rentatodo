@@ -4,13 +4,16 @@ import {
   apiApproveReservation,
   apiCreateItem,
   apiDeleteItem,
+  apiGetEarnings,
   apiGetMe,
+  apiGetTransactions,
   apiListMyItems,
   apiListMyRequests,
   apiLogin,
   apiPresignUpload,
   apiRegister,
   apiRejectReservation,
+  apiReportProblem,
   apiUpdateItem,
 } from './api'
 
@@ -432,6 +435,107 @@ describe('api', () => {
         code: 'UNAUTHORIZED',
         message: 'Missing or invalid token',
       })
+    })
+  })
+
+  describe('apiGetEarnings', () => {
+    it('GETs /users/me/earnings with a Bearer token and resolves with the summary', async () => {
+      const payload = {
+        total_earnings: 7000,
+        by_item: [
+          {
+            item_id: 'i1',
+            item_name: 'Taladro Bosch Professional',
+            total: 3000,
+            rentals: [{ start_date: '2026-07-01', end_date: '2026-07-03', amount: 3000 }],
+          },
+        ],
+      }
+      vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(payload, 200))
+
+      const result = await apiGetEarnings('tok123')
+
+      expect(result).toEqual(payload)
+      expect(fetch).toHaveBeenCalledWith(
+        'http://localhost:8000/users/me/earnings',
+        expect.objectContaining({ method: 'GET', headers: expect.objectContaining({ Authorization: 'Bearer tok123' }) }),
+      )
+    })
+
+    it('throws ApiError on a 401 response', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ error: { code: 'UNAUTHORIZED', message: 'Not authenticated' } }, 401))
+
+      await expect(apiGetEarnings('bad-token')).rejects.toBeInstanceOf(ApiError)
+    })
+  })
+
+  describe('apiGetTransactions', () => {
+    it('GETs /reservations/{id}/transactions with a Bearer token and resolves with the array', async () => {
+      const payload = [
+        { id: 't1', reservation_id: 'r1', type: 'hold', amount: 4500, created_at: '2026-07-10T08:00:00Z' },
+      ]
+      vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(payload, 200))
+
+      const result = await apiGetTransactions('tok123', 'r1')
+
+      expect(result).toEqual(payload)
+      expect(fetch).toHaveBeenCalledWith(
+        'http://localhost:8000/reservations/r1/transactions',
+        expect.objectContaining({ method: 'GET', headers: expect.objectContaining({ Authorization: 'Bearer tok123' }) }),
+      )
+    })
+
+    it('throws ApiError with the code/message from a 403 response', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(
+        jsonResponse({ error: { code: 'FORBIDDEN', message: 'Not the owner or renter of this reservation' } }, 403),
+      )
+
+      await expect(apiGetTransactions('tok123', 'r1')).rejects.toMatchObject({
+        code: 'FORBIDDEN',
+        message: 'Not the owner or renter of this reservation',
+      })
+    })
+  })
+
+  describe('apiReportProblem', () => {
+    it('POSTs to /reservations/{id}/report with a Bearer token and resolves with the report', async () => {
+      const payload = {
+        id: 'rep1',
+        reservation_id: 'r1',
+        reported_by: 'u1',
+        reason: 'The drill bit was broken',
+        photo_url: 'https://storage.example.com/photos/broken.jpg',
+        created_at: '2026-07-27T10:00:00Z',
+      }
+      vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(payload, 201))
+
+      const result = await apiReportProblem('tok123', 'r1', {
+        reason: 'The drill bit was broken',
+        photo_url: 'https://storage.example.com/photos/broken.jpg',
+      })
+
+      expect(result).toEqual(payload)
+      expect(fetch).toHaveBeenCalledWith(
+        'http://localhost:8000/reservations/r1/report',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({
+            reason: 'The drill bit was broken',
+            photo_url: 'https://storage.example.com/photos/broken.jpg',
+          }),
+          headers: expect.objectContaining({ Authorization: 'Bearer tok123' }),
+        }),
+      )
+    })
+
+    it('throws ApiError with the code/message from a 409 response (already reported)', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(
+        jsonResponse({ error: { code: 'INVALID_TRANSITION', message: 'Report already exists for this reservation' } }, 409),
+      )
+
+      await expect(
+        apiReportProblem('tok123', 'r1', { reason: 'x', photo_url: 'https://example.com/p.jpg' }),
+      ).rejects.toMatchObject({ code: 'INVALID_TRANSITION', message: 'Report already exists for this reservation' })
     })
   })
 })
