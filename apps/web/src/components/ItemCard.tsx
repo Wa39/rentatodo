@@ -75,13 +75,6 @@ export function ItemCard({ item, onEdit, onDelete, readOnly = false }: ItemCardP
             </Button>
           </div>
         )}
-        {!readOnly && !item.is_active && (
-          <div className="flex gap-two pt-one">
-            <Button size="sm" variant="outline" className="flex-1" onClick={() => onEdit?.(item)}>
-              {t.itemCard.edit}
-            </Button>
-          </div>
-        )}
       </div>
     </div>
   )
