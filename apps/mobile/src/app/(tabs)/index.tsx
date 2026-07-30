@@ -1,3 +1,4 @@
+import { Link } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -128,7 +129,13 @@ export default function HomeScreen() {
 
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Mis solicitudes</Text>
-              <Text style={styles.sectionLink}>Ver todas</Text>
+              <Link href="/rentals" asChild>
+                <Pressable hitSlop={8}>
+                  <Text testID="home-see-all" style={styles.sectionLink}>
+                    Ver todas
+                  </Text>
+                </Pressable>
+              </Link>
             </View>
           </View>
         }
