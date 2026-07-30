@@ -14,7 +14,7 @@ type Tab = 'active' | 'past';
 
 /**
  * My rentals — NOT a shopping cart: each reservation is independent, with
- * its own owner, dates and status. History lives in the "Pasadas" tab
+ * its own owner, dates and status. History lives in the "Past" tab
  * (design decision: no separate history button). Status changes arrive
  * via 15s polling while the screen is focused (no push, by design).
  */
@@ -63,12 +63,12 @@ export default function MyRentalsScreen() {
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
       <View style={styles.content}>
-        <Text style={styles.title}>Mis rentas</Text>
+        <Text style={styles.title}>My rentals</Text>
         <View style={styles.tabs}>
           {(['active', 'past'] as const).map((t) => (
             <Pressable key={t} testID={`rentals-tab-${t}`} onPress={() => setTab(t)} style={styles.tab}>
               <Text style={[styles.tabText, tab === t && styles.tabActive]}>
-                {t === 'active' ? 'Activas' : 'Pasadas'}
+                {t === 'active' ? 'Active' : 'Past'}
               </Text>
               {tab === t && <View style={styles.tabLine} />}
             </Pressable>
@@ -90,7 +90,7 @@ export default function MyRentalsScreen() {
             <ListState
               loading={loading}
               error={error}
-              emptyText={`No hay rentas ${tab === 'active' ? 'activas' : 'pasadas'}.`}
+              emptyText={`No ${tab === 'active' ? 'active' : 'past'} rentals.`}
               onRetry={onRetry}
             />
           }

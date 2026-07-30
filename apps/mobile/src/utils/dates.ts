@@ -49,10 +49,10 @@ export function rangeHasUnavailable(start: string, end: string, unavailable: Set
   return eachDayInclusive(start, end).some((day) => unavailable.has(day));
 }
 
-/** "12 jul – 14 jul" (es-CR); a single day renders once. */
-export function formatDateRangeEs(start: string, end: string): string {
+/** "Jul 12 – Jul 14" (en-US); a single day renders once. */
+export function formatDateRange(start: string, end: string): string {
   const options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' };
-  const s = new Date(start + 'T00:00:00').toLocaleDateString('es-CR', options);
-  const e = new Date(end + 'T00:00:00').toLocaleDateString('es-CR', options);
+  const s = new Date(start + 'T00:00:00').toLocaleDateString('en-US', options);
+  const e = new Date(end + 'T00:00:00').toLocaleDateString('en-US', options);
   return s === e ? s : `${s} – ${e}`;
 }

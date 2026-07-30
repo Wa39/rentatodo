@@ -38,7 +38,7 @@ export default function ItemDetailScreen() {
   if (!item) {
     return (
       <SafeAreaView style={styles.screen} edges={['top']}>
-        <Text style={styles.empty}>Artículo no encontrado.</Text>
+        <Text style={styles.empty}>Item not found.</Text>
       </SafeAreaView>
     );
   }
@@ -68,7 +68,7 @@ export default function ItemDetailScreen() {
     }
     // Closing the range: reject it if it crosses an occupied day.
     if (rangeHasUnavailable(start, day, unavailable)) {
-      setError('El rango elegido incluye días ocupados. Seleccione fechas continuas libres.');
+      setError('The selected range includes occupied days. Please pick continuous free dates.');
       return;
     }
     setEnd(day);
@@ -80,7 +80,7 @@ export default function ItemDetailScreen() {
     setSubmitting(true);
     try {
       await dataSource.createReservation(item.id, start, end);
-      // The new request appears in "Mis rentas" with status "Solicitada".
+      // The new request appears in "My rentals" with status "Requested".
       router.replace('/rentals');
     } catch (e) {
       setError(errorMessage(e));
@@ -101,7 +101,7 @@ export default function ItemDetailScreen() {
           <Pressable onPress={() => router.back()} style={styles.backButton} hitSlop={8}>
             <Ionicons name="chevron-back" size={22} color={Brand.ink} />
           </Pressable>
-          <Text style={styles.topBarTitle}>Detalle</Text>
+          <Text style={styles.topBarTitle}>Details</Text>
         </View>
 
         <View style={styles.hero}>
@@ -110,7 +110,7 @@ export default function ItemDetailScreen() {
 
         <Text style={styles.name}>{item.name}</Text>
         <Text style={styles.price}>
-          {formatUSD(item.price_per_day)} <Text style={styles.perDay}>/ día</Text>
+          {formatUSD(item.price_per_day)} <Text style={styles.perDay}>/ day</Text>
         </Text>
         <Text style={styles.description}>{item.description}</Text>
         <View style={styles.chips}>
@@ -123,7 +123,7 @@ export default function ItemDetailScreen() {
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{item.owner_name.charAt(0)}</Text>
           </View>
-          <Text style={styles.ownerName}>Publicado por {item.owner_name}</Text>
+          <Text style={styles.ownerName}>Listed by {item.owner_name}</Text>
         </View>
 
         <View style={styles.calendar}>
@@ -139,34 +139,34 @@ export default function ItemDetailScreen() {
           />
           <Text style={styles.hint}>
             {!start
-              ? 'Toque el primer día del alquiler.'
+              ? 'Tap the first day of the rental.'
               : !end
-                ? 'Ahora toque el último día (o el mismo para un solo día).'
-                : 'Fechas listas. Revise el resumen y envíe la solicitud.'}
+                ? 'Now tap the last day (or the same one for a single day).'
+                : 'Dates ready. Review the summary and send the request.'}
           </Text>
         </View>
 
         {start && end && (
           <View style={styles.summary}>
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Fechas</Text>
+              <Text style={styles.summaryLabel}>Dates</Text>
               <Text style={styles.summaryValue}>
                 {start} → {end}
               </Text>
             </View>
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Duración</Text>
+              <Text style={styles.summaryLabel}>Duration</Text>
               <Text style={styles.summaryValue}>
-                {days} {days === 1 ? 'día' : 'días'} × {formatUSD(item.price_per_day)}
+                {days} {days === 1 ? 'day' : 'days'} × {formatUSD(item.price_per_day)}
               </Text>
             </View>
             <View style={[styles.summaryRow, styles.summaryTotal]}>
-              <Text style={styles.summaryLabelStrong}>Depósito (retenido)</Text>
+              <Text style={styles.summaryLabelStrong}>Deposit (held)</Text>
               <Text style={styles.summaryValueStrong}>{formatUSD(deposit)}</Text>
             </View>
             <Text style={styles.summaryNote}>
-              Pago simulado: el depósito se retiene al aprobarse y se libera al cerrar sin
-              reportes. Sin cargos reales.
+              Simulated payment: the deposit is held on approval and released when the rental
+              closes with no reports. No real charges.
             </Text>
           </View>
         )}
@@ -181,11 +181,11 @@ export default function ItemDetailScreen() {
           {submitting ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.ctaText}>Solicitar alquiler</Text>
+            <Text style={styles.ctaText}>Request rental</Text>
           )}
         </Pressable>
         <Text style={styles.ctaNote}>
-          La solicitud queda en estado “Solicitada” hasta que la persona propietaria la apruebe.
+          {'The request stays in "Requested" status until the owner approves it.'}
         </Text>
       </ScrollView>
     </SafeAreaView>

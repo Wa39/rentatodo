@@ -10,7 +10,7 @@ import { dataSource } from '@/data/data-source';
 import { DEPOSIT_LABELS, STATUS_META, TRANSACTION_META, errorMessage } from '@/data/labels';
 import { formatUSD, type Reservation, type Transaction } from '@/data/types';
 import { usePolling } from '@/hooks/use-polling';
-import { countDaysInclusive, formatDateRangeEs } from '@/utils/dates';
+import { countDaysInclusive, formatDateRange } from '@/utils/dates';
 
 /**
  * Reservation detail. The contract has no GET /reservations/{id}, so the
@@ -40,7 +40,7 @@ export default function ReservationDetailScreen() {
   if (!reservation) {
     return (
       <SafeAreaView style={styles.screen} edges={['top']}>
-        <Text style={styles.empty}>Reserva no encontrada.</Text>
+        <Text style={styles.empty}>Reservation not found.</Text>
       </SafeAreaView>
     );
   }
@@ -71,7 +71,7 @@ export default function ReservationDetailScreen() {
           <Pressable onPress={() => router.back()} style={styles.backButton} hitSlop={8}>
             <Ionicons name="chevron-back" size={22} color={Brand.ink} />
           </Pressable>
-          <Text testID="reservation-detail-title" style={styles.topBarTitle}>Reserva</Text>
+          <Text testID="reservation-detail-title" style={styles.topBarTitle}>Reservation</Text>
         </View>
 
         <View style={styles.header}>
@@ -81,8 +81,8 @@ export default function ReservationDetailScreen() {
           <View style={styles.headerInfo}>
             <Text testID="reservation-item-name" style={styles.name}>{reservation.item_name}</Text>
             <Text style={styles.dates}>
-              {formatDateRangeEs(reservation.start_date, reservation.end_date)} · {days}{' '}
-              {days === 1 ? 'día' : 'días'}
+              {formatDateRange(reservation.start_date, reservation.end_date)} · {days}{' '}
+              {days === 1 ? 'day' : 'days'}
             </Text>
           </View>
           <StatusBadge status={reservation.status} />
@@ -90,32 +90,32 @@ export default function ReservationDetailScreen() {
 
         <View style={styles.card}>
           <View style={styles.rowLine}>
-            <Text testID="reservation-label-status" style={styles.label}>Estado</Text>
+            <Text testID="reservation-label-status" style={styles.label}>Status</Text>
             <Text style={styles.value}>{STATUS_META[reservation.status].label}</Text>
           </View>
           <View style={styles.rowLine}>
-            <Text testID="reservation-label-deposit" style={styles.label}>Depósito</Text>
+            <Text testID="reservation-label-deposit" style={styles.label}>Deposit</Text>
             <Text style={styles.value}>
               {formatUSD(reservation.deposit_amount)} · {DEPOSIT_LABELS[reservation.deposit_status]}
             </Text>
           </View>
           <View style={styles.rowLine}>
-            <Text style={styles.label}>Solicitada</Text>
+            <Text style={styles.label}>Requested</Text>
             <Text style={styles.value}>
-              {new Date(reservation.created_at).toLocaleDateString('es-CR')}
+              {new Date(reservation.created_at).toLocaleDateString('en-US')}
             </Text>
           </View>
           <View style={[styles.rowLine, styles.rowLast]}>
-            <Text style={styles.label}>Última actualización</Text>
+            <Text style={styles.label}>Last updated</Text>
             <Text style={styles.value}>
-              {new Date(reservation.updated_at).toLocaleDateString('es-CR')}
+              {new Date(reservation.updated_at).toLocaleDateString('en-US')}
             </Text>
           </View>
         </View>
 
         {transactions.length > 0 && (
           <View style={styles.card}>
-            <Text style={styles.historyTitle}>Movimientos del depósito</Text>
+            <Text style={styles.historyTitle}>Deposit movements</Text>
             {transactions.map((t, i) => {
               const meta = TRANSACTION_META[t.type];
               return (
@@ -130,7 +130,7 @@ export default function ReservationDetailScreen() {
                   <View style={styles.txInfo}>
                     <Text style={styles.txLabel}>{meta.label}</Text>
                     <Text style={styles.txDate}>
-                      {new Date(t.created_at).toLocaleDateString('es-CR', {
+                      {new Date(t.created_at).toLocaleDateString('en-US', {
                         day: 'numeric',
                         month: 'short',
                         year: 'numeric',
@@ -151,7 +151,7 @@ export default function ReservationDetailScreen() {
           asChild>
           <Pressable testID="reservation-item-link" style={styles.linkRow}>
             <Ionicons name="cube-outline" size={18} color={Brand.primary} />
-            <Text style={styles.linkText}>Ver artículo</Text>
+            <Text style={styles.linkText}>View item</Text>
             <Ionicons name="chevron-forward" size={16} color={Brand.muted} />
           </Pressable>
         </Link>
@@ -166,7 +166,7 @@ export default function ReservationDetailScreen() {
               router.push({ pathname: '/check/[id]', params: { id: reservation.id, mode: 'in' } })
             }>
             <Ionicons name="camera-outline" size={18} color="#fff" />
-            <Text style={styles.primaryButtonText}>Recibí el artículo (check-in)</Text>
+            <Text style={styles.primaryButtonText}>I received the item (check-in)</Text>
           </Pressable>
         )}
 
@@ -178,7 +178,7 @@ export default function ReservationDetailScreen() {
               router.push({ pathname: '/check/[id]', params: { id: reservation.id, mode: 'out' } })
             }>
             <Ionicons name="camera-outline" size={18} color="#fff" />
-            <Text style={styles.primaryButtonText}>Devolver el artículo (check-out)</Text>
+            <Text style={styles.primaryButtonText}>Return the item (check-out)</Text>
           </Pressable>
         )}
 
@@ -187,7 +187,7 @@ export default function ReservationDetailScreen() {
             <View style={styles.frozenNotice}>
               <Ionicons name="snow-outline" size={16} color="#7A2A1D" />
               <Text style={styles.frozenText}>
-                Reporte activo: el depósito está congelado hasta resolver la disputa.
+                Active report: the deposit is frozen until the dispute is resolved.
               </Text>
             </View>
           ) : (
@@ -198,7 +198,7 @@ export default function ReservationDetailScreen() {
                 router.push({ pathname: '/report/[id]', params: { id: reservation.id } })
               }>
               <Ionicons name="alert-circle-outline" size={18} color={Brand.red} />
-              <Text style={styles.reportButtonText}>Reportar problema</Text>
+              <Text style={styles.reportButtonText}>Report a problem</Text>
             </Pressable>
           ))}
 
@@ -207,18 +207,18 @@ export default function ReservationDetailScreen() {
             testID="reservation-cancel"
             style={styles.cancelButton}
             onPress={() => setConfirming(true)}>
-            <Text style={styles.cancelText}>Cancelar reserva</Text>
+            <Text style={styles.cancelText}>Cancel reservation</Text>
           </Pressable>
         )}
 
         {cancellable && confirming && (
           <View testID="reservation-cancel-dialog" style={styles.confirmBox}>
             <Text style={styles.confirmText}>
-              ¿Cancelar esta reserva?
+              Cancel this reservation?
               {reservation.deposit_status === 'held'
-                ? ' El depósito retenido se libera.'
+                ? ' The held deposit will be released.'
                 : ''}{' '}
-              Esta acción no se puede deshacer.
+              This action cannot be undone.
             </Text>
             <View style={styles.confirmRow}>
               <Pressable
@@ -226,7 +226,7 @@ export default function ReservationDetailScreen() {
                 style={[styles.confirmButton, styles.confirmNo]}
                 disabled={submitting}
                 onPress={() => setConfirming(false)}>
-                <Text style={styles.confirmNoText}>Volver</Text>
+                <Text style={styles.confirmNoText}>Back</Text>
               </Pressable>
               <Pressable
                 testID="reservation-cancel-confirm"
@@ -236,7 +236,7 @@ export default function ReservationDetailScreen() {
                 {submitting ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={styles.confirmYesText}>Sí, cancelar</Text>
+                  <Text style={styles.confirmYesText}>Yes, cancel</Text>
                 )}
               </Pressable>
             </View>
@@ -244,8 +244,7 @@ export default function ReservationDetailScreen() {
         )}
 
         <Text style={styles.note}>
-          El estado se actualiza automáticamente cada 15 segundos mientras esta pantalla está
-          abierta.
+          The status refreshes automatically every 15 seconds while this screen is open.
         </Text>
       </ScrollView>
     </SafeAreaView>

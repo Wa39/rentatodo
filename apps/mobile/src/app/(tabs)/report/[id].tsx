@@ -40,7 +40,7 @@ export default function ReportProblemScreen() {
     setError(null);
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
-      setError('Se necesita permiso de cámara para documentar el problema.');
+      setError('Camera permission is required to document the problem.');
       return;
     }
     const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.7 });
@@ -78,36 +78,36 @@ export default function ReportProblemScreen() {
           <Pressable onPress={() => router.back()} style={styles.backButton} hitSlop={8}>
             <Ionicons name="chevron-back" size={22} color={Brand.ink} />
           </Pressable>
-          <Text testID="report-title" style={styles.topBarTitle}>Reportar problema</Text>
+          <Text testID="report-title" style={styles.topBarTitle}>Report a problem</Text>
         </View>
 
         <View style={styles.warning}>
           <Ionicons name="alert-circle-outline" size={18} color="#7A2A1D" />
           <Text style={styles.warningText}>
-            Al enviar el reporte, el depósito queda congelado hasta que el equipo resuelva la
-            disputa. Solo se permite un reporte por reserva.
+            When you send the report, the deposit is frozen until the team resolves the dispute.
+            Only one report is allowed per reservation.
           </Text>
         </View>
 
-        <Text style={styles.label}>¿Qué problema encontró? *</Text>
+        <Text style={styles.label}>What problem did you find? *</Text>
         <TextInput
           testID="report-reason"
           style={styles.reason}
           value={reason}
           onChangeText={setReason}
-          placeholder="Ej.: La broca estaba quebrada al recibir el taladro"
+          placeholder="E.g.: The bit was broken when I received the drill"
           placeholderTextColor={Brand.muted}
           multiline
         />
 
-        <Text style={styles.label}>Foto del problema *</Text>
+        <Text style={styles.label}>Photo of the problem *</Text>
         <View style={styles.photoBox}>
           {photo ? (
             <Image source={{ uri: photo.uri }} style={styles.photo} resizeMode="cover" />
           ) : (
             <View style={styles.photoPlaceholder}>
               <Ionicons name="camera-outline" size={40} color={Brand.muted} />
-              <Text style={styles.photoHint}>Evidencia obligatoria del daño o problema</Text>
+              <Text style={styles.photoHint}>Required evidence of the damage or problem</Text>
             </View>
           )}
         </View>
@@ -116,13 +116,13 @@ export default function ReportProblemScreen() {
           {Platform.OS !== 'web' && (
             <Pressable testID="report-pick-camera" style={styles.pickButton} onPress={pickFromCamera}>
               <Ionicons name="camera-outline" size={18} color={Brand.primary} />
-              <Text style={styles.pickText}>Tomar foto</Text>
+              <Text style={styles.pickText}>Take photo</Text>
             </Pressable>
           )}
           <Pressable testID="report-pick-library" style={styles.pickButton} onPress={pickFromLibrary}>
             <Ionicons name="image-outline" size={18} color={Brand.primary} />
             <Text style={styles.pickText}>
-              {Platform.OS === 'web' ? 'Elegir archivo' : 'Elegir de galería'}
+              {Platform.OS === 'web' ? 'Choose file' : 'Choose from gallery'}
             </Text>
           </Pressable>
         </View>
@@ -137,7 +137,7 @@ export default function ReportProblemScreen() {
           {submitting ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.ctaText}>Enviar reporte</Text>
+            <Text style={styles.ctaText}>Send report</Text>
           )}
         </Pressable>
       </ScrollView>

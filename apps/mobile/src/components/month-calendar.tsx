@@ -4,11 +4,11 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Brand } from '@/constants/brand';
 import { isoDate } from '@/utils/dates';
 
-// Costa Rican-style weekday header: K = martes, M = miércoles.
-const WEEKDAYS = ['L', 'K', 'M', 'J', 'V', 'S', 'D'];
+// Weekday header, Monday-first (the week starts on Monday below).
+const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 const MONTHS = [
-  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-  'Julio', 'Agosto', 'Setiembre', 'Octubre', 'Noviembre', 'Diciembre',
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
 type Props = {
@@ -54,7 +54,7 @@ export function MonthCalendar({
     <View style={styles.cal}>
       <View style={styles.titleRow}>
         {onNavigateMonth ? (
-          <Pressable onPress={() => onNavigateMonth(-1)} hitSlop={8} style={styles.navButton} accessibilityLabel="Mes anterior">
+          <Pressable onPress={() => onNavigateMonth(-1)} hitSlop={8} style={styles.navButton} accessibilityLabel="Previous month">
             <Ionicons name="chevron-back" size={16} color={Brand.ink} />
           </Pressable>
         ) : (
@@ -64,7 +64,7 @@ export function MonthCalendar({
           {MONTHS[month - 1]} {year}
         </Text>
         {onNavigateMonth ? (
-          <Pressable onPress={() => onNavigateMonth(1)} hitSlop={8} style={styles.navButton} accessibilityLabel="Siguiente mes">
+          <Pressable onPress={() => onNavigateMonth(1)} hitSlop={8} style={styles.navButton} accessibilityLabel="Next month">
             <Ionicons name="chevron-forward" size={16} color={Brand.ink} />
           </Pressable>
         ) : (
@@ -118,11 +118,11 @@ export function MonthCalendar({
       ))}
       <View style={styles.legend}>
         <View style={[styles.dot, { backgroundColor: Brand.line }]} />
-        <Text style={styles.legendText}>Ocupada</Text>
+        <Text style={styles.legendText}>Booked</Text>
         {onSelectDay && (
           <>
             <View style={[styles.dot, { backgroundColor: Brand.primary }]} />
-            <Text style={styles.legendText}>Selección</Text>
+            <Text style={styles.legendText}>Selection</Text>
           </>
         )}
       </View>

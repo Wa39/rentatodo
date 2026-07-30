@@ -39,7 +39,7 @@ export default function CheckScreen() {
     setError(null);
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
-      setError('Se necesita permiso de cámara para documentar el estado del artículo.');
+      setError('Camera permission is required to document the item condition.');
       return;
     }
     const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.7 });
@@ -84,14 +84,14 @@ export default function CheckScreen() {
             <Ionicons name="chevron-back" size={22} color={Brand.ink} />
           </Pressable>
           <Text testID="check-title" style={styles.topBarTitle}>
-            {isCheckIn ? 'Check-in · Recibir artículo' : 'Check-out · Devolver artículo'}
+            {isCheckIn ? 'Check-in · Receive item' : 'Check-out · Return item'}
           </Text>
         </View>
 
         <Text style={styles.explain}>
           {isCheckIn
-            ? 'Tome una foto del artículo al recibirlo. Es la evidencia de su estado inicial y protege su depósito.'
-            : 'Tome una foto del artículo al devolverlo. Es la evidencia de que lo entrega en buen estado.'}
+            ? 'Take a photo of the item when you receive it. It is the evidence of its initial condition and protects your deposit.'
+            : 'Take a photo of the item when you return it. It is the evidence that you hand it back in good condition.'}
         </Text>
 
         <View style={styles.photoBox}>
@@ -100,7 +100,7 @@ export default function CheckScreen() {
           ) : (
             <View style={styles.photoPlaceholder}>
               <Ionicons name="camera-outline" size={40} color={Brand.muted} />
-              <Text testID="check-photo-hint" style={styles.photoHint}>Una sola foto como evidencia</Text>
+              <Text testID="check-photo-hint" style={styles.photoHint}>A single photo as evidence</Text>
             </View>
           )}
         </View>
@@ -109,24 +109,24 @@ export default function CheckScreen() {
           {Platform.OS !== 'web' && (
             <Pressable testID="check-pick-camera" style={styles.pickButton} onPress={pickFromCamera}>
               <Ionicons name="camera-outline" size={18} color={Brand.primary} />
-              <Text style={styles.pickText}>Tomar foto</Text>
+              <Text style={styles.pickText}>Take photo</Text>
             </Pressable>
           )}
           <Pressable testID="check-pick-library" style={styles.pickButton} onPress={pickFromLibrary}>
             <Ionicons name="image-outline" size={18} color={Brand.primary} />
             <Text style={styles.pickText}>
-              {Platform.OS === 'web' ? 'Elegir archivo' : 'Elegir de galería'}
+              {Platform.OS === 'web' ? 'Choose file' : 'Choose from gallery'}
             </Text>
           </Pressable>
         </View>
 
-        <Text testID="check-notes-label" style={styles.label}>Notas sobre el estado (opcional)</Text>
+        <Text testID="check-notes-label" style={styles.label}>Condition notes (optional)</Text>
         <TextInput
           style={styles.notes}
           value={notes}
           onChangeText={setNotes}
           placeholder={
-            isCheckIn ? 'Ej.: Recibido con maletín y 3 brocas' : 'Ej.: Devuelto completo y limpio'
+            isCheckIn ? 'E.g.: Received with case and 3 bits' : 'E.g.: Returned complete and clean'
           }
           placeholderTextColor={Brand.muted}
           multiline
@@ -143,14 +143,14 @@ export default function CheckScreen() {
             <ActivityIndicator color="#fff" />
           ) : (
             <Text style={styles.ctaText}>
-              {isCheckIn ? 'Confirmar recepción' : 'Confirmar devolución'}
+              {isCheckIn ? 'Confirm receipt' : 'Confirm return'}
             </Text>
           )}
         </Pressable>
         <Text style={styles.note}>
           {isCheckIn
-            ? 'La reserva pasa a “Entregada”.'
-            : 'La reserva pasa a “Devuelta”; el depósito se libera cuando la persona propietaria cierra sin reportes.'}
+            ? 'The reservation moves to "Delivered".'
+            : 'The reservation moves to "Returned"; the deposit is released when the owner closes with no reports.'}
         </Text>
       </ScrollView>
     </SafeAreaView>

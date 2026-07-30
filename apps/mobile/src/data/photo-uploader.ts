@@ -97,14 +97,14 @@ class PresignedUrlUploader implements PhotoUploader {
         body,
       });
     } catch {
-      throw new ApiRequestError(0, 'NETWORK_ERROR', 'No se pudo subir la foto.');
+      throw new ApiRequestError(0, 'NETWORK_ERROR', 'Could not upload the photo.');
     }
     if (!response.ok) {
       // S3 answers with XML, not the contract's Error shape.
       throw new ApiRequestError(
         response.status,
         'NETWORK_ERROR',
-        'La subida de la foto falló. Intente de nuevo.',
+        'The photo upload failed. Please try again.',
       );
     }
 

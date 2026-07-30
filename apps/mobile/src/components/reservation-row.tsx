@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { StatusBadge } from '@/components/status-badge';
 import { Brand } from '@/constants/brand';
 import type { Reservation } from '@/data/types';
-import { formatDateRangeEs } from '@/utils/dates';
+import { formatDateRange } from '@/utils/dates';
 
 /** Row in reservation lists; taps into the reservation detail. */
 export function ReservationRow({ reservation }: { reservation: Reservation }) {
@@ -21,7 +21,7 @@ export function ReservationRow({ reservation }: { reservation: Reservation }) {
             {reservation.item_name}
           </Text>
           <Text style={styles.dates}>
-            {formatDateRangeEs(reservation.start_date, reservation.end_date)}
+            {formatDateRange(reservation.start_date, reservation.end_date)}
           </Text>
         </View>
         <StatusBadge status={reservation.status} />

@@ -14,7 +14,7 @@ type Sort = 'popular' | 'recent';
 
 /**
  * Home screen — per the approved mockup (docs/mock_flujo_arrendatario.html):
- * search, Popular/Recent toggle and "Mis solicitudes".
+ * search, Popular/Recent toggle and the requests list.
  * There is NO "near me" section nor zone search (out of scope).
  */
 export default function HomeScreen() {
@@ -79,7 +79,7 @@ export default function HomeScreen() {
             colors={[Brand.primary]}
           />
         }
-        ListEmptyComponent={<Text style={styles.sideEmpty}>Aún no tiene solicitudes.</Text>}
+        ListEmptyComponent={<Text style={styles.sideEmpty}>{"You don't have any requests yet."}</Text>}
         ListHeaderComponent={
           <View style={styles.content}>
             <Text testID="home-title" style={styles.title}>RentaTodo</Text>
@@ -87,7 +87,7 @@ export default function HomeScreen() {
             <TextInput
               testID="home-search"
               style={styles.search}
-              placeholder="Buscar artículos…"
+              placeholder="Search items…"
               placeholderTextColor={Brand.muted}
               value={query}
               onChangeText={setQuery}
@@ -101,7 +101,7 @@ export default function HomeScreen() {
                   onPress={() => setSort(s)}
                   style={[styles.segButton, sort === s && styles.segActive]}>
                   <Text style={[styles.segText, sort === s && styles.segTextActive]}>
-                    {s === 'popular' ? 'Populares' : 'Publicados recientemente'}
+                    {s === 'popular' ? 'Popular' : 'Recently listed'}
                   </Text>
                 </Pressable>
               ))}
@@ -119,7 +119,7 @@ export default function HomeScreen() {
                   loading={itemsLoading}
                   error={itemsError}
                   emptyText={
-                    query.trim() === '' ? 'No hay artículos.' : `Sin resultados para “${query}”.`
+                    query.trim() === '' ? 'No items.' : `No results for “${query}”.`
                   }
                   onRetry={onRetryItems}
                 />
@@ -127,8 +127,8 @@ export default function HomeScreen() {
             />
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Mis solicitudes</Text>
-              <Text style={styles.sectionLink}>Ver todas</Text>
+              <Text style={styles.sectionTitle}>My requests</Text>
+              <Text style={styles.sectionLink}>See all</Text>
             </View>
           </View>
         }
