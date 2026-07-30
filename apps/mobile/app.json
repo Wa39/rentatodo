@@ -37,8 +37,8 @@
       [
         "expo-image-picker",
         {
-          "cameraPermission": "RentaTodo usa la cámara para documentar el estado del artículo en la entrega y la devolución.",
-          "photosPermission": "RentaTodo usa tus fotos como evidencia del estado del artículo."
+          "cameraPermission": "RentaTodo uses the camera to document the item condition at handover and return.",
+          "photosPermission": "RentaTodo uses your photos as evidence of the item condition."
         }
       ]
     ],
