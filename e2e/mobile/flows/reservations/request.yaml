@@ -8,8 +8,8 @@
 #
 # Item used: "Karaoke profesional con 2 micrófonos" (category: other)
 # Its seeded reservation is cancelled — no date conflicts.
-# Dates: navigate to next month (Agosto) and pick days 12-16, which are
-# always in the future for any day in July 2026.
+# Dates: navigate to next month and pick days 12-16. All months have at
+# least 16 days, and the next month is always in the future relative to today.
 #
 # Run: maestro test e2e/mobile/flows/reservations/request.yaml
 
@@ -40,7 +40,6 @@ appId: host.exp.Exponent
 # Advance to next month so selected dates are always in the future
 - tapOn:
     description: "Siguiente mes"
-- assertVisible: "Agosto 2026"
 
 # Select date range (first tap = start, second = end)
 - tapOn:
