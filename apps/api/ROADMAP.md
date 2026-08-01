@@ -9,11 +9,38 @@
 
 **Week:** 1 (Auth + Items), Week 2 (Reservations), and Weeks 3-4
 (Delivery + Reports) are all implemented — all 22 of `CLAUDE_BACKEND.md`'s
-endpoints exist in code. Weeks 3-4 is on **PR #49**, open against
-`develop`, CI green, awaiting team review. No more backend endpoints
-left to build.
-**Last updated:** 2026-07-23 (end of session)
-**Current focus:** All of Week 1 is merged: `User` + Auth (PR #8), CORS +
+endpoints exist in code. PR #49 merged 2026-07-23. One real gap has
+since surfaced (item reactivation — see below); no other backend
+endpoints left to build.
+**Last updated:** 2026-07-31 (end of session)
+**Current focus:** Wa relayed three teammate-blocker claims secondhand
+("Home-see-all blocked on PR #75", "Close reservation spec blocked on
+Trucy's endpoint", "Reactivate item spec blocked on Trucy's endpoint").
+Verified all three directly against `gh`/the contract/the code instead
+of taking them at face value:
+- **Close reservation**: claim was stale. `PATCH /reservations/{id}/close`
+  has existed since Weeks 3-4 (PR #49, merged 2026-07-23) — nothing
+  blocked here, flagged back to Wa.
+- **Reactivate item**: claim was correct, and it's a real gap, not just
+  unimplemented — the contract itself has no way to flip `is_active`
+  back to `true`. `UpdateItemRequest` never had an `is_active` field
+  (see 2026-07-17 Decisions log entry — deliberate at the time, no
+  reactivate-toggle existed in that contract version). Drafted the
+  contract addition, `PATCH /items/{item_id}/reactivate` (owner-only,
+  idempotent, mirrors `DELETE /items/{item_id}`'s shape rather than
+  adding `is_active` to the generic update — keeps state transitions
+  as dedicated endpoints, matching the reservations domain's
+  `close`/`cancel`/etc pattern). Opened **PR #77** against `develop`,
+  contract-only, requesting review from all three other codeowners
+  (`j0sMedina`, `psced10-creator`, `Wa39`) per the `CODEOWNERS` rule
+  on `packages/contracts/`. No `apps/api` code changed yet —
+  implementation is a follow-up PR once #77 is approved.
+- **PR #75 (mobile "Ver todas" fix)**: not `apps/api`'s to fix, but
+  diagnosed while verifying — it targets `main` instead of `develop`
+  (hence showing 59 commits and all of `apps/api` as "changed" against
+  a stale base) and is `CONFLICTING`. Flagged to Zero; it can't unblock
+  the Maestro home-see-all flow until retargeted and resolved.
+All of Week 1 is merged: `User` + Auth (PR #8), CORS +
 validation handler (PR #14), `Item` model + all 6 Item endpoints (PR #16),
 and the deferred `PATCH`/`DELETE /items/{id}`/`GET /users/me/items`
 follow-up (PR #24) — closing out all 9 of `CLAUDE_BACKEND.md`'s Week 1
@@ -111,11 +138,12 @@ see Open questions.
 
 ## In progress
 
-- **PR #49** (`feature/weeks-3-4-delivery-reports` → `develop`) open, CI green, review requested from j0sMedina/Wa39/psced10-creator — awaiting their feedback.
+- **PR #77** (`feature/item-reactivate-contract` → `develop`) open, contract-only (adds `PATCH /items/{item_id}/reactivate`), review requested from j0sMedina/psced10-creator/Wa39 — awaiting their feedback per the `CODEOWNERS` all-four-review rule on `packages/contracts/`.
 
 ## Next up (not started)
 
-- [ ] Nothing on the `apps/api` side — all 22 `CLAUDE_BACKEND.md` endpoints exist. Once PR #49 gets review feedback, address it; otherwise next work here would only come from a teammate's integration surfacing a real backend gap (see Open questions for what's already flagged to Wa/Silverk).
+- [ ] Once PR #77 is approved and merged: implement `PATCH /items/{item_id}/reactivate` in `apps/api` (schema field/service function/router wiring, TDD, mirrors `delete_item`'s shape) so Wa's Maestro "Reactivate item" spec is unblocked.
+- [ ] Otherwise nothing else on the `apps/api` side — all 22 `CLAUDE_BACKEND.md` endpoints exist. Next work here would only come from a teammate's integration surfacing a real backend gap (see Open questions for what's already flagged to Wa/Silverk).
 
 ## Decisions log
 
@@ -194,3 +222,4 @@ see Open questions.
 - **2026-07-22** — Confirmed via `gh`/`git` (not the stale local checkout, which was still on last session's `docs/roadmap-session-wrap-2026-07-21` branch): PR #41 merged, plus 4 more team PRs unrelated to `apps/api` (#35, #36, #40, #44). Only one PR open: **#45** (Wa, Playwright e2e tests for register + reservation-detail), bundled with 2 undiscussed `apps/api` fixes from an audit Wa's side ran — a row lock on `_get_reservation_or_404` (`.with_for_update(of=Reservation)`, correctly scoped to not also lock the joined `item`/`renter`) that supersedes 2026-07-17's deliberate deferral, and an eager-load-owner fix in `items.py`. Reviewed both: content is correct, CI green; approved with a comment asking Wa to split `apps/api`/`apps/web` fixes into their own PR next time rather than bundling with `e2e/` work. Logged the row-lock decision reversal in this file's Decisions log (PR #46, a small standalone docs PR — the original commit had landed on the already-merged `docs/roadmap-session-wrap-2026-07-21` branch by mistake, recut cleanly from `develop`). Refreshed this file's Current status/Done/In progress/Next up to match reality. Next: rebase/recut `feature/weeks-3-4-delivery-reports` (7 commits behind `develop`) and start executing its 7-task plan. *(This session ended on an accidental Alt+F4 close, not a deliberate handoff — the "next" here overlapped with the 2026-07-22/23 session below, which was already executing the same plan independently. No work was lost; see that entry for how the two were reconciled.)*
 - **2026-07-22/23** — Picked up Weeks 3-4 execution: confirmed via `gh` that PR #41 had merged and the branch was already rebased onto that point with Task 1 (models + migration) already committed. Executed the remaining 6 tasks inline (not subagent-driven — this file's session ritual calls for files explained and steps confirmed one at a time), strict TDD, one commit per task, full suite after each: schemas (158/158), row lock + `_assert_participant` (161/161), check-in/check-out (171/171), close (177/177), report-a-problem (184/184), transaction history + earnings (193/193, final). Task 3 deviated from the plan's literal `.with_for_update()` — see Decisions log for why (a real Postgres error, not a style choice), confirmed with Jose before implementing. Ran the plan's manual live-verification step against a real `uvicorn` + `api-db-1` Postgres: both the happy path (`hold`→`release`, correct earnings totals) and the report path (`freeze`, `409 REPORT_EXISTS` on a duplicate, `409 FREEZE_ACTIVE` on close) worked exactly as designed; cleaned up every row it created and re-verified 193/193 clean. While preparing this update, found that PR #45/#46/#47 had just merged — from the session above, ended by an accidental Alt+F4, not a real second agent — with the identical row-lock fix arrived at independently. Confirmed with Jose this session's work stands; rebased onto the fresh `develop`, resolved the one expected conflict in `_get_reservation_or_404` (kept this branch's fuller version — also has `_assert_participant` and the full docstring), re-ran the full suite clean. Next: push `feature/weeks-3-4-delivery-reports`, open the PR.
 - **2026-07-23 (wrap-up)** — Pushed `feature/weeks-3-4-delivery-reports` and opened **PR #49** against `develop`; CI green on every job (api/web/mobile/playwright/ci-gate). Requested review from j0sMedina, Wa39, and psced10-creator, and left a PR comment pointing them at the two things most worth a second look (the `_get_reservation_or_404` convergence with PR #45, and `report_problem`'s two-layer duplicate guard). Confirmed with Jose that the deposit ledger being mock (no real payment gateway) is intentional, not a gap — matches `CLAUDE_BACKEND.md`'s original scope. While reviewing overall project status for Jose, found two real integration gaps outside `apps/api`'s own code, neither blocking backend completeness: (1) the presign/S3 flow has only ever been verified against MiniStack, never real AWS, and the bucket's public-read policy (flagged to Wa 2026-07-21) is still unconfirmed; (2) `apps/web/src/routes/ReservationDetailPage.tsx` still runs on `mockTransactions`, with zero real API calls anywhere in `apps/web/src` for `close`/`transactions`/`earnings`, even though mobile's renter-facing equivalents (`checkin`/`checkout`/`reportProblem`) are already wired to the real API. Logged both directly to Wa/Silverk and sent a team update message. With PR #49 up, `apps/api` has no more `CLAUDE_BACKEND.md` endpoints left to build — next backend work, if any, will come from PR #49 review feedback or a real gap a teammate's integration surfaces, not a new vertical slice. Session closed.
+- **2026-07-31** — Wa relayed three blocker statuses secondhand; verified each directly (`gh`, the contract, the code) rather than trusting the paste. "Close reservation blocked on Trucy's endpoint" was stale — `PATCH /reservations/{id}/close` has existed since PR #49 (merged 2026-07-23); told Wa it's unblocked. "Reactivate item blocked on Trucy's endpoint" was correct and a genuine contract gap — `UpdateItemRequest` has no `is_active` field and never has (2026-07-17 decision, no reactivate-toggle existed in that contract version). Drafted `PATCH /items/{item_id}/reactivate` (owner-only, idempotent, same response shape as `DELETE /items/{item_id}`, kept as a dedicated action endpoint rather than folding `is_active` into the generic update — consistent with how reservations model state transitions). Opened **PR #77** against `develop` on `feature/item-reactivate-contract`, contract-only, requesting review from j0sMedina/psced10-creator/Wa39 per `CODEOWNERS`. Also diagnosed (not fixed — mobile's to own) that PR #75 targets `main` instead of `develop` and is conflicting, which is why "Home-see-all blocked on #75" is still accurate; flagged to Zero. No `apps/api` implementation yet — that's the follow-up once #77 is approved. Next: check on #77's review; once merged, implement the endpoint (schema + service + router + tests, TDD).
