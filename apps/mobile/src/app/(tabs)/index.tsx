@@ -20,14 +20,22 @@ type Sort = 'popular' | 'recent';
 export default function HomeScreen() {
   const [sort, setSort] = useState<Sort>('popular');
   const [query, setQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [items, setItems] = useState<Item[]>([]);
   const [itemsLoading, setItemsLoading] = useState(true);
   const [itemsError, setItemsError] = useState<string | null>(null);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Debounce the search box so typing a word is one request, not one per keystroke.
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(query), 300);
+    return () => clearTimeout(timer);
+  }, [query]);
+
   const loadItems = useCallback(() => {
-    const request = query.trim() === '' ? dataSource.listItems(sort) : dataSource.searchItems(query);
+    const term = debouncedQuery.trim();
+    const request = term === '' ? dataSource.listItems(sort) : dataSource.searchItems(term);
     return request
       .then((data) => {
         setItems(data);
@@ -35,7 +43,7 @@ export default function HomeScreen() {
       })
       .catch((e) => setItemsError(errorMessage(e)))
       .finally(() => setItemsLoading(false));
-  }, [sort, query]);
+  }, [sort, debouncedQuery]);
 
   useEffect(() => {
     loadItems();
