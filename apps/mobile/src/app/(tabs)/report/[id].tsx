@@ -1,11 +1,8 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  Image,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -15,10 +12,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { PhotoField } from '@/components/photo-field';
 import { Brand } from '@/constants/brand';
 import { dataSource } from '@/data/data-source';
 import { errorMessage } from '@/data/labels';
-import { photoUploader, type LocalPhoto } from '@/data/photo-uploader';
+import { photoUploader } from '@/data/photo-uploader';
+import { usePhotoPicker } from '@/hooks/use-photo-picker';
 
 /**
  * Report a problem (contract: reason + photo_url required, only from
@@ -30,31 +29,14 @@ import { photoUploader, type LocalPhoto } from '@/data/photo-uploader';
 export default function ReportProblemScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [reason, setReason] = useState('');
-  const [photo, setPhoto] = useState<LocalPhoto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const { photo, pickFromCamera, pickFromLibrary } = usePhotoPicker(
+    'Camera permission is required to document the problem.',
+    setError,
+  );
 
   const canSubmit = reason.trim() !== '' && photo !== null && !submitting;
-
-  async function pickFromCamera() {
-    setError(null);
-    const permission = await ImagePicker.requestCameraPermissionsAsync();
-    if (!permission.granted) {
-      setError('Camera permission is required to document the problem.');
-      return;
-    }
-    const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.7 });
-    if (!result.canceled && result.assets?.[0]) setPhoto(result.assets[0]);
-  }
-
-  async function pickFromLibrary() {
-    setError(null);
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      quality: 0.7,
-    });
-    if (!result.canceled && result.assets?.[0]) setPhoto(result.assets[0]);
-  }
 
   async function onSubmit() {
     if (!id || !photo || reason.trim() === '') return;
@@ -101,31 +83,13 @@ export default function ReportProblemScreen() {
         />
 
         <Text style={styles.label}>Photo of the problem *</Text>
-        <View style={styles.photoBox}>
-          {photo ? (
-            <Image source={{ uri: photo.uri }} style={styles.photo} resizeMode="cover" />
-          ) : (
-            <View style={styles.photoPlaceholder}>
-              <Ionicons name="camera-outline" size={40} color={Brand.muted} />
-              <Text style={styles.photoHint}>Required evidence of the damage or problem</Text>
-            </View>
-          )}
-        </View>
-
-        <View style={styles.pickRow}>
-          {Platform.OS !== 'web' && (
-            <Pressable testID="report-pick-camera" style={styles.pickButton} onPress={pickFromCamera}>
-              <Ionicons name="camera-outline" size={18} color={Brand.primary} />
-              <Text style={styles.pickText}>Take photo</Text>
-            </Pressable>
-          )}
-          <Pressable testID="report-pick-library" style={styles.pickButton} onPress={pickFromLibrary}>
-            <Ionicons name="image-outline" size={18} color={Brand.primary} />
-            <Text style={styles.pickText}>
-              {Platform.OS === 'web' ? 'Choose file' : 'Choose from gallery'}
-            </Text>
-          </Pressable>
-        </View>
+        <PhotoField
+          photo={photo}
+          hint="Required evidence of the damage or problem"
+          testIDPrefix="report"
+          onPickCamera={pickFromCamera}
+          onPickLibrary={pickFromLibrary}
+        />
 
         {error && <Text style={styles.error}>{error}</Text>}
 
@@ -183,29 +147,6 @@ const styles = StyleSheet.create({
     minHeight: 80,
     textAlignVertical: 'top',
   },
-  photoBox: {
-    height: 200,
-    borderRadius: 16,
-    backgroundColor: Brand.card,
-    borderWidth: 1,
-    borderColor: Brand.line,
-    overflow: 'hidden',
-  },
-  photo: { width: '100%', height: '100%' },
-  photoPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
-  photoHint: { fontSize: 12, color: Brand.muted },
-  pickRow: { flexDirection: 'row', gap: 10, marginTop: 12 },
-  pickButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: Brand.primarySoft,
-    borderRadius: 12,
-    paddingVertical: 12,
-  },
-  pickText: { fontSize: 13, fontWeight: '700', color: Brand.primary },
   error: { color: Brand.red, fontSize: 12, marginTop: 12, textAlign: 'center' },
   cta: {
     backgroundColor: Brand.red,
