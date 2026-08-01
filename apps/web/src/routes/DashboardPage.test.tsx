@@ -180,7 +180,7 @@ describe('DashboardPage', () => {
   it('shows the current-month earnings on the "Earned this month" KPI, not the lifetime total', async () => {
     // Freeze to July 2026 so deriveByMonth's 6-month window ends in July and the
     // July rental (amount: 3000) is the last bucket — not August (which has no rentals).
-    vi.useFakeTimers({ now: new Date('2026-07-15T12:00:00Z') })
+    vi.useFakeTimers({ now: new Date('2026-07-15T12:00:00Z'), toFake: ['Date'] })
     localStorage.setItem('rentatodo_token', 'tok123')
     mockFetchOk()
     renderDashboard()
