@@ -1,0 +1,29 @@
+# Shared login sub-flow for the seeded renter account.
+#
+# Use with `runFlow` from other flows:
+#   - runFlow: ../auth/_login-as-renter.yaml       (from sibling directories)
+#   - runFlow: ../../auth/_login-as-renter.yaml    (one level deeper — not used currently)
+#
+# Can also run standalone to verify the login screen works:
+#   maestro test e2e/mobile/flows/auth/_login-as-renter.yaml
+#
+# Credentials: renter@rentatodo.dev / Rentatodo2026!  (seeded by infra/seed.py)
+
+appId: host.exp.Exponent
+---
+- launchApp
+- assertVisible:
+    id: "login-submit"
+- tapOn:
+    id: "login-email"
+- clearText
+- inputText:
+    text: "renter@rentatodo.dev"
+- tapOn:
+    id: "login-password"
+- inputText:
+    text: "Rentatodo2026!"
+- tapOn:
+    id: "login-submit"
+- assertVisible:
+    id: "home-title"

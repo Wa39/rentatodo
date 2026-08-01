@@ -146,7 +146,6 @@ describe('ItemsPage', () => {
   })
 
   it('deletes an item after confirmation and refetches the list', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
     mockFetchRoutes({
       '/users/me': [() => jsonResponse(PROFILE, 200)],
       '/users/me/items': [
@@ -161,6 +160,8 @@ describe('ItemsPage', () => {
     await waitFor(() => expect(screen.getByText(item.name)).toBeInTheDocument())
     const card = screen.getByTestId(`item-card-${item.id}`)
     await user.click(within(card).getByRole('button', { name: 'Delete' }))
+    expect(screen.getByText('Delete this item?')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Delete permanently' }))
     await waitFor(() =>
       expect(within(screen.getByTestId(`item-card-${item.id}`)).queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument(),
     )
@@ -202,7 +203,6 @@ describe('ItemsPage', () => {
   })
 
   it('does not call the API when the delete confirmation is dismissed', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(false)
     mockFetchRoutes({
       '/users/me': [() => jsonResponse(PROFILE, 200)],
       '/users/me/items': [() => jsonResponse(ITEMS, 200)],
@@ -213,6 +213,9 @@ describe('ItemsPage', () => {
     await waitFor(() => expect(screen.getByText(item.name)).toBeInTheDocument())
     const card = screen.getByTestId(`item-card-${item.id}`)
     await user.click(within(card).getByRole('button', { name: 'Delete' }))
+    expect(screen.getByText('Delete this item?')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(screen.queryByText('Delete this item?')).not.toBeInTheDocument())
     expect(within(card).getByRole('button', { name: 'Delete' })).toBeInTheDocument()
   })
 })

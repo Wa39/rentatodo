@@ -1,8 +1,7 @@
 import { test, expect } from '../fixtures'
 
-// IDs match MOCK_PENDING_REQUEST / MOCK_DELIVERED_RESERVATION in ../fixtures.ts,
-// which RequestsContext fetches via the mocked GET /users/me/requests route.
-// Transaction history still comes from mockTransactions in apps/web/src/lib/mockData.ts.
+// IDs match fixtures in ../fixtures.ts — RequestsContext uses the mocked GET /users/me/requests
+// route and transaction history comes from the mocked GET /reservations/*/transactions route.
 const REQUESTED_ID = '55555555-5555-4555-8555-555555555555' // Taladro, status=requested, no transactions
 const DELIVERED_ID = '77777777-7777-4777-8777-777777777777' // Carpa, status=delivered, has a hold tx
 const RETURNED_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' // Taladro, status=returned (enables Close button)

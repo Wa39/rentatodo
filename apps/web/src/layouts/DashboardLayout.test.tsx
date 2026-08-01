@@ -69,6 +69,7 @@ describe('DashboardLayout', () => {
 
   afterEach(() => {
     vi.restoreAllMocks()
+    vi.useRealTimers()
   })
   it('renders nav links for every top-level dashboard section, including Calendar', () => {
     renderLayout()
@@ -98,6 +99,7 @@ describe('DashboardLayout', () => {
   })
 
   it('shows the earned-this-month widget above the user footer', async () => {
+    vi.useFakeTimers({ now: new Date('2026-07-15T12:00:00Z'), toFake: ['Date'] })
     localStorage.setItem('rentatodo_token', 'tok123')
     vi.spyOn(global, 'fetch')
     mockFetchRoutes({
@@ -129,6 +131,7 @@ describe('DashboardLayout', () => {
   })
 
   it('shows a down arrow when this month earned less than last month', async () => {
+    vi.useFakeTimers({ now: new Date('2026-07-15T12:00:00Z'), toFake: ['Date'] })
     localStorage.setItem('rentatodo_token', 'tok123')
     vi.spyOn(global, 'fetch')
     mockFetchRoutes({

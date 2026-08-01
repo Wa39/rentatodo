@@ -245,4 +245,68 @@ describe('AuthContext', () => {
 
     await waitFor(() => expect(screen.getByTestId('token')).toHaveTextContent('tok123'))
   })
+
+  it('clears the session on mount when the stored token expiry has already passed', async () => {
+    localStorage.setItem('rentatodo_token', 'stale-tok')
+    localStorage.setItem('rentatodo_token_expiry', String(Date.now() - 1000))
+
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    )
+
+    await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('out'))
+    expect(localStorage.getItem('rentatodo_token')).toBeNull()
+    expect(localStorage.getItem('rentatodo_token_expiry')).toBeNull()
+  })
+
+  it('stores the token expiry in localStorage when login succeeds', async () => {
+    const beforeLogin = Date.now()
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(jsonResponse({ access_token: 'tok123', token_type: 'bearer', expires_in: 3600 }, 200))
+      .mockResolvedValueOnce(
+        jsonResponse({ id: 'u1', name: 'María Vargas', email: 'maria@example.com', created_at: '2026-01-01T00:00:00Z' }, 200),
+      )
+
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    )
+    await act(async () => {
+      await screen.getByText('login').click()
+    })
+
+    await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('in'))
+
+    const stored = localStorage.getItem('rentatodo_token_expiry')
+    expect(stored).not.toBeNull()
+    const expiresAt = Number(stored)
+    expect(expiresAt).toBeGreaterThanOrEqual(beforeLogin + 3600 * 1000)
+    expect(expiresAt).toBeLessThanOrEqual(Date.now() + 3600 * 1000)
+  })
+
+  it('logout removes the token expiry from localStorage', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(jsonResponse({ access_token: 'tok123', token_type: 'bearer', expires_in: 3600 }, 200))
+      .mockResolvedValueOnce(
+        jsonResponse({ id: 'u1', name: 'María Vargas', email: 'maria@example.com', created_at: '2026-01-01T00:00:00Z' }, 200),
+      )
+
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    )
+    await act(async () => {
+      await screen.getByText('login').click()
+    })
+    await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('in'))
+
+    act(() => screen.getByText('logout').click())
+
+    expect(screen.getByTestId('status')).toHaveTextContent('out')
+    expect(localStorage.getItem('rentatodo_token_expiry')).toBeNull()
+  })
 })

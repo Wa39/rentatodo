@@ -10,7 +10,7 @@ import { useTranslation } from '@/lib/i18n'
 import { useAuth } from '@/lib/AuthContext'
 import { PhotoUploadField } from '@/components/PhotoUploadField'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
@@ -29,6 +29,9 @@ export function ItemsPage() {
   const [dialogError, setDialogError] = useState<string | null>(null)
   const { token } = useAuth()
   const [photoUploading, setPhotoUploading] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<Item | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const activeCount = items.filter((i) => i.is_active).length
   const inactiveCount = items.length - activeCount
@@ -77,13 +80,22 @@ export function ItemsPage() {
     }
   }
 
-  async function handleDelete(item: Item) {
-    const confirmed = window.confirm(`Delete "${item.name}"? It will stop appearing in public search.`)
-    if (!confirmed) return
+  function handleDelete(item: Item) {
+    setDeleteError(null)
+    setDeleteTarget(item)
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return
+    setDeleting(true)
+    setDeleteError(null)
     try {
-      await deleteItem(item.id)
+      await deleteItem(deleteTarget.id)
+      setDeleteTarget(null)
     } catch (err) {
-      window.alert(getErrorMessage(err, t.errors.network))
+      setDeleteError(getErrorMessage(err, t.errors.network))
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -167,6 +179,34 @@ export function ItemsPage() {
                 {dialogSubmitting ? 'Saving…' : 'Save item'}
               </Button>
             </form>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={deleteTarget !== null} onOpenChange={(next) => { if (!deleting && !next) setDeleteTarget(null) }}>
+          <DialogContent className="max-w-md gap-5 p-7">
+            <DialogHeader>
+              <DialogTitle className="text-xl">{t.items.deleteDialog.title}</DialogTitle>
+              <DialogDescription className="text-base leading-relaxed text-foreground/90">
+                {deleteTarget && (
+                  <>
+                    {t.items.deleteDialog.descriptionPrefix(deleteTarget.name)}
+                    <strong className="font-bold text-foreground">{t.items.deleteDialog.descriptionEmphasis1}</strong>
+                    {t.items.deleteDialog.descriptionMiddle}
+                    <strong className="font-bold text-foreground">{t.items.deleteDialog.descriptionEmphasis2}</strong>
+                    {t.items.deleteDialog.descriptionSuffix}
+                  </>
+                )}
+              </DialogDescription>
+            </DialogHeader>
+            <AuthErrorBanner message={deleteError} />
+            <DialogFooter className="sm:justify-center sm:space-x-3">
+              <Button type="button" variant="destructive" disabled={deleting} onClick={confirmDelete}>
+                {deleting ? t.items.deleteDialog.deleting : t.items.deleteDialog.confirm}
+              </Button>
+              <Button type="button" variant="outline" disabled={deleting} onClick={() => setDeleteTarget(null)}>
+                {t.items.deleteDialog.cancel}
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
 

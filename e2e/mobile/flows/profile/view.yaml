@@ -12,21 +12,7 @@
 
 appId: host.exp.Exponent
 ---
-- launchApp
-- assertVisible:
-    id: "login-submit"
-- tapOn:
-    id: "login-email"
-- inputText:
-    text: "renter@rentatodo.dev"
-- tapOn:
-    id: "login-password"
-- inputText:
-    text: "Rentatodo2026!"
-- tapOn:
-    id: "login-submit"
-- assertVisible:
-    id: "home-title"
+- runFlow: ../auth/_login-as-renter.yaml
 
 # Navigate to profile tab
 - tapOn:
