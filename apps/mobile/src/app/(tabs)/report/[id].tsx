@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PhotoField } from '@/components/photo-field';
+import { ScreenHeader } from '@/components/screen-header';
 import { Brand } from '@/constants/brand';
 import { dataSource } from '@/data/data-source';
 import { errorMessage } from '@/data/labels';
@@ -56,12 +57,7 @@ export default function ReportProblemScreen() {
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.topBar}>
-          <Pressable onPress={() => router.back()} style={styles.backButton} hitSlop={8}>
-            <Ionicons name="chevron-back" size={22} color={Brand.ink} />
-          </Pressable>
-          <Text testID="report-title" style={styles.topBarTitle}>Report a problem</Text>
-        </View>
+        <ScreenHeader title="Report a problem" titleTestID="report-title" />
 
         <View style={styles.warning}>
           <Ionicons name="alert-circle-outline" size={18} color="#7A2A1D" />
@@ -112,18 +108,6 @@ export default function ReportProblemScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: Brand.paper },
   content: { padding: 16 },
-  topBar: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
-  backButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: Brand.card,
-    borderWidth: 1,
-    borderColor: Brand.line,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  topBarTitle: { fontSize: 16, fontWeight: '700', color: Brand.ink, flex: 1 },
   warning: {
     flexDirection: 'row',
     gap: 10,

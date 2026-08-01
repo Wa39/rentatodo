@@ -1,10 +1,10 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MonthCalendar } from '@/components/month-calendar';
+import { ScreenHeader } from '@/components/screen-header';
 import { Brand } from '@/constants/brand';
 import { dataSource } from '@/data/data-source';
 import { CATEGORY_LABELS, errorMessage } from '@/data/labels';
@@ -103,12 +103,7 @@ export default function ItemDetailScreen() {
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.topBar}>
-          <Pressable onPress={() => router.back()} style={styles.backButton} hitSlop={8}>
-            <Ionicons name="chevron-back" size={22} color={Brand.ink} />
-          </Pressable>
-          <Text style={styles.topBarTitle}>Details</Text>
-        </View>
+        <ScreenHeader title="Details" />
 
         <View style={styles.hero}>
           <Text style={styles.heroInitial}>{item.name.charAt(0)}</Text>
@@ -201,18 +196,6 @@ export default function ItemDetailScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: Brand.paper },
   content: { padding: 16 },
-  topBar: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
-  backButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: Brand.card,
-    borderWidth: 1,
-    borderColor: Brand.line,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  topBarTitle: { fontSize: 16, fontWeight: '700', color: Brand.ink },
   hero: {
     height: 170,
     borderRadius: 16,

@@ -1,18 +1,10 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PhotoField } from '@/components/photo-field';
+import { ScreenHeader } from '@/components/screen-header';
 import { Brand } from '@/constants/brand';
 import { dataSource } from '@/data/data-source';
 import { errorMessage } from '@/data/labels';
@@ -61,14 +53,10 @@ export default function CheckScreen() {
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.topBar}>
-          <Pressable onPress={() => router.back()} style={styles.backButton} hitSlop={8}>
-            <Ionicons name="chevron-back" size={22} color={Brand.ink} />
-          </Pressable>
-          <Text testID="check-title" style={styles.topBarTitle}>
-            {isCheckIn ? 'Check-in · Receive item' : 'Check-out · Return item'}
-          </Text>
-        </View>
+        <ScreenHeader
+          title={isCheckIn ? 'Check-in · Receive item' : 'Check-out · Return item'}
+          titleTestID="check-title"
+        />
 
         <Text style={styles.explain}>
           {isCheckIn
@@ -124,18 +112,6 @@ export default function CheckScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: Brand.paper },
   content: { padding: 16 },
-  topBar: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
-  backButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: Brand.card,
-    borderWidth: 1,
-    borderColor: Brand.line,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  topBarTitle: { fontSize: 16, fontWeight: '700', color: Brand.ink, flex: 1 },
   explain: { fontSize: 12.5, color: Brand.muted, lineHeight: 18, marginTop: 4 },
   label: { fontSize: 12, fontWeight: '700', color: Brand.ink, marginTop: 16, marginBottom: 6 },
   notes: {

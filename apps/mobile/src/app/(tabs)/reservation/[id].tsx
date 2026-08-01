@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ScreenHeader } from '@/components/screen-header';
 import { StatusBadge } from '@/components/status-badge';
 import { Brand } from '@/constants/brand';
 import { dataSource } from '@/data/data-source';
@@ -81,12 +82,7 @@ export default function ReservationDetailScreen() {
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.topBar}>
-          <Pressable onPress={() => router.back()} style={styles.backButton} hitSlop={8}>
-            <Ionicons name="chevron-back" size={22} color={Brand.ink} />
-          </Pressable>
-          <Text testID="reservation-detail-title" style={styles.topBarTitle}>Reservation</Text>
-        </View>
+        <ScreenHeader title="Reservation" titleTestID="reservation-detail-title" />
 
         <View style={styles.header}>
           <View style={styles.thumb}>
@@ -249,18 +245,6 @@ export default function ReservationDetailScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: Brand.paper },
   content: { padding: 16 },
-  topBar: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
-  backButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: Brand.card,
-    borderWidth: 1,
-    borderColor: Brand.line,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  topBarTitle: { fontSize: 16, fontWeight: '700', color: Brand.ink },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
