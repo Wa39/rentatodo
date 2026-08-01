@@ -56,3 +56,22 @@ export function formatDateRange(start: string, end: string): string {
   const e = new Date(end + 'T00:00:00').toLocaleDateString('en-US', options);
   return s === e ? s : `${s} – ${e}`;
 }
+
+/** "7/24/2026" — short numeric date for a single ISO timestamp. */
+export function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-US');
+}
+
+/** "Jul 24, 2026" — medium date for a single ISO timestamp. */
+export function formatDateMedium(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-US', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
+/** "1 day" / "3 days". */
+export function pluralizeDays(n: number): string {
+  return `${n} ${n === 1 ? 'day' : 'days'}`;
+}

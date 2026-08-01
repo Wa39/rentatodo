@@ -43,33 +43,33 @@ export function MonthCalendar({
   const daysInMonth = new Date(year, month, 0).getDate();
   // Offset so the week starts on Monday.
   const offset = (new Date(year, month - 1, 1).getDay() + 6) % 7;
-
   const cells: (number | null)[] = [
     ...Array.from({ length: offset }, () => null),
     ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
   ];
   while (cells.length % 7 !== 0) cells.push(null);
 
+  const renderNav = (delta: -1 | 1, icon: 'chevron-back' | 'chevron-forward', label: string) =>
+    onNavigateMonth ? (
+      <Pressable
+        onPress={() => onNavigateMonth(delta)}
+        hitSlop={8}
+        style={styles.navButton}
+        accessibilityLabel={label}>
+        <Ionicons name={icon} size={16} color={Brand.ink} />
+      </Pressable>
+    ) : (
+      <View style={styles.navButton} />
+    );
+
   return (
     <View style={styles.cal}>
       <View style={styles.titleRow}>
-        {onNavigateMonth ? (
-          <Pressable onPress={() => onNavigateMonth(-1)} hitSlop={8} style={styles.navButton} accessibilityLabel="Previous month">
-            <Ionicons name="chevron-back" size={16} color={Brand.ink} />
-          </Pressable>
-        ) : (
-          <View style={styles.navButton} />
-        )}
+        {renderNav(-1, 'chevron-back', 'Previous month')}
         <Text style={styles.title}>
           {MONTHS[month - 1]} {year}
         </Text>
-        {onNavigateMonth ? (
-          <Pressable onPress={() => onNavigateMonth(1)} hitSlop={8} style={styles.navButton} accessibilityLabel="Next month">
-            <Ionicons name="chevron-forward" size={16} color={Brand.ink} />
-          </Pressable>
-        ) : (
-          <View style={styles.navButton} />
-        )}
+        {renderNav(1, 'chevron-forward', 'Next month')}
       </View>
       <View style={styles.row}>
         {WEEKDAYS.map((d, i) => (

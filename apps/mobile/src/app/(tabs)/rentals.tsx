@@ -90,7 +90,7 @@ export default function MyRentalsScreen() {
             <ListState
               loading={loading}
               error={error}
-              emptyText={`No ${tab === 'active' ? 'active' : 'past'} rentals.`}
+              emptyText={`No ${tab} rentals.`}
               onRetry={onRetry}
             />
           }

@@ -10,7 +10,13 @@ import { dataSource } from '@/data/data-source';
 import { DEPOSIT_LABELS, STATUS_META, TRANSACTION_META, errorMessage } from '@/data/labels';
 import { formatUSD, type Reservation, type Transaction } from '@/data/types';
 import { usePolling } from '@/hooks/use-polling';
-import { countDaysInclusive, formatDateRange } from '@/utils/dates';
+import {
+  countDaysInclusive,
+  formatDate,
+  formatDateMedium,
+  formatDateRange,
+  pluralizeDays,
+} from '@/utils/dates';
 
 /**
  * Reservation detail. The contract has no GET /reservations/{id}, so the
@@ -47,6 +53,14 @@ export default function ReservationDetailScreen() {
 
   const days = countDaysInclusive(reservation.start_date, reservation.end_date);
   const cancellable = reservation.status === 'requested' || reservation.status === 'approved';
+  // The single photo-evidence action depends on status: check-in from approved,
+  // check-out from delivered. Distinct testIDs are kept for the Maestro flows.
+  const checkAction =
+    reservation.status === 'approved'
+      ? { mode: 'in' as const, testID: 'reservation-checkin', label: 'I received the item (check-in)' }
+      : reservation.status === 'delivered'
+        ? { mode: 'out' as const, testID: 'reservation-checkout', label: 'Return the item (check-out)' }
+        : null;
 
   async function onCancel() {
     if (!reservation) return;
@@ -81,8 +95,8 @@ export default function ReservationDetailScreen() {
           <View style={styles.headerInfo}>
             <Text testID="reservation-item-name" style={styles.name}>{reservation.item_name}</Text>
             <Text style={styles.dates}>
-              {formatDateRange(reservation.start_date, reservation.end_date)} · {days}{' '}
-              {days === 1 ? 'day' : 'days'}
+              {formatDateRange(reservation.start_date, reservation.end_date)} ·{' '}
+              {pluralizeDays(days)}
             </Text>
           </View>
           <StatusBadge status={reservation.status} />
@@ -101,15 +115,11 @@ export default function ReservationDetailScreen() {
           </View>
           <View style={styles.rowLine}>
             <Text style={styles.label}>Requested</Text>
-            <Text style={styles.value}>
-              {new Date(reservation.created_at).toLocaleDateString('en-US')}
-            </Text>
+            <Text style={styles.value}>{formatDate(reservation.created_at)}</Text>
           </View>
           <View style={[styles.rowLine, styles.rowLast]}>
             <Text style={styles.label}>Last updated</Text>
-            <Text style={styles.value}>
-              {new Date(reservation.updated_at).toLocaleDateString('en-US')}
-            </Text>
+            <Text style={styles.value}>{formatDate(reservation.updated_at)}</Text>
           </View>
         </View>
 
@@ -129,13 +139,7 @@ export default function ReservationDetailScreen() {
                   />
                   <View style={styles.txInfo}>
                     <Text style={styles.txLabel}>{meta.label}</Text>
-                    <Text style={styles.txDate}>
-                      {new Date(t.created_at).toLocaleDateString('en-US', {
-                        day: 'numeric',
-                        month: 'short',
-                        year: 'numeric',
-                      })}
-                    </Text>
+                    <Text style={styles.txDate}>{formatDateMedium(t.created_at)}</Text>
                   </View>
                   <Text style={[styles.txAmount, { color: meta.color }]}>
                     {formatUSD(t.amount)}
@@ -158,27 +162,18 @@ export default function ReservationDetailScreen() {
 
         {error && <Text style={styles.error}>{error}</Text>}
 
-        {reservation.status === 'approved' && (
+        {checkAction && (
           <Pressable
-            testID="reservation-checkin"
+            testID={checkAction.testID}
             style={styles.primaryButton}
             onPress={() =>
-              router.push({ pathname: '/check/[id]', params: { id: reservation.id, mode: 'in' } })
+              router.push({
+                pathname: '/check/[id]',
+                params: { id: reservation.id, mode: checkAction.mode },
+              })
             }>
             <Ionicons name="camera-outline" size={18} color="#fff" />
-            <Text style={styles.primaryButtonText}>I received the item (check-in)</Text>
-          </Pressable>
-        )}
-
-        {reservation.status === 'delivered' && (
-          <Pressable
-            testID="reservation-checkout"
-            style={styles.primaryButton}
-            onPress={() =>
-              router.push({ pathname: '/check/[id]', params: { id: reservation.id, mode: 'out' } })
-            }>
-            <Ionicons name="camera-outline" size={18} color="#fff" />
-            <Text style={styles.primaryButtonText}>Return the item (check-out)</Text>
+            <Text style={styles.primaryButtonText}>{checkAction.label}</Text>
           </Pressable>
         )}
 

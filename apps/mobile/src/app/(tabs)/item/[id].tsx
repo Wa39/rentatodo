@@ -9,7 +9,13 @@ import { Brand } from '@/constants/brand';
 import { dataSource } from '@/data/data-source';
 import { CATEGORY_LABELS, errorMessage } from '@/data/labels';
 import { formatUSD, type ItemDetail } from '@/data/types';
-import { countDaysInclusive, expandRanges, rangeHasUnavailable, todayIso } from '@/utils/dates';
+import {
+  countDaysInclusive,
+  expandRanges,
+  pluralizeDays,
+  rangeHasUnavailable,
+  todayIso,
+} from '@/utils/dates';
 
 /**
  * Item detail + reservation request (POST /items/{item_id}/reservations).
@@ -157,7 +163,7 @@ export default function ItemDetailScreen() {
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Duration</Text>
               <Text style={styles.summaryValue}>
-                {days} {days === 1 ? 'day' : 'days'} × {formatUSD(item.price_per_day)}
+                {pluralizeDays(days)} × {formatUSD(item.price_per_day)}
               </Text>
             </View>
             <View style={[styles.summaryRow, styles.summaryTotal]}>
