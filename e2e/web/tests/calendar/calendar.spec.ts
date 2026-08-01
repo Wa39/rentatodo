@@ -48,10 +48,13 @@ test('calendar page shows item name, select dropdown, and legend when items exis
   // Item name appears as the section heading
   await expect(page.getByRole('heading', { name: 'Taladro Bosch Professional', level: 2 })).toBeVisible()
 
-  // Legend labels confirm the calendar grids rendered
-  await expect(page.getByText('Available')).toBeVisible()
-  await expect(page.getByText('Pending')).toBeVisible()
-  await expect(page.getByText('Reserved')).toBeVisible()
+  // Legend labels confirm the calendar grids rendered.
+  // Scope to the header row (h2's parent) — 'Pending' also appears as a status badge
+  // in the reservations list below, which would cause a strict-mode violation.
+  const legendRow = page.getByRole('heading', { name: 'Taladro Bosch Professional', level: 2 }).locator('xpath=..')
+  await expect(legendRow.getByText('Available')).toBeVisible()
+  await expect(legendRow.getByText('Pending')).toBeVisible()
+  await expect(legendRow.getByText('Reserved')).toBeVisible()
 })
 
 test('reservations list shows only the selected item reservations', async ({ page }) => {
