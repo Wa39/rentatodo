@@ -770,6 +770,51 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /items/{item_id}/reactivate:
+    patch:
+      tags: [Items]
+      summary: Reactivate a soft-deleted item (set is_active = true)
+      description: |
+        Only the owner can reactivate. Idempotent — reactivating an
+        already-active item just re-confirms the same state, same as
+        `DELETE /items/{item_id}`'s idempotent behavior on an
+        already-inactive item.
+      operationId: reactivateItem
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: item_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Item reactivated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItemResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Not the owner
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Item not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /users/me/items:
     get:
       tags: [Items]
