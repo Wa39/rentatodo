@@ -30,6 +30,7 @@ export default function ReservationDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [reservation, setReservation] = useState<Reservation | undefined>();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,12 +38,27 @@ export default function ReservationDetailScreen() {
   usePolling(
     useCallback(() => {
       if (!id) return;
-      dataSource.listReservations().then((all) => setReservation(all.find((r) => r.id === id)));
+      dataSource
+        .listReservations()
+        .then((all) => setReservation(all.find((r) => r.id === id)))
+        .catch(() => {})
+        .finally(() => setLoaded(true));
       // The deposit audit trail can change on the owner's side (release on
       // close) or ours (freeze on report), so refresh it on the same tick.
       dataSource.listTransactions(id).then(setTransactions).catch(() => setTransactions([]));
     }, [id]),
   );
+
+  // First load: show a spinner instead of flashing "not found" before the fetch resolves.
+  if (!loaded) {
+    return (
+      <SafeAreaView style={styles.screen} edges={['top']}>
+        <View style={styles.loadingBox}>
+          <ActivityIndicator color={Brand.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (!reservation) {
     return (
@@ -381,4 +397,5 @@ const styles = StyleSheet.create({
   confirmYesText: { fontSize: 13, fontWeight: '800', color: '#fff' },
   note: { fontSize: 10.5, color: Brand.muted, textAlign: 'center', marginTop: 14 },
   empty: { fontSize: 13, color: Brand.muted, padding: 24, textAlign: 'center' },
+  loadingBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 });
