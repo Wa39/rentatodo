@@ -21,7 +21,7 @@ export function ItemCard({ item }: { item: Item }) {
           <Text style={styles.name} numberOfLines={2}>
             {item.name}
           </Text>
-          <Text style={styles.price}>{formatUSD(item.price_per_day)} / día</Text>
+          <Text style={styles.price}>{formatUSD(item.price_per_day)} / day</Text>
           <Text style={styles.meta} numberOfLines={1}>
             {CATEGORY_LABELS[item.category]}
           </Text>

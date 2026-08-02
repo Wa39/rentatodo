@@ -1,3 +1,4 @@
+import { Link } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,20 +15,28 @@ type Sort = 'popular' | 'recent';
 
 /**
  * Home screen — per the approved mockup (docs/mock_flujo_arrendatario.html):
- * search, Popular/Recent toggle and "Mis solicitudes".
+ * search, Popular/Recent toggle and the requests list.
  * There is NO "near me" section nor zone search (out of scope).
  */
 export default function HomeScreen() {
   const [sort, setSort] = useState<Sort>('popular');
   const [query, setQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [items, setItems] = useState<Item[]>([]);
   const [itemsLoading, setItemsLoading] = useState(true);
   const [itemsError, setItemsError] = useState<string | null>(null);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Debounce the search box so typing a word is one request, not one per keystroke.
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(query), 300);
+    return () => clearTimeout(timer);
+  }, [query]);
+
   const loadItems = useCallback(() => {
-    const request = query.trim() === '' ? dataSource.listItems(sort) : dataSource.searchItems(query);
+    const term = debouncedQuery.trim();
+    const request = term === '' ? dataSource.listItems(sort) : dataSource.searchItems(term);
     return request
       .then((data) => {
         setItems(data);
@@ -35,7 +44,7 @@ export default function HomeScreen() {
       })
       .catch((e) => setItemsError(errorMessage(e)))
       .finally(() => setItemsLoading(false));
-  }, [sort, query]);
+  }, [sort, debouncedQuery]);
 
   useEffect(() => {
     loadItems();
@@ -79,7 +88,7 @@ export default function HomeScreen() {
             colors={[Brand.primary]}
           />
         }
-        ListEmptyComponent={<Text style={styles.sideEmpty}>Aún no tiene solicitudes.</Text>}
+        ListEmptyComponent={<Text style={styles.sideEmpty}>{"You don't have any requests yet."}</Text>}
         ListHeaderComponent={
           <View style={styles.content}>
             <Text testID="home-title" style={styles.title}>RentaTodo</Text>
@@ -87,7 +96,7 @@ export default function HomeScreen() {
             <TextInput
               testID="home-search"
               style={styles.search}
-              placeholder="Buscar artículos…"
+              placeholder="Search items…"
               placeholderTextColor={Brand.muted}
               value={query}
               onChangeText={setQuery}
@@ -101,7 +110,7 @@ export default function HomeScreen() {
                   onPress={() => setSort(s)}
                   style={[styles.segButton, sort === s && styles.segActive]}>
                   <Text style={[styles.segText, sort === s && styles.segTextActive]}>
-                    {s === 'popular' ? 'Populares' : 'Publicados recientemente'}
+                    {s === 'popular' ? 'Popular' : 'Recently listed'}
                   </Text>
                 </Pressable>
               ))}
@@ -119,7 +128,7 @@ export default function HomeScreen() {
                   loading={itemsLoading}
                   error={itemsError}
                   emptyText={
-                    query.trim() === '' ? 'No hay artículos.' : `Sin resultados para “${query}”.`
+                    query.trim() === '' ? 'No items.' : `No results for “${query}”.`
                   }
                   onRetry={onRetryItems}
                 />
@@ -127,8 +136,14 @@ export default function HomeScreen() {
             />
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Mis solicitudes</Text>
-              <Text style={styles.sectionLink}>Ver todas</Text>
+              <Text style={styles.sectionTitle}>My requests</Text>
+              <Link href="/rentals" asChild>
+                <Pressable hitSlop={8}>
+                  <Text testID="home-see-all" style={styles.sectionLink}>
+                    See all
+                  </Text>
+                </Pressable>
+              </Link>
             </View>
           </View>
         }

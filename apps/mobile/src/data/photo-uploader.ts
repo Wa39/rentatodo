@@ -55,7 +55,7 @@ function resolveContentType(photo: LocalPhoto): (typeof ALLOWED_TYPES)[number] {
   throw new ApiRequestError(
     422,
     'VALIDATION_ERROR',
-    'Formato de imagen no admitido. Use JPG, PNG o WEBP.',
+    'Unsupported image format. Use JPG, PNG or WEBP.',
   );
 }
 
@@ -84,7 +84,7 @@ class PresignedUrlUploader implements PhotoUploader {
     try {
       body = await (await fetch(photo.uri)).blob();
     } catch {
-      throw new ApiRequestError(0, 'NETWORK_ERROR', 'No se pudo leer la foto del dispositivo.');
+      throw new ApiRequestError(0, 'NETWORK_ERROR', 'Could not read the photo from the device.');
     }
 
     // 3. PUT it straight to S3. The signature carries the auth, so no bearer
@@ -97,14 +97,14 @@ class PresignedUrlUploader implements PhotoUploader {
         body,
       });
     } catch {
-      throw new ApiRequestError(0, 'NETWORK_ERROR', 'No se pudo subir la foto.');
+      throw new ApiRequestError(0, 'NETWORK_ERROR', 'Could not upload the photo.');
     }
     if (!response.ok) {
       // S3 answers with XML, not the contract's Error shape.
       throw new ApiRequestError(
         response.status,
         'NETWORK_ERROR',
-        'La subida de la foto falló. Intente de nuevo.',
+        'The photo upload failed. Please try again.',
       );
     }
 

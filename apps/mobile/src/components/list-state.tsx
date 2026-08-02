@@ -37,7 +37,7 @@ export function ListState({
         <Text style={styles.errorText}>{error}</Text>
         <Pressable style={styles.retry} onPress={onRetry} hitSlop={8}>
           <Ionicons name="refresh" size={15} color={Brand.primary} />
-          <Text style={styles.retryText}>Reintentar</Text>
+          <Text style={styles.retryText}>Retry</Text>
         </Pressable>
       </View>
     );
