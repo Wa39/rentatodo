@@ -9,11 +9,16 @@
 
 **Week:** 1 (Auth + Items), Week 2 (Reservations), and Weeks 3-4
 (Delivery + Reports) are all implemented — all 22 of `CLAUDE_BACKEND.md`'s
-endpoints exist in code. PR #49 merged 2026-07-23. One real gap has
-since surfaced (item reactivation — see below); no other backend
-endpoints left to build.
-**Last updated:** 2026-07-31 (end of session)
-**Current focus:** Wa relayed three teammate-blocker claims secondhand
+endpoints exist in code. PR #49 merged 2026-07-23. The one real gap that
+surfaced since (item reactivation) now has a merged contract (PR #77);
+implementing it in `apps/api` is the only work left — see "Next up".
+**Last updated:** 2026-08-01
+**Current focus:** `PR #77` (contract: `PATCH /items/{item_id}/reactivate`)
+and `PR #78` (this file's log entry for it) both merged to `develop`
+2026-08-01. Next: implement the endpoint in `apps/api`.
+
+Context from the session that opened PR #77 — Wa relayed three
+teammate-blocker claims secondhand
 ("Home-see-all blocked on PR #75", "Close reservation spec blocked on
 Trucy's endpoint", "Reactivate item spec blocked on Trucy's endpoint").
 Verified all three directly against `gh`/the contract/the code instead
@@ -33,8 +38,8 @@ of taking them at face value:
   `close`/`cancel`/etc pattern). Opened **PR #77** against `develop`,
   contract-only, requesting review from all three other codeowners
   (`j0sMedina`, `psced10-creator`, `Wa39`) per the `CODEOWNERS` rule
-  on `packages/contracts/`. No `apps/api` code changed yet —
-  implementation is a follow-up PR once #77 is approved.
+  on `packages/contracts/`. **Merged 2026-08-01.** No `apps/api` code
+  changed yet — implementation is the next piece of work.
 - **PR #75 (mobile "Ver todas" fix)**: not `apps/api`'s to fix, but
   diagnosed while verifying — it targets `main` instead of `develop`
   (hence showing 59 commits and all of `apps/api` as "changed" against
@@ -135,14 +140,17 @@ see Open questions.
 - [x] PR #41 (`feature/uploads-presign` → `develop`) — `POST /uploads/presign`, merged 2026-07-22.
 - [x] PR #45 (Wa) — Playwright e2e coverage for register + reservation-detail, bundled with 2 small `apps/api` fixes (`_get_reservation_or_404` row lock, `items.py` eager-load-owner fix). Merged 2026-07-23.
 - [x] `CheckEvidence`/`Report` models + migration, schemas (`CheckInOutRequest`, `CreateReportRequest`/`ReportResponse`, `TransactionResponse`, `EarningsResponse`), the `_assert_participant` helper, check-in/check-out, close (deposit release), report-a-problem (deposit freeze, two-layer duplicate guard), transaction history, and owner earnings — all 7 tasks of `docs/superpowers/plans/2026-07-21-weeks-3-4-delivery-reports-plan.md` implemented on `feature/weeks-3-4-delivery-reports`, TDD throughout, one commit per task. 193/193 tests passing, manually verified live (both the happy path and the report/freeze path) against real Postgres. Closes out all 22 of `CLAUDE_BACKEND.md`'s endpoints. Rebased onto `develop` post-PR #45, pushed, PR #49 opened.
+- [x] PR #49 (`feature/weeks-3-4-delivery-reports` → `develop`) — Weeks 3-4 (above), merged 2026-07-23.
+- [x] PR #77 (`feature/item-reactivate-contract` → `develop`, contract-only) — adds `PATCH /items/{item_id}/reactivate` (owner-only, idempotent, mirrors `DELETE /items/{item_id}`'s shape). Reviewed by all `CODEOWNERS`-required reviewers per the all-four-review rule on `packages/contracts/`. Merged 2026-08-01.
+- [x] PR #78 (`docs/roadmap-item-reactivate-2026-07-31` → `develop`) — logged PR #77 and the Wa status-check session in this file. Merged 2026-08-01.
 
 ## In progress
 
-- **PR #77** (`feature/item-reactivate-contract` → `develop`) open, contract-only (adds `PATCH /items/{item_id}/reactivate`), review requested from j0sMedina/psced10-creator/Wa39 — awaiting their feedback per the `CODEOWNERS` all-four-review rule on `packages/contracts/`.
+- Nothing in flight on the `apps/api` side right now.
 
 ## Next up (not started)
 
-- [ ] Once PR #77 is approved and merged: implement `PATCH /items/{item_id}/reactivate` in `apps/api` (schema field/service function/router wiring, TDD, mirrors `delete_item`'s shape) so Wa's Maestro "Reactivate item" spec is unblocked.
+- [ ] Implement `PATCH /items/{item_id}/reactivate` in `apps/api` (schema field/service function/router wiring, TDD, mirrors `delete_item`'s shape) — contract is merged (PR #77), so this is unblocked. Unblocks Wa's Maestro "Reactivate item" spec.
 - [ ] Otherwise nothing else on the `apps/api` side — all 22 `CLAUDE_BACKEND.md` endpoints exist. Next work here would only come from a teammate's integration surfacing a real backend gap (see Open questions for what's already flagged to Wa/Silverk).
 
 ## Decisions log
