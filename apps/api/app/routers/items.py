@@ -24,6 +24,7 @@ from app.services.items import (
     get_unavailable_dates,
     list_items,
     list_my_items,
+    reactivate_item,
     update_item,
 )
 
@@ -156,6 +157,26 @@ def delete_item_endpoint(
         The deactivated item's public representation.
     """
     item = delete_item(db, item_id=item_id, owner_id=current_user.id)
+    return ItemResponse.model_validate(item)
+
+
+@router.patch("/items/{item_id}/reactivate")
+def reactivate_item_endpoint(
+    item_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ItemResponse:
+    """Reactivate a soft-deleted item (is_active=True). Only the owner may reactivate.
+
+    Args:
+        item_id: The item's id.
+        current_user: Resolved by get_current_user — must be the item's owner.
+        db: Database session injected by FastAPI.
+
+    Returns:
+        The reactivated item's public representation.
+    """
+    item = reactivate_item(db, item_id=item_id, owner_id=current_user.id)
     return ItemResponse.model_validate(item)
 
 
