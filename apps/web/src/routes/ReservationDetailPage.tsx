@@ -14,7 +14,7 @@ import type { Transaction } from '@/lib/types'
 export function ReservationDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { token } = useAuth()
-  const { requests } = useRequests()
+  const { requests, closeRequest } = useRequests()
   const reservation = requests.find((r) => r.id === id)
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [transactionsError, setTransactionsError] = useState<string | null>(null)
@@ -23,6 +23,8 @@ export function ReservationDetailPage() {
   const [reportSubmitted, setReportSubmitted] = useState(false)
   const [reportError, setReportError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [closing, setClosing] = useState(false)
+  const [closeError, setCloseError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!token || !id) return
@@ -43,9 +45,26 @@ export function ReservationDetailPage() {
     return <p className="text-muted-foreground">Reservation not found.</p>
   }
 
-  function handleClose() {
-    // Phase 1: no real PATCH /reservations/{id}/close call yet.
-    window.alert('Reservation closed (placeholder — no API call yet).')
+  async function handleClose() {
+    if (!token || !id) return
+    setClosing(true)
+    setCloseError(null)
+    try {
+      await closeRequest(id)
+    } catch (err) {
+      setCloseError(getErrorMessage(err, 'Something went wrong. Please try again.'))
+      setClosing(false)
+      return
+    }
+    try {
+      const refreshed = await apiGetTransactions(token, id)
+      setTransactions(refreshed)
+      setTransactionsError(null)
+    } catch (err) {
+      setTransactionsError(getErrorMessage(err, "Couldn't refresh the deposit history. Try refreshing the page."))
+    } finally {
+      setClosing(false)
+    }
   }
 
   async function handleReportSubmit(event: FormEvent) {
@@ -79,9 +98,10 @@ export function ReservationDetailPage() {
         <p className="text-muted-foreground">
           {reservation.start_date} → {reservation.end_date} · {reservation.status}
         </p>
-        <Button className="mt-two" onClick={handleClose} disabled={reservation.status !== 'returned'}>
+        <Button className="mt-two" onClick={handleClose} disabled={reservation.status !== 'returned' || closing}>
           Close reservation
         </Button>
+        <AuthErrorBanner message={closeError} />
       </div>
 
       <div>

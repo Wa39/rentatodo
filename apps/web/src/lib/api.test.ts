@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   ApiError,
   apiApproveReservation,
+  apiCloseReservation,
   apiCreateItem,
   apiDeleteItem,
   apiGetEarnings,
@@ -401,6 +402,46 @@ describe('api', () => {
       vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ error: { code: 'FORBIDDEN', message: 'Not the item owner' } }, 403))
 
       await expect(apiRejectReservation('tok123', 'r1')).rejects.toMatchObject({ code: 'FORBIDDEN', message: 'Not the item owner' })
+    })
+  })
+
+  describe('apiCloseReservation', () => {
+    it('PATCHes /reservations/{id}/close with a Bearer token and resolves with the updated reservation', async () => {
+      const payload = {
+        id: 'r1',
+        item_id: 'i1',
+        item_name: 'Taladro Bosch Professional',
+        item_photo_url: 'https://example.com/p.jpg',
+        renter_id: 'u2',
+        renter_name: 'Jorge Salas',
+        start_date: '2026-07-18',
+        end_date: '2026-07-20',
+        status: 'closed',
+        deposit_amount: 2000,
+        deposit_status: 'released',
+        created_at: '2026-07-14T12:00:00Z',
+        updated_at: '2026-07-15T09:00:00Z',
+      }
+      vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(payload, 200))
+
+      const result = await apiCloseReservation('tok123', 'r1')
+
+      expect(result).toEqual(payload)
+      expect(fetch).toHaveBeenCalledWith(
+        'http://localhost:8000/reservations/r1/close',
+        expect.objectContaining({ method: 'PATCH', headers: expect.objectContaining({ Authorization: 'Bearer tok123' }) }),
+      )
+    })
+
+    it('throws ApiError with the code/message from a 409 response (active freeze)', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(
+        jsonResponse({ error: { code: 'FREEZE_ACTIVE', message: 'Cannot close: an active problem report exists' } }, 409),
+      )
+
+      await expect(apiCloseReservation('tok123', 'r1')).rejects.toMatchObject({
+        code: 'FREEZE_ACTIVE',
+        message: 'Cannot close: an active problem report exists',
+      })
     })
   })
 

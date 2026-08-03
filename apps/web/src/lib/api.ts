@@ -129,6 +129,10 @@ export function apiRejectReservation(token: string, id: string): Promise<Reserva
   return request(`/reservations/${id}/reject`, { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } })
 }
 
+export function apiCloseReservation(token: string, id: string): Promise<Reservation> {
+  return request(`/reservations/${id}/close`, { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } })
+}
+
 export function apiPresignUpload(token: string, filename: string, contentType: UploadContentType): Promise<PresignResponse> {
   return request('/uploads/presign', {
     method: 'POST',
