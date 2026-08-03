@@ -1,4 +1,4 @@
-import { test, expect } from '../fixtures'
+import { test, expect, MOCK_RETURNED_RESERVATION, ALL_MOCK_RESERVATIONS } from '../fixtures'
 
 // IDs match fixtures in ../fixtures.ts — RequestsContext uses the mocked GET /users/me/requests
 // route and transaction history comes from the mocked GET /reservations/*/transactions route.
@@ -47,6 +47,40 @@ test('close reservation button is enabled when status is returned', async ({ pag
   const closeBtn = page.getByRole('button', { name: 'Close reservation' })
   await expect(closeBtn).toBeVisible()
   await expect(closeBtn).toBeEnabled()
+})
+
+test('closing a returned reservation updates status to closed and disables the button', async ({ page }) => {
+  const closed = { ...MOCK_RETURNED_RESERVATION, status: 'closed', deposit_status: 'released' }
+  let didClose = false
+
+  await page.route(`**/reservations/${RETURNED_ID}/close`, (route) => {
+    didClose = true
+    route.fulfill({ json: closed })
+  })
+  // Override the fixture's default GET /users/me/requests to return the updated
+  // status after the PATCH fires. Playwright's LIFO route order means this handler
+  // takes priority over the fixture's catch-all for both the initial load and the
+  // refetch that RequestsContext does after closeRequest() resolves.
+  await page.route('**/users/me/requests?**', (route) =>
+    route.fulfill({
+      json: {
+        reservations: didClose
+          ? ALL_MOCK_RESERVATIONS.map((r) => (r.id === RETURNED_ID ? closed : r))
+          : [...ALL_MOCK_RESERVATIONS],
+        page: 1,
+        limit: 20,
+        total: ALL_MOCK_RESERVATIONS.length,
+      },
+    }),
+  )
+
+  await page.goto(`/reservations/${RETURNED_ID}`)
+  await expect(page.getByText('2026-06-20 → 2026-06-22 · returned')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Close reservation' }).click()
+
+  await expect(page.getByText('2026-06-20 → 2026-06-22 · closed')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Close reservation' })).toBeDisabled()
 })
 
 test('navigating to a non-existent reservation shows not-found message', async ({ page }) => {
