@@ -43,7 +43,7 @@ const RESERVATION = {
 }
 
 function Probe() {
-  const { requests, loading, error, approveRequest, rejectRequest } = useRequests()
+  const { requests, loading, error, approveRequest, rejectRequest, closeRequest } = useRequests()
   const { logout } = useAuth()
   return (
     <div>
@@ -59,6 +59,7 @@ function Probe() {
       </ul>
       <button onClick={() => approveRequest('r1').catch(() => {})}>approve</button>
       <button onClick={() => rejectRequest('r1').catch(() => {})}>reject</button>
+      <button onClick={() => closeRequest('r1').catch(() => {})}>close</button>
       <button onClick={logout}>logout</button>
     </div>
   )
@@ -232,6 +233,24 @@ describe('RequestsContext', () => {
     act(() => screen.getByText('reject').click())
 
     await waitFor(() => expect(screen.getByText('Jorge Salas · rejected')).toBeInTheDocument())
+  })
+
+  it('closeRequest PATCHes /close then refetches the list', async () => {
+    mockFetchRoutes({
+      '/users/me': [() => jsonResponse(PROFILE, 200)],
+      '/users/me/requests?page=1&limit=50': [
+        () => jsonResponse({ reservations: [RESERVATION], page: 1, limit: 50, total: 1 }, 200),
+        () => jsonResponse({ reservations: [{ ...RESERVATION, status: 'closed' }], page: 1, limit: 50, total: 1 }, 200),
+      ],
+      '/reservations/r1/close': [() => jsonResponse({ ...RESERVATION, status: 'closed' }, 200)],
+    })
+
+    renderWithToken()
+    await waitFor(() => expect(screen.getByTestId('count')).toHaveTextContent('1'))
+
+    act(() => screen.getByText('close').click())
+
+    await waitFor(() => expect(screen.getByText('Jorge Salas · closed')).toBeInTheDocument())
   })
 
   it('throws an ApiError (not a generic Error) when a mutation is attempted without a token', async () => {

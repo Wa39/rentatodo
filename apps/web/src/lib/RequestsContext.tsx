@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
-import { apiApproveReservation, apiListMyRequests, apiRejectReservation, ApiError, getErrorMessage } from './api'
+import { apiApproveReservation, apiCloseReservation, apiListMyRequests, apiRejectReservation, ApiError, getErrorMessage } from './api'
 import { useAuth } from './AuthContext'
 import { useTranslation } from './i18n'
 import type { Reservation } from './types'
@@ -10,6 +10,7 @@ interface RequestsContextValue {
   error: string | null
   approveRequest: (id: string) => Promise<void>
   rejectRequest: (id: string) => Promise<void>
+  closeRequest: (id: string) => Promise<void>
 }
 
 const RequestsContext = createContext<RequestsContextValue | undefined>(undefined)
@@ -73,7 +74,13 @@ export function RequestsProvider({ children }: { children: ReactNode }) {
     await refetch(token)
   }
 
-  const value: RequestsContextValue = { requests, loading, error, approveRequest, rejectRequest }
+  async function closeRequest(id: string) {
+    if (!token) throw new ApiError('UNAUTHENTICATED', 'Not authenticated')
+    await apiCloseReservation(token, id)
+    await refetch(token)
+  }
+
+  const value: RequestsContextValue = { requests, loading, error, approveRequest, rejectRequest, closeRequest }
   return <RequestsContext.Provider value={value}>{children}</RequestsContext.Provider>
 }
 
