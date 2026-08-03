@@ -189,4 +189,54 @@ describe('ReservationDetailPage', () => {
     await waitFor(() => expect(screen.getByText('Report submitted.')).toBeInTheDocument())
     await waitFor(() => expect(screen.getByText('Transactions server exploded')).toBeInTheDocument())
   })
+
+  it('closes the reservation via PATCH /reservations/{id}/close, refetches requests and transactions', async () => {
+    const user = userEvent.setup({ delay: null })
+    const RETURNED = { ...RESERVATION, status: 'returned' }
+    mockFetchRoutes({
+      '/users/me': [() => jsonResponse(PROFILE, 200)],
+      '/users/me/requests?page=1&limit=50': [
+        () => jsonResponse({ reservations: [RETURNED], page: 1, limit: 50, total: 1 }, 200),
+        () => jsonResponse({ reservations: [{ ...RETURNED, status: 'closed' }], page: 1, limit: 50, total: 1 }, 200),
+      ],
+      [`/reservations/${RESERVATION.id}/transactions`]: [
+        () => jsonResponse([TRANSACTION], 200),
+        () =>
+          jsonResponse(
+            [TRANSACTION, { id: 't2', reservation_id: RESERVATION.id, type: 'release', amount: 4500, created_at: '2026-07-28T10:00:00Z' }],
+            200,
+          ),
+      ],
+      [`/reservations/${RESERVATION.id}/close`]: [() => jsonResponse({ ...RETURNED, status: 'closed' }, 200)],
+    })
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText(TRANSACTION.type)).toBeInTheDocument())
+
+    await user.click(screen.getByRole('button', { name: 'Close reservation' }))
+
+    await waitFor(() => expect(screen.getByText(`${RESERVATION.start_date} → ${RESERVATION.end_date} · closed`)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('release')).toBeInTheDocument())
+  })
+
+  it('shows a close error and keeps the button enabled for retry when the close call fails', async () => {
+    const user = userEvent.setup({ delay: null })
+    const RETURNED = { ...RESERVATION, status: 'returned' }
+    mockFetchRoutes({
+      '/users/me': [() => jsonResponse(PROFILE, 200)],
+      '/users/me/requests?page=1&limit=50': [() => jsonResponse({ reservations: [RETURNED], page: 1, limit: 50, total: 1 }, 200)],
+      [`/reservations/${RESERVATION.id}/transactions`]: [() => jsonResponse([TRANSACTION], 200)],
+      [`/reservations/${RESERVATION.id}/close`]: [
+        () => jsonResponse({ error: { code: 'FREEZE_ACTIVE', message: 'Cannot close: an active problem report exists' } }, 409),
+      ],
+    })
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText(TRANSACTION.type)).toBeInTheDocument())
+
+    await user.click(screen.getByRole('button', { name: 'Close reservation' }))
+
+    await waitFor(() => expect(screen.getByText('Cannot close: an active problem report exists')).toBeInTheDocument())
+    expect(screen.getByRole('button', { name: 'Close reservation' })).not.toBeDisabled()
+  })
 })
