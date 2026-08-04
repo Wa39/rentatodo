@@ -12,14 +12,15 @@ test('register form renders with all fields and a sign-in link', async ({ page }
   await expect(page.getByRole('heading', { name: 'Create account' })).toBeVisible()
   await expect(page.getByLabel('Name')).toBeVisible()
   await expect(page.getByLabel('Email')).toBeVisible()
-  await expect(page.getByLabel('Password')).toBeVisible()
+  await expect(page.getByLabel('Password', { exact: true })).toBeVisible()
+  await expect(page.getByLabel('Confirm password')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Create account' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Sign in' })).toBeVisible()
 })
 
 test('password shorter than 8 characters shows inline validation error', async ({ page }) => {
   await page.goto('/register')
-  await page.getByLabel('Password').fill('short')
+  await page.getByLabel('Password', { exact: true }).fill('short')
   await expect(page.getByText('Password must be at least 8 characters.')).toBeVisible()
 })
 
@@ -33,7 +34,8 @@ test('happy-path registration redirects to /dashboard', async ({ page }) => {
   await page.goto('/register')
   await page.getByLabel('Name').fill('Test User')
   await page.getByLabel('Email').fill('test@example.com')
-  await page.getByLabel('Password').fill('Rentatodo2026!')
+  await page.getByLabel('Password', { exact: true }).fill('Rentatodo2026!')
+  await page.getByLabel('Confirm password').fill('Rentatodo2026!')
   await page.getByRole('button', { name: 'Create account' }).click()
   await page.waitForURL('/dashboard')
   await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible()
