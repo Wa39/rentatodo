@@ -80,6 +80,57 @@ test('cancel in the delete dialog dismisses without deleting', async ({ page }) 
   await expect(card.getByRole('button', { name: 'Delete' })).toBeVisible()
 })
 
+// Inactive item used by the reactivate specs.
+const MOCK_INACTIVE_ITEM = {
+  id: 'f2f2f2f2-f2f2-4f2f-8f2f-f2f2f2f2f2f2',
+  name: 'Canon EOS Mirrorless',
+  description: 'A mirrorless camera for professional use.',
+  category: 'photography',
+  price_per_day: 2500,
+  photo_url: 'https://storage.example.com/photos/camera.jpg',
+  is_active: false,
+  owner_id: MOCK_USER.id,
+  owner_name: MOCK_USER.name,
+  created_at: '2026-01-01T00:00:00Z',
+} as const
+
+test('inactive item card shows Reactivate button instead of Edit and Delete', async ({ page }) => {
+  await page.route('**/users/me/items', (route) =>
+    route.fulfill({ json: [MOCK_INACTIVE_ITEM] })
+  )
+  await page.goto('/items')
+  const card = page.getByTestId(`item-card-${MOCK_INACTIVE_ITEM.id}`)
+  await expect(card.getByRole('button', { name: 'Reactivate' })).toBeVisible()
+  await expect(card.getByRole('button', { name: 'Edit' })).not.toBeVisible()
+  await expect(card.getByRole('button', { name: 'Delete' })).not.toBeVisible()
+})
+
+test('confirming reactivate calls PATCH /items/{id}/reactivate and item becomes active', async ({ page }) => {
+  const active = { ...MOCK_INACTIVE_ITEM, is_active: true }
+  let didReactivate = false
+
+  await page.route(`**/items/${MOCK_INACTIVE_ITEM.id}/reactivate`, (route) => {
+    didReactivate = true
+    route.fulfill({ json: active })
+  })
+  await page.route('**/users/me/items', (route) =>
+    route.fulfill({ json: [didReactivate ? active : MOCK_INACTIVE_ITEM] })
+  )
+
+  await page.goto('/items')
+  const card = page.getByTestId(`item-card-${MOCK_INACTIVE_ITEM.id}`)
+  await card.getByRole('button', { name: 'Reactivate' }).click()
+
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toBeVisible()
+  await expect(dialog.getByText('Reactivate this item?')).toBeVisible()
+  await dialog.getByRole('button', { name: 'Reactivate item' }).click()
+
+  await expect(dialog).not.toBeVisible()
+  await expect(card.getByRole('button', { name: 'Edit' })).toBeVisible()
+  await expect(card.getByRole('button', { name: 'Reactivate' })).not.toBeVisible()
+})
+
 test('confirming delete calls DELETE /items/{id} and removes the item', async ({ page }) => {
   let deleted = false
   await page.route('**/users/me/items', (route) =>
