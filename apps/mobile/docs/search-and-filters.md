@@ -35,7 +35,7 @@ GET /items?category=tools&q=drill&min_price=1000&max_price=3000&page=1&limit=20
 
 - Searches in **`name` AND `description`**
 - **Case-insensitive** ("Drill" = "drill")
-- **Accent-insensitive** ("camara" matches "cámara")
+- **Accent-insensitive** (a query typed without accents still matches accented names)
 - **Partial match** ("dri" matches "drill")
 - Combined with the other filters (AND)
 
