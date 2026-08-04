@@ -53,5 +53,9 @@ venv/
 # Superpowers subagent-driven-development scratch state
 .superpowers/
 
+# AI internal planning/spec docs — not meant for the repo
+docs/superpowers/plans/
+docs/superpowers/specs/
+
 # Git worktrees
 .worktrees/
