@@ -43,18 +43,20 @@ items: {
     title: 'Reactivate this item?',
     description: (name: string) => `"${name}" will become visible in public search again.`,
     cancel: 'Cancel',
-    confirm: 'Reactivate',
+    confirm: 'Reactivate item',
     reactivating: 'Reactivating…',
   },
 },
 ```
+
+Note: `reactivateDialog.confirm` is "Reactivate item," not "Reactivate" — the `ItemCard`'s own button is already labeled "Reactivate," and once the dialog is open both buttons are in the DOM simultaneously. A matching label would be ambiguous for both screen readers and `getByRole('button', { name: 'Reactivate' })` in tests. Same reasoning applies to the delete dialog below.
 
 **Delete dialog copy fix** — the existing copy claims deletion is permanent and irreversible, which becomes false once Reactivate ships:
 
 | | Before | After |
 |---|---|---|
 | Description | `Deleting "X" is **permanent**. It will disappear from public search and **there is no way to bring it back** — to offer it again later, you'll need to publish it as a new item.` | `Deleting "X" will **hide it from public search**. You can **reactivate it later** from this page if you change your mind.` |
-| Confirm button | `Delete permanently` | `Delete` |
+| Confirm button | `Delete permanently` | `Delete item` (not "Delete" — the card's own Delete button is already labeled "Delete" and is visible at the same time the dialog is open) |
 
 `deleteDialog.title` ("Delete this item?") and `deleteDialog.deleting` ("Deleting…") are unchanged.
 
