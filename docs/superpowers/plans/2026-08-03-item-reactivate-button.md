@@ -572,11 +572,12 @@ gh pr create --base develop --title "feat(web): add reactivate button for delete
 - New layers mirror the existing Delete flow: `apiReactivateItem` (api.ts) → `reactivateItem` (ItemsContext) → confirmation dialog + handlers (ItemsPage) → button (ItemCard).
 - Fixes the delete-confirmation dialog copy, which previously claimed deletion was permanent and irreversible — no longer true now that Reactivate exists.
 - Client-side only — no backend, contract, or mobile changes; the endpoint already exists and is fully tested server-side.
+- Also fixes one line in `e2e/web/tests/items/items.spec.ts` (owned by Wa per CODEOWNERS) — its `'Delete permanently'` button-label assertion broke due to the delete-dialog copy fix above. This is a stale-assertion fix, not new e2e coverage; @Wa39 will be requested as reviewer for that file per CODEOWNERS.
 
 ## Test plan
 - New tests: 2 in `api.test.ts` (happy path, 404), 1 in `ItemsContext.test.tsx` (PATCH + refetch), 2 in `ItemCard.test.tsx` (renders for inactive items, click handler), 2 in `ItemsPage.test.tsx` (happy path, cancelled confirmation). 1 existing `ItemsPage.test.tsx` test updated for the delete dialog's new confirm-button copy.
 - Full `apps/web` suite green, `tsc -b` clean.
-- Manually verified in the browser: reactivate button appears only on inactive items, confirmation dialog works, cancel leaves state unchanged, confirm reactivates and refetches, delete dialog copy reads correctly.
+- Verified against the real API + Postgres (not mocks): created an item, deleted it (confirmed `is_active: false`), reactivated it via the actual `PATCH /items/{id}/reactivate` endpoint (confirmed `is_active: true`), cleaned up. This confirms the backend contract the frontend code assumes is correct. A literal browser click-through was not performed this session (no browser tool available) — that gap is closed by the RTL component/integration tests (227/227 passing) covering render and click behavior against real DOM, but is worth a manual spot-check before merge if a browser is available.
 EOF
 )"
 ```

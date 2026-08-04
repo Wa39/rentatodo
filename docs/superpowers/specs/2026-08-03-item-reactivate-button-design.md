@@ -73,8 +73,10 @@ No new error class. Mirrors the delete dialog: API failure sets `reactivateError
 Scope: `apps/web` unit/component tests only. `e2e/` is Wa's ownership area per `CLAUDE.md`; a Playwright spec for this flow is left for a follow-up PR there (matches this repo's existing convention — PR #65 added the delete-confirmation feature, PR #66 added its e2e spec as a separate, later PR by Wa).
 
 - **`ItemCard.test.tsx`**: the existing test `'shows no action buttons for an inactive item'` currently asserts `queryByRole('button', { name: 'Reactivate' })` is absent — flip this assertion to present, since that's exactly the button this work adds. Add a new test calling `onReactivate` when the button is clicked, mirroring the existing `onEdit`/`onDelete` click test.
-- **`ItemsPage.test.tsx`**: add two tests mirroring the existing delete tests — reactivates an item after confirmation and refetches the list; does not call the API when the reactivate confirmation is dismissed. Update the existing delete test's button-name assertion from `'Delete permanently'` to `'Delete'` (copy change above).
+- **`ItemsPage.test.tsx`**: add two tests mirroring the existing delete tests — reactivates an item after confirmation and refetches the list; does not call the API when the reactivate confirmation is dismissed. Update the existing delete test's button-name assertion from `'Delete permanently'` to `'Delete item'` (copy change above).
 - **`ItemsContext.test.tsx`**: add a `reactivateItem` success-path test mirroring the existing `deleteItem` test.
+
+Note for the follow-up e2e spec: Playwright's `getByRole(role, { name })` matching is a case-insensitive substring by default (unlike React Testing Library's exact match), so `page.getByRole('button', { name: 'Reactivate' })` would ambiguously match both the card's "Reactivate" button and the dialog's "Reactivate item" button. Scope the card-level query to the item's card locator, or pass `{ exact: true }` where a page-level query is unavoidable.
 
 ## Scope
 
