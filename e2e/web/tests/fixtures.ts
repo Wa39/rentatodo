@@ -6,7 +6,7 @@ export const TEST_CREDENTIALS = {
 } as const
 
 export const MOCK_USER = {
-  id: '1',
+  id: '11111111-1111-4111-8111-111111111111',
   name: 'Ana Dueña',
   email: TEST_CREDENTIALS.email,
   created_at: '2024-01-01T00:00:00Z',
