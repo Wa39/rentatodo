@@ -24,6 +24,16 @@ test('password shorter than 8 characters shows inline validation error', async (
   await expect(page.getByText('Password must be at least 8 characters.')).toBeVisible()
 })
 
+test('mismatched confirm-password shows inline error and blocks submit', async ({ page }) => {
+  await page.goto('/register')
+  await page.getByLabel('Password', { exact: true }).fill('Rentatodo2026!')
+  await page.getByLabel('Confirm password').fill('OtherPassword!')
+  await expect(page.getByText('Passwords do not match.')).toBeVisible()
+  await page.getByRole('button', { name: 'Create account' }).click()
+  // Submit is blocked — still on /register, no navigation occurred.
+  await expect(page).toHaveURL('/register')
+})
+
 test('happy-path registration redirects to /dashboard', async ({ page }) => {
   // POST /auth/register is not yet mocked globally — add it only for this test.
   // POST /auth/login is already mocked in fixtures.ts and handles the auto-login
