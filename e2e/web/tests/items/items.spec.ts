@@ -93,7 +93,7 @@ test('confirming delete calls DELETE /items/{id} and removes the item', async ({
   const card = page.getByTestId(`item-card-${MOCK_ITEM.id}`)
   await card.getByRole('button', { name: 'Delete' }).click()
   await expect(page.getByRole('dialog')).toBeVisible()
-  await page.getByRole('button', { name: 'Delete permanently' }).click()
+  await page.getByRole('button', { name: 'Delete item' }).click()
   await expect(page.getByRole('dialog')).not.toBeVisible()
   await expect(card).not.toBeVisible()
 })
