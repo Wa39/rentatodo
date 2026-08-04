@@ -12,6 +12,7 @@ import {
   apiListMyRequests,
   apiLogin,
   apiPresignUpload,
+  apiReactivateItem,
   apiRegister,
   apiRejectReservation,
   apiReportProblem,
@@ -285,6 +286,38 @@ describe('api', () => {
       vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ error: { code: 'NOT_FOUND', message: 'Item not found' } }, 404))
 
       await expect(apiDeleteItem('tok123', 'missing')).rejects.toMatchObject({ code: 'NOT_FOUND', message: 'Item not found' })
+    })
+  })
+
+  describe('apiReactivateItem', () => {
+    it('PATCHes /items/{id}/reactivate with a Bearer token and resolves with the reactivated item', async () => {
+      const payload = {
+        id: 'i1',
+        name: 'Taladro Bosch Professional',
+        description: 'desc',
+        category: 'tools',
+        price_per_day: 5000,
+        photo_url: 'https://example.com/p.jpg',
+        is_active: true,
+        owner_id: 'u1',
+        owner_name: 'María Vargas',
+        created_at: '2026-01-01T00:00:00Z',
+      }
+      vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(payload, 200))
+
+      const result = await apiReactivateItem('tok123', 'i1')
+
+      expect(result).toEqual(payload)
+      expect(fetch).toHaveBeenCalledWith(
+        'http://localhost:8000/items/i1/reactivate',
+        expect.objectContaining({ method: 'PATCH', headers: expect.objectContaining({ Authorization: 'Bearer tok123' }) }),
+      )
+    })
+
+    it('throws ApiError with the code/message from a 404 response', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ error: { code: 'NOT_FOUND', message: 'Item not found' } }, 404))
+
+      await expect(apiReactivateItem('tok123', 'missing')).rejects.toMatchObject({ code: 'NOT_FOUND', message: 'Item not found' })
     })
   })
 
