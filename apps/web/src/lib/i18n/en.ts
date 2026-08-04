@@ -70,6 +70,7 @@ export const en = {
     edit: 'Edit',
     calendar: 'Calendar',
     delete: 'Delete',
+    reactivate: 'Reactivate',
     perDay: '/day',
   },
   categories: {

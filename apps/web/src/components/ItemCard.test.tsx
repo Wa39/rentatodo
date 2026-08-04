@@ -75,13 +75,13 @@ describe('ItemCard', () => {
     expect(onDelete).toHaveBeenCalledWith(item)
   })
 
-  it('shows no action buttons for an inactive item', () => {
+  it('shows only the Reactivate button for an inactive item', () => {
     const item = mockItems.find((i) => !i.is_active)!
     render(
       <AuthProvider>
         <RequestsProvider>
           <MemoryRouter>
-            <ItemCard item={item} onEdit={vi.fn()} onDelete={vi.fn()} />
+            <ItemCard item={item} onEdit={vi.fn()} onDelete={vi.fn()} onReactivate={vi.fn()} />
           </MemoryRouter>
         </RequestsProvider>
       </AuthProvider>,
@@ -90,7 +90,24 @@ describe('ItemCard', () => {
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Calendar' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Reactivate' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Reactivate' })).toBeInTheDocument()
+  })
+
+  it('calls onReactivate when the Reactivate button is clicked', async () => {
+    const user = userEvent.setup()
+    const onReactivate = vi.fn()
+    const item = mockItems.find((i) => !i.is_active)!
+    render(
+      <AuthProvider>
+        <RequestsProvider>
+          <MemoryRouter>
+            <ItemCard item={item} onReactivate={onReactivate} />
+          </MemoryRouter>
+        </RequestsProvider>
+      </AuthProvider>,
+    )
+    await user.click(screen.getByRole('button', { name: 'Reactivate' }))
+    expect(onReactivate).toHaveBeenCalledWith(item)
   })
 
   it('hides all action buttons when readOnly', () => {
