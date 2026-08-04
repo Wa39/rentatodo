@@ -117,6 +117,10 @@ export function apiDeleteItem(token: string, id: string): Promise<Item> {
   return request(`/items/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
 }
 
+export function apiReactivateItem(token: string, id: string): Promise<Item> {
+  return request(`/items/${id}/reactivate`, { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } })
+}
+
 export function apiListMyRequests(token: string): Promise<ReservationListResponse> {
   return request('/users/me/requests?page=1&limit=50', { method: 'GET', headers: { Authorization: `Bearer ${token}` } })
 }
