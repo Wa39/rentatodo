@@ -20,7 +20,7 @@ const BLANK_FORM = { name: '', description: '', category: CATEGORIES[0], priceDo
 
 export function ItemsPage() {
   const t = useTranslation()
-  const { items, loading, error, updateItem, deleteItem } = useItems()
+  const { items, loading, error, updateItem, deleteItem, reactivateItem } = useItems()
   const [open, setOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(BLANK_FORM)
@@ -32,6 +32,9 @@ export function ItemsPage() {
   const [deleteTarget, setDeleteTarget] = useState<Item | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [reactivateTarget, setReactivateTarget] = useState<Item | null>(null)
+  const [reactivating, setReactivating] = useState(false)
+  const [reactivateError, setReactivateError] = useState<string | null>(null)
 
   const activeCount = items.filter((i) => i.is_active).length
   const inactiveCount = items.length - activeCount
@@ -96,6 +99,25 @@ export function ItemsPage() {
       setDeleteError(getErrorMessage(err, t.errors.network))
     } finally {
       setDeleting(false)
+    }
+  }
+
+  function handleReactivate(item: Item) {
+    setReactivateError(null)
+    setReactivateTarget(item)
+  }
+
+  async function confirmReactivate() {
+    if (!reactivateTarget) return
+    setReactivating(true)
+    setReactivateError(null)
+    try {
+      await reactivateItem(reactivateTarget.id)
+      setReactivateTarget(null)
+    } catch (err) {
+      setReactivateError(getErrorMessage(err, t.errors.network))
+    } finally {
+      setReactivating(false)
     }
   }
 
@@ -210,12 +232,32 @@ export function ItemsPage() {
           </DialogContent>
         </Dialog>
 
+        <Dialog open={reactivateTarget !== null} onOpenChange={(next) => { if (!reactivating && !next) setReactivateTarget(null) }}>
+          <DialogContent className="max-w-md gap-5 p-7">
+            <DialogHeader>
+              <DialogTitle className="text-xl">{t.items.reactivateDialog.title}</DialogTitle>
+              <DialogDescription className="text-base leading-relaxed text-foreground/90">
+                {reactivateTarget && t.items.reactivateDialog.description(reactivateTarget.name)}
+              </DialogDescription>
+            </DialogHeader>
+            <AuthErrorBanner message={reactivateError} />
+            <DialogFooter className="sm:justify-center sm:space-x-3">
+              <Button type="button" disabled={reactivating} onClick={confirmReactivate}>
+                {reactivating ? t.items.reactivateDialog.reactivating : t.items.reactivateDialog.confirm}
+              </Button>
+              <Button type="button" variant="outline" disabled={reactivating} onClick={() => setReactivateTarget(null)}>
+                {t.items.reactivateDialog.cancel}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {loading ? (
           <p className="text-sm text-muted-foreground">{t.items.loading}</p>
         ) : (
           <div className="grid grid-cols-4 gap-three">
             {filteredItems.map((item) => (
-              <ItemCard key={item.id} item={item} onEdit={openEditDialog} onDelete={handleDelete} />
+              <ItemCard key={item.id} item={item} onEdit={openEditDialog} onDelete={handleDelete} onReactivate={handleReactivate} />
             ))}
           </div>
         )}
