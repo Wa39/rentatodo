@@ -1,0 +1,6 @@
+# Copy to terraform.tfvars and fill in values. terraform.tfvars is gitignored.
+
+github_repo = "Wa39/rentatodo"
+
+# After the first `terraform apply`, replace * with your EC2 Elastic IP.
+# cors_origins = "http://<elastic-ip>:8000"
