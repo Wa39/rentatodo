@@ -343,7 +343,16 @@ def seed() -> None:
             print("Items already seeded.")
 
         # ── Reservations ────────────────────────────────────────────────────
-        if session.query(Reservation).count() > 0:
+        # Check for the fixed UUIDs specifically — not a generic count().
+        # A generic count() would skip seeding whenever *any* reservation
+        # exists (e.g., a developer's test data), silently leaving the
+        # fixture rows absent.
+        already_seeded = session.scalar(
+            select(Reservation.id)
+            .where(Reservation.id.in_(_RESERVATION_IDS.values()))
+            .limit(1)
+        )
+        if already_seeded is not None:
             print("Reservations already seeded.")
             session.commit()
             return
