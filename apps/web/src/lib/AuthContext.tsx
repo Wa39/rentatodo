@@ -86,7 +86,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
       .catch((err) => {
         if (tokenRef.current !== mountToken) return
-        if (err instanceof ApiError) logout()
+        if (err instanceof ApiError) {
+          logout()
+        } else {
+          // Not an API-level rejection (e.g. a network error or a JSON parse
+          // failure) — the token may still be valid, so the session is kept
+          // intact rather than logging out. Still surface it: silently
+          // swallowing it would leave `user === null` with a token set and
+          // no trace of why.
+          console.error('[AuthContext] unexpected error loading profile:', err)
+        }
       })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
