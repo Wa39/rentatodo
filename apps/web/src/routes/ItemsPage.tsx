@@ -5,6 +5,7 @@ import { ItemCard } from '@/components/ItemCard'
 import { AuthErrorBanner } from '@/components/AuthErrorBanner'
 import { useItems } from '@/lib/ItemsContext'
 import { getErrorMessage } from '@/lib/api'
+import { dollarsToCentavos } from '@/lib/format'
 import type { Category, Item } from '@/lib/types'
 import { useTranslation } from '@/lib/i18n'
 import { useAuth } from '@/lib/AuthContext'
@@ -65,7 +66,7 @@ export function ItemsPage() {
     setDialogSubmitting(true)
     setDialogError(null)
     try {
-      const priceCentavos = Math.round(Number(form.priceDollars) * 100)
+      const priceCentavos = dollarsToCentavos(form.priceDollars)
       await updateItem(editingId, {
         name: form.name,
         description: form.description,
