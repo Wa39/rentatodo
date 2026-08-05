@@ -361,6 +361,19 @@ describe('api', () => {
 
       await expect(apiListMyRequests('bad-token')).rejects.toBeInstanceOf(ApiError)
     })
+
+    it('GETs a later page when a page number is passed, so owners with >50 requests can see the rest', async () => {
+      const payload = { reservations: [], page: 2, limit: 50, total: 51 }
+      vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(payload, 200))
+
+      const result = await apiListMyRequests('tok123', 2)
+
+      expect(result).toEqual(payload)
+      expect(fetch).toHaveBeenCalledWith(
+        'http://localhost:8000/users/me/requests?page=2&limit=50',
+        expect.objectContaining({ method: 'GET', headers: expect.objectContaining({ Authorization: 'Bearer tok123' }) }),
+      )
+    })
   })
 
   describe('apiApproveReservation', () => {

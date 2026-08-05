@@ -8,6 +8,9 @@ interface RequestsContextValue {
   requests: Reservation[]
   loading: boolean
   error: string | null
+  hasMore: boolean
+  loadingMore: boolean
+  loadMore: () => Promise<void>
   approveRequest: (id: string) => Promise<void>
   rejectRequest: (id: string) => Promise<void>
   closeRequest: (id: string) => Promise<void>
@@ -19,13 +22,15 @@ export function RequestsProvider({ children }: { children: ReactNode }) {
   const { token } = useAuth()
   const t = useTranslation()
   const [requests, setRequests] = useState<Reservation[]>([])
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  // Tracks the token that is currently "live". Every refetch() call checks
-  // this ref before applying its result, so a response for a token that is
-  // no longer current (e.g. the user logged out or logged in as someone
-  // else while the request was in flight) is discarded — regardless of
-  // whether refetch() was triggered by the mount effect or by a mutation.
+  // Tracks the token that is currently "live". Every refetch()/loadMore()
+  // call checks this ref before applying its result, so a response for a
+  // token that is no longer current (e.g. the user logged out or logged in
+  // as someone else while the request was in flight) is discarded.
   const tokenRef = useRef(token)
 
   useEffect(() => {
@@ -36,9 +41,11 @@ export function RequestsProvider({ children }: { children: ReactNode }) {
     setLoading(true)
     setError(null)
     try {
-      const fetched = await apiListMyRequests(currentToken)
+      const fetched = await apiListMyRequests(currentToken, 1)
       if (tokenRef.current !== currentToken) return
       setRequests(fetched.reservations)
+      setTotal(fetched.total)
+      setPage(1)
     } catch (err) {
       if (tokenRef.current === currentToken) {
         setError(getErrorMessage(err, t.requests.loadError))
@@ -52,6 +59,8 @@ export function RequestsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!token) {
       setRequests([])
+      setTotal(0)
+      setPage(1)
       setLoading(false)
       return
     }
@@ -61,6 +70,30 @@ export function RequestsProvider({ children }: { children: ReactNode }) {
     refetch(token).catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token])
+
+  const hasMore = requests.length < total
+
+  // Owners with more requests than fit on one page (the API caps `limit` at
+  // 50) used to have no way to see anything past the first page. This fetches
+  // the next page and appends it instead of hardcoding a single fixed-size GET.
+  async function loadMore() {
+    if (!token || loadingMore || loading || !hasMore) return
+    const currentToken = token
+    const nextPage = page + 1
+    setLoadingMore(true)
+    try {
+      const fetched = await apiListMyRequests(currentToken, nextPage)
+      if (tokenRef.current !== currentToken) return
+      setRequests((prev) => [...prev, ...fetched.reservations])
+      setTotal(fetched.total)
+      setPage(nextPage)
+    } catch (err) {
+      if (tokenRef.current === currentToken) setError(getErrorMessage(err, t.requests.loadError))
+      throw err
+    } finally {
+      if (tokenRef.current === currentToken) setLoadingMore(false)
+    }
+  }
 
   async function approveRequest(id: string) {
     if (!token) throw new ApiError('UNAUTHENTICATED', 'Not authenticated')
@@ -80,7 +113,17 @@ export function RequestsProvider({ children }: { children: ReactNode }) {
     await refetch(token)
   }
 
-  const value: RequestsContextValue = { requests, loading, error, approveRequest, rejectRequest, closeRequest }
+  const value: RequestsContextValue = {
+    requests,
+    loading,
+    error,
+    hasMore,
+    loadingMore,
+    loadMore,
+    approveRequest,
+    rejectRequest,
+    closeRequest,
+  }
   return <RequestsContext.Provider value={value}>{children}</RequestsContext.Provider>
 }
 

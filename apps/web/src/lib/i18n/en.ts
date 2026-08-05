@@ -139,6 +139,8 @@ export const en = {
     approve: 'Approve',
     loading: 'Loading your requests…',
     loadError: "Couldn't load your requests. Try refreshing the page.",
+    loadMore: 'Load more',
+    loadingMore: 'Loading more…',
   },
   earnings: {
     title: 'Earnings',
