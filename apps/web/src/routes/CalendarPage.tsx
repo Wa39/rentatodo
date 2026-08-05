@@ -12,7 +12,7 @@ import { useTranslation } from '@/lib/i18n'
 export function CalendarPage() {
   const t = useTranslation()
   const { items, loading, error } = useItems()
-  const { requests } = useRequests()
+  const { requests, error: requestsError } = useRequests()
   const [searchParams, setSearchParams] = useSearchParams()
   const requestedId = searchParams.get('item')
   const selectedItem = items.length === 0 ? undefined : requestedId ? items.find((i) => i.id === requestedId) : items[0]
@@ -49,6 +49,17 @@ export function CalendarPage() {
         <PageHeader title={t.calendar.title} subtitle={t.calendar.subtitle} />
         <div className="p-four">
           <AuthErrorBanner message={error} />
+        </div>
+      </div>
+    )
+  }
+
+  if (requestsError) {
+    return (
+      <div>
+        <PageHeader title={t.calendar.title} subtitle={t.calendar.subtitle} />
+        <div className="p-four">
+          <AuthErrorBanner message={requestsError} />
         </div>
       </div>
     )

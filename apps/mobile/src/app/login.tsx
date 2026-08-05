@@ -54,24 +54,26 @@ export default function LoginScreen() {
             <View style={styles.logo}>
               <Text style={styles.logoText}>R</Text>
             </View>
-            <Text style={styles.title}>RentaTodo</Text>
-            <Text style={styles.subtitle}>Alquile artículos cerca suyo</Text>
+            <Text testID="login-brand" style={styles.title}>RentaTodo</Text>
+            <Text style={styles.subtitle}>Rent items near you</Text>
           </View>
 
-          <Text style={styles.label}>Correo electrónico</Text>
+          <Text style={styles.label}>Email</Text>
           <TextInput
+            testID="login-email"
             style={styles.input}
             value={email}
             onChangeText={setEmail}
-            placeholder="correo@ejemplo.com"
+            placeholder="email@example.com"
             placeholderTextColor={Brand.muted}
             autoCapitalize="none"
             autoComplete="email"
             keyboardType="email-address"
           />
 
-          <Text style={styles.label}>Contraseña</Text>
+          <Text style={styles.label}>Password</Text>
           <TextInput
+            testID="login-password"
             style={styles.input}
             value={password}
             onChangeText={setPassword}
@@ -81,23 +83,28 @@ export default function LoginScreen() {
             autoComplete="password"
           />
 
-          {error && <Text style={styles.error}>{error}</Text>}
+          {error && (
+            <Text testID="login-error" style={styles.error}>
+              {error}
+            </Text>
+          )}
 
           <Pressable
+            testID="login-submit"
             style={[styles.button, !canSubmit && styles.buttonDisabled]}
             disabled={!canSubmit}
             onPress={onSubmit}>
             {submitting ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.buttonText}>Iniciar sesión</Text>
+              <Text style={styles.buttonText}>Sign in</Text>
             )}
           </Pressable>
 
           <View style={styles.footer}>
-            <Text style={styles.footerText}>¿No tiene cuenta?</Text>
-            <Link href="/register" style={styles.footerLink}>
-              Crear cuenta
+            <Text style={styles.footerText}>{"Don't have an account?"}</Text>
+            <Link testID="login-to-register" href="/register" style={styles.footerLink}>
+              Create account
             </Link>
           </View>
         </View>

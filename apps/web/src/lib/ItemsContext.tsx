@@ -3,6 +3,7 @@ import {
   apiCreateItem,
   apiDeleteItem,
   apiListMyItems,
+  apiReactivateItem,
   apiUpdateItem,
   ApiError,
   getErrorMessage,
@@ -20,6 +21,7 @@ interface ItemsContextValue {
   addItem: (data: CreateItemPayload) => Promise<void>
   updateItem: (id: string, data: UpdateItemPayload) => Promise<void>
   deleteItem: (id: string) => Promise<void>
+  reactivateItem: (id: string) => Promise<void>
 }
 
 const ItemsContext = createContext<ItemsContextValue | undefined>(undefined)
@@ -89,7 +91,13 @@ export function ItemsProvider({ children }: { children: ReactNode }) {
     await refetch(token)
   }
 
-  const value: ItemsContextValue = { items, loading, error, addItem, updateItem, deleteItem }
+  async function reactivateItem(id: string) {
+    if (!token) throw new ApiError('UNAUTHENTICATED', 'Not authenticated')
+    await apiReactivateItem(token, id)
+    await refetch(token)
+  }
+
+  const value: ItemsContextValue = { items, loading, error, addItem, updateItem, deleteItem, reactivateItem }
   return <ItemsContext.Provider value={value}>{children}</ItemsContext.Provider>
 }
 

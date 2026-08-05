@@ -4,20 +4,9 @@
 
 appId: host.exp.Exponent
 ---
-- launchApp
+- runFlow: ../auth/_login-as-renter.yaml
 - tapOn:
-    placeholder: "correo@ejemplo.com"
-- inputText:
-    text: "renter@rentatodo.dev"
-- tapOn:
-    placeholder: "••••••••"
-- inputText:
-    text: "Rentatodo2026!"
-- tapOn:
-    text: "Iniciar sesión"
-- assertVisible: "RentaTodo"
-- tapOn:
-    placeholder: "Buscar artículos…"
+    id: "home-search"
 - inputText:
     text: "bicicleta"
 - assertVisible: "Bicicleta de montaña Trek"

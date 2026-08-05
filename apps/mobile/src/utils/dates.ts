@@ -49,10 +49,29 @@ export function rangeHasUnavailable(start: string, end: string, unavailable: Set
   return eachDayInclusive(start, end).some((day) => unavailable.has(day));
 }
 
-/** "12 jul – 14 jul" (es-CR); a single day renders once. */
-export function formatDateRangeEs(start: string, end: string): string {
+/** "Jul 12 – Jul 14" (en-US); a single day renders once. */
+export function formatDateRange(start: string, end: string): string {
   const options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' };
-  const s = new Date(start + 'T00:00:00').toLocaleDateString('es-CR', options);
-  const e = new Date(end + 'T00:00:00').toLocaleDateString('es-CR', options);
+  const s = new Date(start + 'T00:00:00').toLocaleDateString('en-US', options);
+  const e = new Date(end + 'T00:00:00').toLocaleDateString('en-US', options);
   return s === e ? s : `${s} – ${e}`;
+}
+
+/** "7/24/2026" — short numeric date for a single ISO timestamp. */
+export function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-US');
+}
+
+/** "Jul 24, 2026" — medium date for a single ISO timestamp. */
+export function formatDateMedium(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-US', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
+/** "1 day" / "3 days". */
+export function pluralizeDays(n: number): string {
+  return `${n} ${n === 1 ? 'day' : 'days'}`;
 }

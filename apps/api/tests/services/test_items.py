@@ -511,6 +511,64 @@ def test_delete_item_raises_forbidden_for_non_owner(
     assert exc_info.value.code == "FORBIDDEN"
 
 
+def test_reactivate_item_sets_is_active_true(db_session: Session, make_user, make_item) -> None:
+    """Happy path: reactivate_item flips is_active back to True."""
+    from app.services.items import reactivate_item
+
+    owner = make_user(email="reactivator1@example.com")
+    item = make_item(owner_id=owner.id, is_active=False)
+
+    reactivated = reactivate_item(db_session, item_id=item.id, owner_id=owner.id)
+
+    assert reactivated.is_active is True
+
+
+def test_reactivate_item_is_idempotent(db_session: Session, make_user, make_item) -> None:
+    """Edge case: reactivating an already-active item succeeds without
+    raising, and stays active.
+    """
+    from app.services.items import reactivate_item
+
+    owner = make_user(email="reactivator2@example.com")
+    item = make_item(owner_id=owner.id, is_active=True)
+
+    reactivated = reactivate_item(db_session, item_id=item.id, owner_id=owner.id)
+
+    assert reactivated.is_active is True
+
+
+def test_reactivate_item_raises_forbidden_for_non_owner(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Failure path: a non-owner cannot reactivate someone else's item."""
+    from app.services.items import reactivate_item
+
+    owner = make_user(email="owner-real3@example.com")
+    other = make_user(email="owner-other3@example.com")
+    item = make_item(owner_id=owner.id, is_active=False)
+
+    with pytest.raises(AppError) as exc_info:
+        reactivate_item(db_session, item_id=item.id, owner_id=other.id)
+
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.code == "FORBIDDEN"
+
+
+def test_reactivate_item_raises_not_found_for_missing_id(
+    db_session: Session, make_user
+) -> None:
+    """Failure path: reactivating a nonexistent item raises 404 NOT_FOUND."""
+    from app.services.items import reactivate_item
+
+    owner = make_user(email="owner-real4@example.com")
+
+    with pytest.raises(AppError) as exc_info:
+        reactivate_item(db_session, item_id=uuid.uuid4(), owner_id=owner.id)
+
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.code == "NOT_FOUND"
+
+
 def test_list_my_items_includes_active_and_inactive(
     db_session: Session, make_user, make_item
 ) -> None:

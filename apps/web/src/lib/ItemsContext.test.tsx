@@ -40,7 +40,7 @@ const ITEM = {
 }
 
 function Probe() {
-  const { items, loading, error, addItem, updateItem, deleteItem } = useItems()
+  const { items, loading, error, addItem, updateItem, deleteItem, reactivateItem } = useItems()
   const { logout } = useAuth()
   return (
     <div>
@@ -69,6 +69,7 @@ function Probe() {
       </button>
       <button onClick={() => updateItem('i1', { name: 'Renamed' }).catch(() => {})}>update</button>
       <button onClick={() => deleteItem('i1').catch(() => {})}>delete</button>
+      <button onClick={() => reactivateItem('i1').catch(() => {})}>reactivate</button>
       <button onClick={logout}>logout</button>
     </div>
   )
@@ -264,6 +265,25 @@ describe('ItemsContext', () => {
     act(() => screen.getByText('delete').click())
 
     await waitFor(() => expect(screen.getByText('Taladro Bosch Professional · inactive')).toBeInTheDocument())
+  })
+
+  it('reactivateItem PATCHes the item then refetches the list showing it as active', async () => {
+    mockFetchRoutes({
+      '/users/me': [() => jsonResponse(PROFILE, 200)],
+      '/users/me/items': [
+        () => jsonResponse([{ ...ITEM, is_active: false }], 200),
+        () => jsonResponse([{ ...ITEM, is_active: true }], 200),
+      ],
+      '/items/i1/reactivate': [() => jsonResponse({ ...ITEM, is_active: true }, 200)],
+    })
+
+    renderWithToken()
+    await waitFor(() => expect(screen.getByTestId('count')).toHaveTextContent('1'))
+    expect(screen.getByText('Taladro Bosch Professional · inactive')).toBeInTheDocument()
+
+    act(() => screen.getByText('reactivate').click())
+
+    await waitFor(() => expect(screen.getByText('Taladro Bosch Professional · active')).toBeInTheDocument())
   })
 
   it('discards a stale in-flight response from a mutation-triggered refetch if the token changes before it resolves', async () => {

@@ -16,37 +16,32 @@
 
 appId: host.exp.Exponent
 ---
-- launchApp
-- tapOn:
-    text: "Iniciar sesión"
-- tapOn:
-    placeholder: "correo@ejemplo.com"
-- inputText:
-    text: "renter@rentatodo.dev"
-- tapOn:
-    placeholder: "••••••••"
-- inputText:
-    text: "Rentatodo2026!"
-- tapOn:
-    text: "Iniciar sesión"
-- assertVisible: "RentaTodo"
+- runFlow: ../auth/_login-as-renter.yaml
 
 # Navigate to reservation detail via rentals list
 - tapOn:
-    text: "Mis rentas"
+    id: "tab-rentals"
 - tapOn:
     text: "Carpa 4 personas Coleman"
-- assertVisible: "Reserva"
-- assertVisible: "Entregada"
-- assertVisible: "Devolver el artículo (check-out)"
+- assertVisible:
+    id: "reservation-detail-title"
+- assertVisible:
+    id: "status-badge-delivered"
+- assertVisible:
+    id: "reservation-checkout"
 
 # Open the check-out screen
 - tapOn:
-    text: "Devolver el artículo (check-out)"
+    id: "reservation-checkout"
 
 # Assert check-out screen elements
-- assertVisible: "Check-out · Devolver artículo"
-- assertVisible: "Una sola foto como evidencia"
-- assertVisible: "Tomar foto"
-- assertVisible: "Notas sobre el estado (opcional)"
-- assertVisible: "Confirmar devolución"
+- assertVisible:
+    id: "check-title"
+- assertVisible:
+    id: "check-photo-hint"
+- assertVisible:
+    id: "check-pick-camera"
+- assertVisible:
+    id: "check-notes-label"
+- assertVisible:
+    id: "check-submit"

@@ -15,6 +15,11 @@ function getPasswordError(password: string, t: ReturnType<typeof useTranslation>
   return null
 }
 
+function getConfirmPasswordError(password: string, confirmPassword: string, t: ReturnType<typeof useTranslation>): string | null {
+  if (password !== confirmPassword) return t.register.passwordMismatch
+  return null
+}
+
 export function RegisterPage() {
   const { register } = useAuth()
   const navigate = useNavigate()
@@ -22,10 +27,12 @@ export function RegisterPage() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   const passwordError = password.length > 0 ? getPasswordError(password, t) : null
+  const confirmPasswordError = confirmPassword.length > 0 ? getConfirmPasswordError(password, confirmPassword, t) : null
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -34,6 +41,12 @@ export function RegisterPage() {
       // Don't also set `error` here — `passwordError` above already renders
       // this exact message inline under the field; setting both would show
       // the same text twice on screen.
+      return
+    }
+    if (confirmPasswordError) {
+      // Same reasoning as the passwordError guard above: the inline
+      // message under the confirm field already shows this, no need
+      // to duplicate it in the banner.
       return
     }
     setSubmitting(true)
@@ -63,8 +76,20 @@ export function RegisterPage() {
         </div>
         <div className="space-y-half">
           <Label htmlFor="password">{t.register.password}</Label>
-          <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          <Input id="password" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
           {passwordError && <p className="text-xs text-destructive">{passwordError}</p>}
+        </div>
+        <div className="space-y-half">
+          <Label htmlFor="confirmPassword">{t.register.confirmPassword}</Label>
+          <Input
+            id="confirmPassword"
+            type="password"
+            autoComplete="new-password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+          />
+          {confirmPasswordError && <p className="text-xs text-destructive">{confirmPasswordError}</p>}
         </div>
         <Button type="submit" className="w-full" disabled={submitting}>
           {submitting ? t.register.submitting : t.register.submit}

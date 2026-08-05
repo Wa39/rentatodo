@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.exceptions import AppError
-from app.routers import auth, health, items, reservations, uploads
+from app.routers import auth, health, items, reports, reservations, uploads
 
 app = FastAPI(title="RentaTodo API")
 
@@ -22,6 +22,7 @@ app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(items.router)
 app.include_router(reservations.router)
+app.include_router(reports.router)
 app.include_router(uploads.router)
 
 

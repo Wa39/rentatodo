@@ -7,8 +7,10 @@ import { useItems } from '@/lib/ItemsContext'
 import { getErrorMessage } from '@/lib/api'
 import type { Category, Item } from '@/lib/types'
 import { useTranslation } from '@/lib/i18n'
+import { useAuth } from '@/lib/AuthContext'
+import { PhotoUploadField } from '@/components/PhotoUploadField'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
@@ -18,13 +20,21 @@ const BLANK_FORM = { name: '', description: '', category: CATEGORIES[0], priceDo
 
 export function ItemsPage() {
   const t = useTranslation()
-  const { items, loading, error, updateItem, deleteItem } = useItems()
+  const { items, loading, error, updateItem, deleteItem, reactivateItem } = useItems()
   const [open, setOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(BLANK_FORM)
   const [query, setQuery] = useState('')
   const [dialogSubmitting, setDialogSubmitting] = useState(false)
   const [dialogError, setDialogError] = useState<string | null>(null)
+  const { token } = useAuth()
+  const [photoUploading, setPhotoUploading] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<Item | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [reactivateTarget, setReactivateTarget] = useState<Item | null>(null)
+  const [reactivating, setReactivating] = useState(false)
+  const [reactivateError, setReactivateError] = useState<string | null>(null)
 
   const activeCount = items.filter((i) => i.is_active).length
   const inactiveCount = items.length - activeCount
@@ -45,12 +55,13 @@ export function ItemsPage() {
       photoUrl: item.photo_url,
     })
     setDialogError(null)
+    setPhotoUploading(false)
     setOpen(true)
   }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    if (!editingId) return
+    if (!editingId || photoUploading) return
     setDialogSubmitting(true)
     setDialogError(null)
     try {
@@ -72,13 +83,41 @@ export function ItemsPage() {
     }
   }
 
-  async function handleDelete(item: Item) {
-    const confirmed = window.confirm(`Delete "${item.name}"? It will stop appearing in public search.`)
-    if (!confirmed) return
+  function handleDelete(item: Item) {
+    setDeleteError(null)
+    setDeleteTarget(item)
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return
+    setDeleting(true)
+    setDeleteError(null)
     try {
-      await deleteItem(item.id)
+      await deleteItem(deleteTarget.id)
+      setDeleteTarget(null)
     } catch (err) {
-      window.alert(getErrorMessage(err, t.errors.network))
+      setDeleteError(getErrorMessage(err, t.errors.network))
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  function handleReactivate(item: Item) {
+    setReactivateError(null)
+    setReactivateTarget(item)
+  }
+
+  async function confirmReactivate() {
+    if (!reactivateTarget) return
+    setReactivating(true)
+    setReactivateError(null)
+    try {
+      await reactivateItem(reactivateTarget.id)
+      setReactivateTarget(null)
+    } catch (err) {
+      setReactivateError(getErrorMessage(err, t.errors.network))
+    } finally {
+      setReactivating(false)
     }
   }
 
@@ -149,20 +188,67 @@ export function ItemsPage() {
                   required
                 />
               </div>
-              <div className="space-y-half">
-                <Label htmlFor="item-photo">Photo URL</Label>
-                <Input
-                  id="item-photo"
-                  type="url"
-                  value={form.photoUrl}
-                  onChange={(e) => setForm((f) => ({ ...f, photoUrl: e.target.value }))}
-                  required
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={dialogSubmitting}>
+              <PhotoUploadField
+                key={editingId ?? 'new'}
+                id="item-photo"
+                label="Photo"
+                value={form.photoUrl}
+                onChange={(url) => setForm((f) => ({ ...f, photoUrl: url }))}
+                onUploadingChange={setPhotoUploading}
+                token={token ?? ''}
+              />
+              <Button type="submit" className="w-full" disabled={dialogSubmitting || !form.photoUrl || photoUploading}>
                 {dialogSubmitting ? 'Saving…' : 'Save item'}
               </Button>
             </form>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={deleteTarget !== null} onOpenChange={(next) => { if (!deleting && !next) setDeleteTarget(null) }}>
+          <DialogContent className="max-w-md gap-5 p-7">
+            <DialogHeader>
+              <DialogTitle className="text-xl">{t.items.deleteDialog.title}</DialogTitle>
+              <DialogDescription className="text-base leading-relaxed text-foreground/90">
+                {deleteTarget && (
+                  <>
+                    {t.items.deleteDialog.descriptionPrefix(deleteTarget.name)}
+                    <strong className="font-bold text-foreground">{t.items.deleteDialog.descriptionEmphasis1}</strong>
+                    {t.items.deleteDialog.descriptionMiddle}
+                    <strong className="font-bold text-foreground">{t.items.deleteDialog.descriptionEmphasis2}</strong>
+                    {t.items.deleteDialog.descriptionSuffix}
+                  </>
+                )}
+              </DialogDescription>
+            </DialogHeader>
+            <AuthErrorBanner message={deleteError} />
+            <DialogFooter className="sm:justify-center sm:space-x-3">
+              <Button type="button" variant="destructive" disabled={deleting} onClick={confirmDelete}>
+                {deleting ? t.items.deleteDialog.deleting : t.items.deleteDialog.confirm}
+              </Button>
+              <Button type="button" variant="outline" disabled={deleting} onClick={() => setDeleteTarget(null)}>
+                {t.items.deleteDialog.cancel}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={reactivateTarget !== null} onOpenChange={(next) => { if (!reactivating && !next) setReactivateTarget(null) }}>
+          <DialogContent className="max-w-md gap-5 p-7">
+            <DialogHeader>
+              <DialogTitle className="text-xl">{t.items.reactivateDialog.title}</DialogTitle>
+              <DialogDescription className="text-base leading-relaxed text-foreground/90">
+                {reactivateTarget && t.items.reactivateDialog.description(reactivateTarget.name)}
+              </DialogDescription>
+            </DialogHeader>
+            <AuthErrorBanner message={reactivateError} />
+            <DialogFooter className="sm:justify-center sm:space-x-3">
+              <Button type="button" disabled={reactivating} onClick={confirmReactivate}>
+                {reactivating ? t.items.reactivateDialog.reactivating : t.items.reactivateDialog.confirm}
+              </Button>
+              <Button type="button" variant="outline" disabled={reactivating} onClick={() => setReactivateTarget(null)}>
+                {t.items.reactivateDialog.cancel}
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
 
@@ -171,7 +257,7 @@ export function ItemsPage() {
         ) : (
           <div className="grid grid-cols-4 gap-three">
             {filteredItems.map((item) => (
-              <ItemCard key={item.id} item={item} onEdit={openEditDialog} onDelete={handleDelete} />
+              <ItemCard key={item.id} item={item} onEdit={openEditDialog} onDelete={handleDelete} onReactivate={handleReactivate} />
             ))}
           </div>
         )}

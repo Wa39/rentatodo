@@ -8,37 +8,24 @@
 #
 # Item used: "Karaoke profesional con 2 micrófonos" (category: other)
 # Its seeded reservation is cancelled — no date conflicts.
-# Dates: navigate to next month (Agosto) and pick days 12-16, which are
-# always in the future for any day in July 2026.
+# Dates: navigate to next month and pick days 12-16. All months have at
+# least 16 days, and the next month is always in the future relative to today.
 #
 # Run: maestro test e2e/mobile/flows/reservations/request.yaml
 
 appId: host.exp.Exponent
 ---
-- launchApp
-- tapOn:
-    text: "Iniciar sesión"
-- tapOn:
-    placeholder: "correo@ejemplo.com"
-- inputText:
-    text: "renter@rentatodo.dev"
-- tapOn:
-    placeholder: "••••••••"
-- inputText:
-    text: "Rentatodo2026!"
-- tapOn:
-    text: "Iniciar sesión"
-- assertVisible: "RentaTodo"
+- runFlow: ../auth/_login-as-renter.yaml
 
 # Navigate to item detail via name (seeded by infra/seed.py)
 - tapOn:
     text: "Karaoke profesional con 2 micrófonos"
-- assertVisible: "Solicitar alquiler"
+- assertVisible:
+    id: "item-request-submit"
 
 # Advance to next month so selected dates are always in the future
 - tapOn:
     description: "Siguiente mes"
-- assertVisible: "Agosto 2026"
 
 # Select date range (first tap = start, second = end)
 - tapOn:
@@ -48,8 +35,10 @@ appId: host.exp.Exponent
 
 # Submit the request
 - tapOn:
-    text: "Solicitar alquiler"
+    id: "item-request-submit"
 
 # App navigates to /rentals after a successful request
-- assertVisible: "Mis rentas"
-- assertVisible: "Solicitada"
+- assertVisible:
+    id: "tab-rentals"
+- assertVisible:
+    id: "status-badge-requested"

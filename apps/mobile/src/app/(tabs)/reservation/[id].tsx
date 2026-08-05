@@ -4,13 +4,20 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ScreenHeader } from '@/components/screen-header';
 import { StatusBadge } from '@/components/status-badge';
 import { Brand } from '@/constants/brand';
 import { dataSource } from '@/data/data-source';
-import { DEPOSIT_LABELS, STATUS_META, errorMessage } from '@/data/labels';
-import { formatUSD, type Reservation } from '@/data/types';
+import { DEPOSIT_LABELS, STATUS_META, TRANSACTION_META, errorMessage } from '@/data/labels';
+import { formatUSD, type Reservation, type Transaction } from '@/data/types';
 import { usePolling } from '@/hooks/use-polling';
-import { countDaysInclusive, formatDateRangeEs } from '@/utils/dates';
+import {
+  countDaysInclusive,
+  formatDate,
+  formatDateMedium,
+  formatDateRange,
+  pluralizeDays,
+} from '@/utils/dates';
 
 /**
  * Reservation detail. The contract has no GET /reservations/{id}, so the
@@ -22,6 +29,8 @@ import { countDaysInclusive, formatDateRangeEs } from '@/utils/dates';
 export default function ReservationDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [reservation, setReservation] = useState<Reservation | undefined>();
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,20 +38,46 @@ export default function ReservationDetailScreen() {
   usePolling(
     useCallback(() => {
       if (!id) return;
-      dataSource.listReservations().then((all) => setReservation(all.find((r) => r.id === id)));
+      dataSource
+        .listReservations()
+        .then((all) => setReservation(all.find((r) => r.id === id)))
+        .catch(() => {})
+        .finally(() => setLoaded(true));
+      // The deposit audit trail can change on the owner's side (release on
+      // close) or ours (freeze on report), so refresh it on the same tick.
+      dataSource.listTransactions(id).then(setTransactions).catch(() => setTransactions([]));
     }, [id]),
   );
+
+  // First load: show a spinner instead of flashing "not found" before the fetch resolves.
+  if (!loaded) {
+    return (
+      <SafeAreaView style={styles.screen} edges={['top']}>
+        <View style={styles.loadingBox}>
+          <ActivityIndicator color={Brand.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (!reservation) {
     return (
       <SafeAreaView style={styles.screen} edges={['top']}>
-        <Text style={styles.empty}>Reserva no encontrada.</Text>
+        <Text style={styles.empty}>Reservation not found.</Text>
       </SafeAreaView>
     );
   }
 
   const days = countDaysInclusive(reservation.start_date, reservation.end_date);
   const cancellable = reservation.status === 'requested' || reservation.status === 'approved';
+  // The single photo-evidence action depends on status: check-in from approved,
+  // check-out from delivered. Distinct testIDs are kept for the Maestro flows.
+  const checkAction =
+    reservation.status === 'approved'
+      ? { mode: 'in' as const, testID: 'reservation-checkin', label: 'I received the item (check-in)' }
+      : reservation.status === 'delivered'
+        ? { mode: 'out' as const, testID: 'reservation-checkout', label: 'Return the item (check-out)' }
+        : null;
 
   async function onCancel() {
     if (!reservation) return;
@@ -63,22 +98,17 @@ export default function ReservationDetailScreen() {
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.topBar}>
-          <Pressable onPress={() => router.back()} style={styles.backButton} hitSlop={8}>
-            <Ionicons name="chevron-back" size={22} color={Brand.ink} />
-          </Pressable>
-          <Text style={styles.topBarTitle}>Reserva</Text>
-        </View>
+        <ScreenHeader title="Reservation" titleTestID="reservation-detail-title" />
 
         <View style={styles.header}>
           <View style={styles.thumb}>
             <Text style={styles.initial}>{reservation.item_name.charAt(0)}</Text>
           </View>
           <View style={styles.headerInfo}>
-            <Text style={styles.name}>{reservation.item_name}</Text>
+            <Text testID="reservation-item-name" style={styles.name}>{reservation.item_name}</Text>
             <Text style={styles.dates}>
-              {formatDateRangeEs(reservation.start_date, reservation.end_date)} · {days}{' '}
-              {days === 1 ? 'día' : 'días'}
+              {formatDateRange(reservation.start_date, reservation.end_date)} ·{' '}
+              {pluralizeDays(days)}
             </Text>
           </View>
           <StatusBadge status={reservation.status} />
@@ -86,60 +116,76 @@ export default function ReservationDetailScreen() {
 
         <View style={styles.card}>
           <View style={styles.rowLine}>
-            <Text style={styles.label}>Estado</Text>
+            <Text testID="reservation-label-status" style={styles.label}>Status</Text>
             <Text style={styles.value}>{STATUS_META[reservation.status].label}</Text>
           </View>
           <View style={styles.rowLine}>
-            <Text style={styles.label}>Depósito</Text>
+            <Text testID="reservation-label-deposit" style={styles.label}>Deposit</Text>
             <Text style={styles.value}>
               {formatUSD(reservation.deposit_amount)} · {DEPOSIT_LABELS[reservation.deposit_status]}
             </Text>
           </View>
           <View style={styles.rowLine}>
-            <Text style={styles.label}>Solicitada</Text>
-            <Text style={styles.value}>
-              {new Date(reservation.created_at).toLocaleDateString('es-CR')}
-            </Text>
+            <Text style={styles.label}>Requested</Text>
+            <Text style={styles.value}>{formatDate(reservation.created_at)}</Text>
           </View>
           <View style={[styles.rowLine, styles.rowLast]}>
-            <Text style={styles.label}>Última actualización</Text>
-            <Text style={styles.value}>
-              {new Date(reservation.updated_at).toLocaleDateString('es-CR')}
-            </Text>
+            <Text style={styles.label}>Last updated</Text>
+            <Text style={styles.value}>{formatDate(reservation.updated_at)}</Text>
           </View>
         </View>
+
+        {transactions.length > 0 && (
+          <View style={styles.card}>
+            <Text style={styles.historyTitle}>Deposit movements</Text>
+            {transactions.map((t, i) => {
+              const meta = TRANSACTION_META[t.type];
+              return (
+                <View
+                  key={t.id}
+                  style={[styles.txRow, i === transactions.length - 1 && styles.rowLast]}>
+                  <Ionicons
+                    name={meta.icon as React.ComponentProps<typeof Ionicons>['name']}
+                    size={17}
+                    color={meta.color}
+                  />
+                  <View style={styles.txInfo}>
+                    <Text style={styles.txLabel}>{meta.label}</Text>
+                    <Text style={styles.txDate}>{formatDateMedium(t.created_at)}</Text>
+                  </View>
+                  <Text style={[styles.txAmount, { color: meta.color }]}>
+                    {formatUSD(t.amount)}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        )}
 
         <Link
           href={{ pathname: '/item/[id]', params: { id: reservation.item_id } }}
           asChild>
-          <Pressable style={styles.linkRow}>
+          <Pressable testID="reservation-item-link" style={styles.linkRow}>
             <Ionicons name="cube-outline" size={18} color={Brand.primary} />
-            <Text style={styles.linkText}>Ver artículo</Text>
+            <Text style={styles.linkText}>View item</Text>
             <Ionicons name="chevron-forward" size={16} color={Brand.muted} />
           </Pressable>
         </Link>
 
         {error && <Text style={styles.error}>{error}</Text>}
 
-        {reservation.status === 'approved' && (
+        {checkAction && (
           <Pressable
+            testID={checkAction.testID}
             style={styles.primaryButton}
             onPress={() =>
-              router.push({ pathname: '/check/[id]', params: { id: reservation.id, mode: 'in' } })
+              router.push({
+                pathname: '/check/[id]',
+                params: { id: reservation.id, mode: checkAction.mode },
+              })
             }>
             <Ionicons name="camera-outline" size={18} color="#fff" />
-            <Text style={styles.primaryButtonText}>Recibí el artículo (check-in)</Text>
-          </Pressable>
-        )}
-
-        {reservation.status === 'delivered' && (
-          <Pressable
-            style={styles.primaryButton}
-            onPress={() =>
-              router.push({ pathname: '/check/[id]', params: { id: reservation.id, mode: 'out' } })
-            }>
-            <Ionicons name="camera-outline" size={18} color="#fff" />
-            <Text style={styles.primaryButtonText}>Devolver el artículo (check-out)</Text>
+            <Text style={styles.primaryButtonText}>{checkAction.label}</Text>
           </Pressable>
         )}
 
@@ -148,50 +194,56 @@ export default function ReservationDetailScreen() {
             <View style={styles.frozenNotice}>
               <Ionicons name="snow-outline" size={16} color="#7A2A1D" />
               <Text style={styles.frozenText}>
-                Reporte activo: el depósito está congelado hasta resolver la disputa.
+                Active report: the deposit is frozen until the dispute is resolved.
               </Text>
             </View>
           ) : (
             <Pressable
+              testID="reservation-report"
               style={styles.reportButton}
               onPress={() =>
                 router.push({ pathname: '/report/[id]', params: { id: reservation.id } })
               }>
               <Ionicons name="alert-circle-outline" size={18} color={Brand.red} />
-              <Text style={styles.reportButtonText}>Reportar problema</Text>
+              <Text style={styles.reportButtonText}>Report a problem</Text>
             </Pressable>
           ))}
 
         {cancellable && !confirming && (
-          <Pressable style={styles.cancelButton} onPress={() => setConfirming(true)}>
-            <Text style={styles.cancelText}>Cancelar reserva</Text>
+          <Pressable
+            testID="reservation-cancel"
+            style={styles.cancelButton}
+            onPress={() => setConfirming(true)}>
+            <Text style={styles.cancelText}>Cancel reservation</Text>
           </Pressable>
         )}
 
         {cancellable && confirming && (
-          <View style={styles.confirmBox}>
+          <View testID="reservation-cancel-dialog" style={styles.confirmBox}>
             <Text style={styles.confirmText}>
-              ¿Cancelar esta reserva?
+              Cancel this reservation?
               {reservation.deposit_status === 'held'
-                ? ' El depósito retenido se libera.'
+                ? ' The held deposit will be released.'
                 : ''}{' '}
-              Esta acción no se puede deshacer.
+              This action cannot be undone.
             </Text>
             <View style={styles.confirmRow}>
               <Pressable
+                testID="reservation-cancel-dismiss"
                 style={[styles.confirmButton, styles.confirmNo]}
                 disabled={submitting}
                 onPress={() => setConfirming(false)}>
-                <Text style={styles.confirmNoText}>Volver</Text>
+                <Text style={styles.confirmNoText}>Back</Text>
               </Pressable>
               <Pressable
+                testID="reservation-cancel-confirm"
                 style={[styles.confirmButton, styles.confirmYes]}
                 disabled={submitting}
                 onPress={onCancel}>
                 {submitting ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={styles.confirmYesText}>Sí, cancelar</Text>
+                  <Text style={styles.confirmYesText}>Yes, cancel</Text>
                 )}
               </Pressable>
             </View>
@@ -199,8 +251,7 @@ export default function ReservationDetailScreen() {
         )}
 
         <Text style={styles.note}>
-          El estado se actualiza automáticamente cada 15 segundos mientras esta pantalla está
-          abierta.
+          The status refreshes automatically every 15 seconds while this screen is open.
         </Text>
       </ScrollView>
     </SafeAreaView>
@@ -210,18 +261,6 @@ export default function ReservationDetailScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: Brand.paper },
   content: { padding: 16 },
-  topBar: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
-  backButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: Brand.card,
-    borderWidth: 1,
-    borderColor: Brand.line,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  topBarTitle: { fontSize: 16, fontWeight: '700', color: Brand.ink },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -263,6 +302,25 @@ const styles = StyleSheet.create({
   rowLast: { borderBottomWidth: 0 },
   label: { fontSize: 12.5, color: Brand.muted },
   value: { fontSize: 12.5, fontWeight: '700', color: Brand.ink },
+  historyTitle: {
+    fontSize: 12.5,
+    fontWeight: '800',
+    color: Brand.ink,
+    paddingTop: 12,
+    paddingBottom: 4,
+  },
+  txRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 11,
+    paddingVertical: 11,
+    borderBottomWidth: 1,
+    borderBottomColor: Brand.line,
+  },
+  txInfo: { flex: 1, minWidth: 0 },
+  txLabel: { fontSize: 12.5, fontWeight: '700', color: Brand.ink },
+  txDate: { fontSize: 11, color: Brand.muted, marginTop: 1 },
+  txAmount: { fontSize: 13, fontWeight: '800' },
   linkRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -339,4 +397,5 @@ const styles = StyleSheet.create({
   confirmYesText: { fontSize: 13, fontWeight: '800', color: '#fff' },
   note: { fontSize: 10.5, color: Brand.muted, textAlign: 'center', marginTop: 14 },
   empty: { fontSize: 13, color: Brand.muted, padding: 24, textAlign: 'center' },
+  loadingBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 });

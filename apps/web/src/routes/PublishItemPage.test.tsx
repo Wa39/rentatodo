@@ -27,6 +27,12 @@ function mockFetchRoutes(routes: Record<string, Array<() => Response>>) {
   })
 }
 
+function makeFile(bytes: number[], name: string, type: string): File {
+  return new File([new Uint8Array(bytes)], name, { type })
+}
+
+const JPEG_HEADER = [0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01]
+
 const PROFILE = { id: 'u1', name: 'María Vargas', email: 'maria@example.com', created_at: '2026-01-01T00:00:00Z' }
 
 function renderPage() {
@@ -51,10 +57,12 @@ describe('PublishItemPage', () => {
   beforeEach(() => {
     localStorage.clear()
     vi.spyOn(global, 'fetch')
+    vi.stubGlobal('createImageBitmap', vi.fn().mockResolvedValue({} as ImageBitmap))
   })
 
   afterEach(() => {
     vi.restoreAllMocks()
+    vi.unstubAllGlobals()
   })
 
   it('reflects the typed name in the live preview', async () => {
@@ -85,13 +93,22 @@ describe('PublishItemPage', () => {
       '/users/me': [() => jsonResponse(PROFILE, 200)],
       '/users/me/items': [() => jsonResponse([], 200), () => jsonResponse([newItem], 200)],
       '/items': [() => jsonResponse(newItem, 201)],
+      '/uploads/presign': [
+        () =>
+          jsonResponse(
+            { upload_url: 'https://s3.example.com/upload-photo', public_url: 'https://example.com/photo.jpg', expires_in: 300 },
+            200,
+          ),
+      ],
+      '/upload-photo': [() => ({ ok: true, status: 200 }) as Response],
     })
     const user = userEvent.setup({ delay: null })
     renderPage()
     await user.type(screen.getByLabelText('Name'), 'Bicicleta de montaña')
     await user.type(screen.getByLabelText('Price per day (USD)'), '10')
     await user.type(screen.getByLabelText('Description'), 'A description')
-    await user.type(screen.getByLabelText('Photo'), 'https://example.com/photo.jpg')
+    await user.upload(screen.getByLabelText('Photo'), makeFile(JPEG_HEADER, 'photo.jpg', 'image/jpeg'))
+    await waitFor(() => expect(screen.getByRole('img', { name: 'Photo' })).toBeInTheDocument())
     await user.click(screen.getByRole('button', { name: 'Publish item' }))
     await waitFor(() => expect(screen.getByRole('heading', { name: 'My items' })).toBeInTheDocument())
     expect(screen.getByText('Bicicleta de montaña')).toBeInTheDocument()
@@ -104,13 +121,22 @@ describe('PublishItemPage', () => {
       '/items': [
         () => jsonResponse({ error: { code: 'VALIDATION_ERROR', message: 'price_per_day: must be greater than 0' } }, 422),
       ],
+      '/uploads/presign': [
+        () =>
+          jsonResponse(
+            { upload_url: 'https://s3.example.com/upload-photo', public_url: 'https://example.com/photo.jpg', expires_in: 300 },
+            200,
+          ),
+      ],
+      '/upload-photo': [() => ({ ok: true, status: 200 }) as Response],
     })
     const user = userEvent.setup({ delay: null })
     renderPage()
     await user.type(screen.getByLabelText('Name'), 'Bicicleta de montaña')
     await user.type(screen.getByLabelText('Price per day (USD)'), '10')
     await user.type(screen.getByLabelText('Description'), 'A description')
-    await user.type(screen.getByLabelText('Photo'), 'https://example.com/photo.jpg')
+    await user.upload(screen.getByLabelText('Photo'), makeFile(JPEG_HEADER, 'photo.jpg', 'image/jpeg'))
+    await waitFor(() => expect(screen.getByRole('img', { name: 'Photo' })).toBeInTheDocument())
     await user.click(screen.getByRole('button', { name: 'Publish item' }))
     await waitFor(() => expect(screen.getByText('price_per_day: must be greater than 0')).toBeInTheDocument())
     expect(screen.queryByRole('heading', { name: 'My items' })).not.toBeInTheDocument()

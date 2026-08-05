@@ -54,6 +54,7 @@ describe('RegisterPage', () => {
     await user.type(screen.getByLabelText('Name'), 'María Vargas')
     await user.type(screen.getByLabelText('Email'), 'maria@example.com')
     await user.type(screen.getByLabelText('Password'), 'securepass123')
+    await user.type(screen.getByLabelText('Confirm password'), 'securepass123')
     await user.click(screen.getByRole('button', { name: 'Create account' }))
 
     await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('in'))
@@ -70,6 +71,7 @@ describe('RegisterPage', () => {
     await user.type(screen.getByLabelText('Name'), 'María Vargas')
     await user.type(screen.getByLabelText('Email'), 'maria@example.com')
     await user.type(screen.getByLabelText('Password'), 'securepass123')
+    await user.type(screen.getByLabelText('Confirm password'), 'securepass123')
     await user.click(screen.getByRole('button', { name: 'Create account' }))
 
     await waitFor(() => expect(screen.getByText('email: already registered')).toBeInTheDocument())
@@ -83,6 +85,7 @@ describe('RegisterPage', () => {
     await user.type(screen.getByLabelText('Name'), 'María Vargas')
     await user.type(screen.getByLabelText('Email'), 'maria@example.com')
     await user.type(screen.getByLabelText('Password'), 'short1')
+    await user.type(screen.getByLabelText('Confirm password'), 'short1')
     await user.click(screen.getByRole('button', { name: 'Create account' }))
 
     expect(screen.getByText('Password must be at least 8 characters.')).toBeInTheDocument()
@@ -96,6 +99,7 @@ describe('RegisterPage', () => {
     await user.type(screen.getByLabelText('Name'), 'María Vargas')
     await user.type(screen.getByLabelText('Email'), 'maria@example.com')
     await user.type(screen.getByLabelText('Password'), 'abc12345')
+    await user.type(screen.getByLabelText('Confirm password'), 'abc12345')
     await user.click(screen.getByRole('button', { name: 'Create account' }))
 
     expect(screen.getByText('Password cannot contain 5 or more digits in a row.')).toBeInTheDocument()
@@ -114,9 +118,46 @@ describe('RegisterPage', () => {
     await user.type(screen.getByLabelText('Name'), 'María Vargas')
     await user.type(screen.getByLabelText('Email'), 'maria@example.com')
     await user.type(screen.getByLabelText('Password'), 'abcd1234')
+    await user.type(screen.getByLabelText('Confirm password'), 'abcd1234')
     await user.click(screen.getByRole('button', { name: 'Create account' }))
 
     await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('in'))
+  })
+
+  it('shows no mismatch error while the confirm field is still empty', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.type(screen.getByLabelText('Password'), 'securepass123')
+
+    expect(screen.queryByText('Passwords do not match.')).not.toBeInTheDocument()
+  })
+
+  it('shows a mismatch error and blocks submission when the two passwords differ', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.type(screen.getByLabelText('Name'), 'María Vargas')
+    await user.type(screen.getByLabelText('Email'), 'maria@example.com')
+    await user.type(screen.getByLabelText('Password'), 'securepass123')
+    await user.type(screen.getByLabelText('Confirm password'), 'securepass124')
+    await user.click(screen.getByRole('button', { name: 'Create account' }))
+
+    expect(screen.getByText('Passwords do not match.')).toBeInTheDocument()
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('clears the mismatch error once the confirm field is corrected to match', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.type(screen.getByLabelText('Password'), 'securepass123')
+    await user.type(screen.getByLabelText('Confirm password'), 'securepass124')
+    expect(screen.getByText('Passwords do not match.')).toBeInTheDocument()
+
+    await user.clear(screen.getByLabelText('Confirm password'))
+    await user.type(screen.getByLabelText('Confirm password'), 'securepass123')
+    expect(screen.queryByText('Passwords do not match.')).not.toBeInTheDocument()
   })
 
   it('links to /login for users who already have an account', () => {

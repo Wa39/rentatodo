@@ -1,6 +1,6 @@
 import { ApiRequestError } from '@/data/api/http';
 import type { DataSource } from '@/data/data-source';
-import type { Item, ItemDetail, Report, Reservation } from '@/data/types';
+import type { Item, ItemDetail, Report, Reservation, Transaction } from '@/data/types';
 import { countDaysInclusive, expandRanges, rangeHasUnavailable } from '@/utils/dates';
 
 /**
@@ -16,32 +16,32 @@ const base = { is_active: true, created_at: '2026-07-01T12:00:00Z' };
 
 const ITEMS: ItemDetail[] = [
   {
-    ...base, id: 'a1', name: 'Taladro inalámbrico', description: 'Taladro 18V con maletín y brocas',
-    category: 'tools', price_per_day: 1200, photo_url: '', owner_id: 'u2', owner_name: 'María V.',
+    ...base, id: 'a1', name: 'Cordless drill', description: '18V drill with case and bits',
+    category: 'tools', price_per_day: 1200, photo_url: '', owner_id: 'u2', owner_name: 'Maria V.',
     unavailable_dates: [{ start_date: '2026-07-04', end_date: '2026-07-05' }, { start_date: '2026-07-20', end_date: '2026-07-21' }],
   },
   {
-    ...base, id: 'a2', name: 'Cámara réflex + lente 50 mm', description: 'Réflex con lente fijo, ideal retratos',
+    ...base, id: 'a2', name: 'DSLR camera + 50 mm lens', description: 'DSLR with a fixed lens, great for portraits',
     category: 'photography', price_per_day: 3500, photo_url: '', owner_id: 'u3', owner_name: 'Carlos M.',
     unavailable_dates: [{ start_date: '2026-07-10', end_date: '2026-07-11' }, { start_date: '2026-07-22', end_date: '2026-07-22' }],
   },
   {
-    ...base, id: 'a3', name: 'Carpa camping 4 personas', description: 'Carpa impermeable con bolso de transporte',
-    category: 'camping', price_per_day: 1800, photo_url: '', owner_id: 'u2', owner_name: 'María V.',
+    ...base, id: 'a3', name: '4-person camping tent', description: 'Waterproof tent with a carry bag',
+    category: 'camping', price_per_day: 1800, photo_url: '', owner_id: 'u2', owner_name: 'Maria V.',
     unavailable_dates: [{ start_date: '2026-07-08', end_date: '2026-07-10' }],
   },
   {
-    ...base, id: 'a4', name: 'Parlante Bluetooth', description: 'Parlante portátil resistente al agua',
+    ...base, id: 'a4', name: 'Bluetooth speaker', description: 'Waterproof portable speaker',
     category: 'electronics', price_per_day: 800, photo_url: '', owner_id: 'u4', owner_name: 'Ana S.',
     unavailable_dates: [{ start_date: '2026-07-18', end_date: '2026-07-18' }],
   },
   {
-    ...base, id: 'a5', name: 'Bicicleta urbana', description: 'Bicicleta aro 28 con canasta y luces',
+    ...base, id: 'a5', name: 'City bike', description: '28-inch bike with basket and lights',
     category: 'sports', price_per_day: 1500, photo_url: '', owner_id: 'u3', owner_name: 'Carlos M.',
     unavailable_dates: [{ start_date: '2026-07-25', end_date: '2026-07-26' }],
   },
   {
-    ...base, id: 'a6', name: 'Proyector portátil', description: 'Proyector HD con HDMI y bolso',
+    ...base, id: 'a6', name: 'Portable projector', description: 'HD projector with HDMI and a bag',
     category: 'electronics', price_per_day: 2500, photo_url: '', owner_id: 'u4', owner_name: 'Ana S.',
     unavailable_dates: [],
   },
@@ -49,42 +49,60 @@ const ITEMS: ItemDetail[] = [
 
 const RESERVATIONS: Reservation[] = [
   {
-    id: 'r1', item_id: 'a1', item_name: 'Taladro inalámbrico', item_photo_url: '',
+    id: 'r1', item_id: 'a1', item_name: 'Cordless drill', item_photo_url: '',
     renter_id: 'u1', renter_name: 'Zero', start_date: '2026-07-12', end_date: '2026-07-14',
     status: 'requested', deposit_amount: 3600, deposit_status: 'none',
     created_at: '2026-07-11T09:14:00Z', updated_at: '2026-07-11T09:14:00Z',
   },
   {
-    id: 'r2', item_id: 'a2', item_name: 'Cámara réflex + lente 50 mm', item_photo_url: '',
+    id: 'r2', item_id: 'a2', item_name: 'DSLR camera + 50 mm lens', item_photo_url: '',
     renter_id: 'u1', renter_name: 'Zero', start_date: '2026-07-15', end_date: '2026-07-17',
     status: 'approved', deposit_amount: 10500, deposit_status: 'held',
     created_at: '2026-07-10T15:02:00Z', updated_at: '2026-07-11T10:00:00Z',
   },
   {
-    id: 'r3', item_id: 'a3', item_name: 'Carpa camping 4 personas', item_photo_url: '',
+    id: 'r3', item_id: 'a3', item_name: '4-person camping tent', item_photo_url: '',
     renter_id: 'u1', renter_name: 'Zero', start_date: '2026-07-08', end_date: '2026-07-10',
     status: 'delivered', deposit_amount: 5400, deposit_status: 'held',
     created_at: '2026-07-07T09:00:00Z', updated_at: '2026-07-08T10:30:00Z',
   },
   {
-    id: 'r4', item_id: 'a4', item_name: 'Parlante Bluetooth', item_photo_url: '',
+    id: 'r4', item_id: 'a4', item_name: 'Bluetooth speaker', item_photo_url: '',
     renter_id: 'u1', renter_name: 'Zero', start_date: '2026-07-05', end_date: '2026-07-06',
     status: 'returned', deposit_amount: 1600, deposit_status: 'held',
     created_at: '2026-07-04T09:00:00Z', updated_at: '2026-07-06T18:00:00Z',
   },
   {
-    id: 'r5', item_id: 'a5', item_name: 'Bicicleta urbana', item_photo_url: '',
+    id: 'r5', item_id: 'a5', item_name: 'City bike', item_photo_url: '',
     renter_id: 'u1', renter_name: 'Zero', start_date: '2026-06-28', end_date: '2026-06-30',
     status: 'closed', deposit_amount: 4500, deposit_status: 'released',
     created_at: '2026-06-27T09:00:00Z', updated_at: '2026-07-01T09:00:00Z',
   },
   {
-    id: 'r6', item_id: 'a6', item_name: 'Proyector portátil', item_photo_url: '',
+    id: 'r6', item_id: 'a6', item_name: 'Portable projector', item_photo_url: '',
     renter_id: 'u1', renter_name: 'Zero', start_date: '2026-06-25', end_date: '2026-06-25',
     status: 'rejected', deposit_amount: 2500, deposit_status: 'none',
     created_at: '2026-06-24T09:00:00Z', updated_at: '2026-06-24T15:00:00Z',
   },
 ];
+
+/**
+ * Deposit audit trail per reservation (contract: transactions). Seeded from
+ * each reservation's current deposit state so the mock stays self-consistent:
+ * a held deposit has a HOLD, released adds a RELEASE, frozen adds a FREEZE.
+ */
+const TRANSACTIONS: Record<string, Transaction[]> = {};
+for (const r of RESERVATIONS) {
+  const list: Transaction[] = [];
+  if (r.deposit_status !== 'none') {
+    list.push({ id: `tx-h-${r.id}`, reservation_id: r.id, type: 'hold', amount: r.deposit_amount, created_at: r.created_at });
+    if (r.deposit_status === 'released')
+      list.push({ id: `tx-r-${r.id}`, reservation_id: r.id, type: 'release', amount: r.deposit_amount, created_at: r.updated_at });
+    if (r.deposit_status === 'frozen')
+      list.push({ id: `tx-f-${r.id}`, reservation_id: r.id, type: 'freeze', amount: r.deposit_amount, created_at: r.updated_at });
+  }
+  TRANSACTIONS[r.id] = list;
+}
 
 /** Normalizes for search: lowercase, no accents (contract behavior). */
 function normalize(s: string): string {
@@ -162,9 +180,15 @@ export class MockDataSource implements DataSource {
       updated_at: now,
     };
     RESERVATIONS.unshift(reservation);
+    TRANSACTIONS[reservation.id] = []; // no deposit movement until approved
     // Requested reservations already block the dates (contract behavior).
     item.unavailable_dates.push({ start_date: startDate, end_date: endDate });
     return { ...reservation };
+  }
+
+  /** Mirrors GET /reservations/{id}/transactions: the deposit audit trail. */
+  async listTransactions(reservationId: string): Promise<Transaction[]> {
+    return [...(TRANSACTIONS[reservationId] ?? [])];
   }
 
   /**
@@ -184,7 +208,13 @@ export class MockDataSource implements DataSource {
       );
     }
     reservation.status = 'cancelled';
-    if (reservation.deposit_status === 'held') reservation.deposit_status = 'released';
+    if (reservation.deposit_status === 'held') {
+      reservation.deposit_status = 'released';
+      TRANSACTIONS[reservationId]?.push({
+        id: `tx-r-${Date.now()}`, reservation_id: reservationId, type: 'release',
+        amount: reservation.deposit_amount, created_at: new Date().toISOString(),
+      });
+    }
     reservation.updated_at = new Date().toISOString();
     // Cancelled reservations no longer block the item's dates.
     const item = ITEMS.find((a) => a.id === reservation.item_id);
@@ -220,6 +250,10 @@ export class MockDataSource implements DataSource {
     }
     this.reportedReservations.add(reservationId);
     reservation.deposit_status = 'frozen';
+    TRANSACTIONS[reservationId]?.push({
+      id: `tx-f-${Date.now()}`, reservation_id: reservationId, type: 'freeze',
+      amount: reservation.deposit_amount, created_at: new Date().toISOString(),
+    });
     reservation.updated_at = new Date().toISOString();
     return {
       id: `rep-${Date.now()}`,

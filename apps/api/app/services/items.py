@@ -15,6 +15,10 @@ from app.models.reservation import BLOCKING_STATUSES, Reservation
 from app.schemas.item import CreateItemRequest, UpdateItemRequest
 
 
+def _fetch_item_with_owner(db: Session, item_id: uuid.UUID) -> Item:
+    return db.scalar(select(Item).options(joinedload(Item.owner)).where(Item.id == item_id))
+
+
 def create_item(db: Session, owner_id: uuid.UUID, data: CreateItemRequest) -> Item:
     """Publish a new item.
 
@@ -37,8 +41,7 @@ def create_item(db: Session, owner_id: uuid.UUID, data: CreateItemRequest) -> It
     )
     db.add(item)
     db.commit()
-    db.refresh(item)
-    return item
+    return _fetch_item_with_owner(db, item.id)
 
 
 def get_item(db: Session, item_id: uuid.UUID) -> Item:
@@ -257,8 +260,7 @@ def update_item(
         item.photo_url = str(data.photo_url)
 
     db.commit()
-    db.refresh(item)
-    return item
+    return _fetch_item_with_owner(db, item.id)
 
 
 def delete_item(db: Session, item_id: uuid.UUID, owner_id: uuid.UUID) -> Item:
@@ -287,8 +289,36 @@ def delete_item(db: Session, item_id: uuid.UUID, owner_id: uuid.UUID) -> Item:
 
     item.is_active = False
     db.commit()
-    db.refresh(item)
-    return item
+    return _fetch_item_with_owner(db, item.id)
+
+
+def reactivate_item(db: Session, item_id: uuid.UUID, owner_id: uuid.UUID) -> Item:
+    """Reactivate a soft-deleted item by setting ``is_active = True``.
+    Idempotent — reactivating an already-active item just re-confirms
+    the same state.
+
+    Args:
+        db: Database session.
+        item_id: The item's id.
+        owner_id: The authenticated caller's id — must match the item's
+            owner, or the reactivation is refused.
+
+    Returns:
+        The reactivated Item.
+
+    Raises:
+        AppError: 404 NOT_FOUND if no item exists with that id. 403
+            FORBIDDEN if the item exists but ``owner_id`` isn't its owner.
+    """
+    item = db.scalar(select(Item).where(Item.id == item_id))
+    if item is None:
+        raise AppError(404, "NOT_FOUND", "Item not found")
+    if item.owner_id != owner_id:
+        raise AppError(403, "FORBIDDEN", "You do not own this item")
+
+    item.is_active = True
+    db.commit()
+    return _fetch_item_with_owner(db, item.id)
 
 
 def list_my_items(db: Session, owner_id: uuid.UUID) -> list[Item]:

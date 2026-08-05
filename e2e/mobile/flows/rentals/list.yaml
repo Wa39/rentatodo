@@ -16,26 +16,16 @@
 
 appId: host.exp.Exponent
 ---
-- launchApp
-- tapOn:
-    text: "Iniciar sesión"
-- tapOn:
-    placeholder: "correo@ejemplo.com"
-- inputText:
-    text: "renter@rentatodo.dev"
-- tapOn:
-    placeholder: "••••••••"
-- inputText:
-    text: "Rentatodo2026!"
-- tapOn:
-    text: "Iniciar sesión"
-- assertVisible: "RentaTodo"
+- runFlow: ../auth/_login-as-renter.yaml
 
 # Navigate to the rentals tab
 - tapOn:
-    text: "Mis rentas"
-- assertVisible: "Activas"
-- assertVisible: "Pasadas"
+    id: "tab-rentals"
+- assertVisible:
+    id: "rentals-tab-active"
+- assertVisible:
+    id: "rentals-tab-past"
 
 # Verify at least one active reservation badge is shown
-- assertVisible: "Aprobada"
+- assertVisible:
+    id: "status-badge-approved"

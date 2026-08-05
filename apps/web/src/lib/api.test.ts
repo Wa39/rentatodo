@@ -1,5 +1,23 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, apiCreateItem, apiDeleteItem, apiGetMe, apiListMyItems, apiLogin, apiRegister, apiUpdateItem } from './api'
+import {
+  ApiError,
+  apiApproveReservation,
+  apiCloseReservation,
+  apiCreateItem,
+  apiDeleteItem,
+  apiGetEarnings,
+  apiGetMe,
+  apiGetTransactions,
+  apiListMyItems,
+  apiListMyRequests,
+  apiLogin,
+  apiPresignUpload,
+  apiReactivateItem,
+  apiRegister,
+  apiRejectReservation,
+  apiReportProblem,
+  apiUpdateItem,
+} from './api'
 
 function jsonResponse(body: unknown, status: number) {
   return {
@@ -268,6 +286,344 @@ describe('api', () => {
       vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ error: { code: 'NOT_FOUND', message: 'Item not found' } }, 404))
 
       await expect(apiDeleteItem('tok123', 'missing')).rejects.toMatchObject({ code: 'NOT_FOUND', message: 'Item not found' })
+    })
+  })
+
+  describe('apiReactivateItem', () => {
+    it('PATCHes /items/{id}/reactivate with a Bearer token and resolves with the reactivated item', async () => {
+      const payload = {
+        id: 'i1',
+        name: 'Taladro Bosch Professional',
+        description: 'desc',
+        category: 'tools',
+        price_per_day: 5000,
+        photo_url: 'https://example.com/p.jpg',
+        is_active: true,
+        owner_id: 'u1',
+        owner_name: 'María Vargas',
+        created_at: '2026-01-01T00:00:00Z',
+      }
+      vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(payload, 200))
+
+      const result = await apiReactivateItem('tok123', 'i1')
+
+      expect(result).toEqual(payload)
+      expect(fetch).toHaveBeenCalledWith(
+        'http://localhost:8000/items/i1/reactivate',
+        expect.objectContaining({ method: 'PATCH', headers: expect.objectContaining({ Authorization: 'Bearer tok123' }) }),
+      )
+    })
+
+    it('throws ApiError with the code/message from a 404 response', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ error: { code: 'NOT_FOUND', message: 'Item not found' } }, 404))
+
+      await expect(apiReactivateItem('tok123', 'missing')).rejects.toMatchObject({ code: 'NOT_FOUND', message: 'Item not found' })
+    })
+  })
+
+  describe('apiListMyRequests', () => {
+    it('GETs /users/me/requests?page=1&limit=50 with a Bearer token and resolves with the paginated envelope', async () => {
+      const payload = {
+        reservations: [
+          {
+            id: 'r1',
+            item_id: 'i1',
+            item_name: 'Taladro Bosch Professional',
+            item_photo_url: 'https://example.com/p.jpg',
+            renter_id: 'u2',
+            renter_name: 'Jorge Salas',
+            start_date: '2026-07-18',
+            end_date: '2026-07-20',
+            status: 'requested',
+            deposit_amount: 2000,
+            deposit_status: 'none',
+            created_at: '2026-07-14T12:00:00Z',
+            updated_at: '2026-07-14T12:00:00Z',
+          },
+        ],
+        page: 1,
+        limit: 50,
+        total: 1,
+      }
+      vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(payload, 200))
+
+      const result = await apiListMyRequests('tok123')
+
+      expect(result).toEqual(payload)
+      expect(fetch).toHaveBeenCalledWith(
+        'http://localhost:8000/users/me/requests?page=1&limit=50',
+        expect.objectContaining({ method: 'GET', headers: expect.objectContaining({ Authorization: 'Bearer tok123' }) }),
+      )
+    })
+
+    it('throws ApiError on a 401 response', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ error: { code: 'UNAUTHORIZED', message: 'Not authenticated' } }, 401))
+
+      await expect(apiListMyRequests('bad-token')).rejects.toBeInstanceOf(ApiError)
+    })
+  })
+
+  describe('apiApproveReservation', () => {
+    it('PATCHes /reservations/{id}/approve with a Bearer token and resolves with the updated reservation', async () => {
+      const payload = {
+        id: 'r1',
+        item_id: 'i1',
+        item_name: 'Taladro Bosch Professional',
+        item_photo_url: 'https://example.com/p.jpg',
+        renter_id: 'u2',
+        renter_name: 'Jorge Salas',
+        start_date: '2026-07-18',
+        end_date: '2026-07-20',
+        status: 'approved',
+        deposit_amount: 2000,
+        deposit_status: 'held',
+        created_at: '2026-07-14T12:00:00Z',
+        updated_at: '2026-07-15T09:00:00Z',
+      }
+      vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(payload, 200))
+
+      const result = await apiApproveReservation('tok123', 'r1')
+
+      expect(result).toEqual(payload)
+      expect(fetch).toHaveBeenCalledWith(
+        'http://localhost:8000/reservations/r1/approve',
+        expect.objectContaining({ method: 'PATCH', headers: expect.objectContaining({ Authorization: 'Bearer tok123' }) }),
+      )
+    })
+
+    it('throws ApiError with the code/message from a 409 response (invalid transition)', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(
+        jsonResponse({ error: { code: 'INVALID_TRANSITION', message: 'Reservation is not in requested status' } }, 409),
+      )
+
+      await expect(apiApproveReservation('tok123', 'r1')).rejects.toMatchObject({
+        code: 'INVALID_TRANSITION',
+        message: 'Reservation is not in requested status',
+      })
+    })
+  })
+
+  describe('apiRejectReservation', () => {
+    it('PATCHes /reservations/{id}/reject with a Bearer token and resolves with the updated reservation', async () => {
+      const payload = {
+        id: 'r1',
+        item_id: 'i1',
+        item_name: 'Taladro Bosch Professional',
+        item_photo_url: 'https://example.com/p.jpg',
+        renter_id: 'u2',
+        renter_name: 'Jorge Salas',
+        start_date: '2026-07-18',
+        end_date: '2026-07-20',
+        status: 'rejected',
+        deposit_amount: 2000,
+        deposit_status: 'none',
+        created_at: '2026-07-14T12:00:00Z',
+        updated_at: '2026-07-15T09:00:00Z',
+      }
+      vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(payload, 200))
+
+      const result = await apiRejectReservation('tok123', 'r1')
+
+      expect(result).toEqual(payload)
+      expect(fetch).toHaveBeenCalledWith(
+        'http://localhost:8000/reservations/r1/reject',
+        expect.objectContaining({ method: 'PATCH', headers: expect.objectContaining({ Authorization: 'Bearer tok123' }) }),
+      )
+    })
+
+    it('throws ApiError with the code/message from a 403 response (not the item owner)', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ error: { code: 'FORBIDDEN', message: 'Not the item owner' } }, 403))
+
+      await expect(apiRejectReservation('tok123', 'r1')).rejects.toMatchObject({ code: 'FORBIDDEN', message: 'Not the item owner' })
+    })
+  })
+
+  describe('apiCloseReservation', () => {
+    it('PATCHes /reservations/{id}/close with a Bearer token and resolves with the updated reservation', async () => {
+      const payload = {
+        id: 'r1',
+        item_id: 'i1',
+        item_name: 'Taladro Bosch Professional',
+        item_photo_url: 'https://example.com/p.jpg',
+        renter_id: 'u2',
+        renter_name: 'Jorge Salas',
+        start_date: '2026-07-18',
+        end_date: '2026-07-20',
+        status: 'closed',
+        deposit_amount: 2000,
+        deposit_status: 'released',
+        created_at: '2026-07-14T12:00:00Z',
+        updated_at: '2026-07-15T09:00:00Z',
+      }
+      vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(payload, 200))
+
+      const result = await apiCloseReservation('tok123', 'r1')
+
+      expect(result).toEqual(payload)
+      expect(fetch).toHaveBeenCalledWith(
+        'http://localhost:8000/reservations/r1/close',
+        expect.objectContaining({ method: 'PATCH', headers: expect.objectContaining({ Authorization: 'Bearer tok123' }) }),
+      )
+    })
+
+    it('throws ApiError with the code/message from a 409 response (active freeze)', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(
+        jsonResponse({ error: { code: 'FREEZE_ACTIVE', message: 'Cannot close: an active problem report exists' } }, 409),
+      )
+
+      await expect(apiCloseReservation('tok123', 'r1')).rejects.toMatchObject({
+        code: 'FREEZE_ACTIVE',
+        message: 'Cannot close: an active problem report exists',
+      })
+    })
+  })
+
+  describe('apiPresignUpload', () => {
+    it('POSTs to /uploads/presign with filename and content_type, resolves with the presign payload', async () => {
+      const payload = {
+        upload_url: 'https://s3.example.com/upload?sig=abc',
+        public_url: 'https://s3.example.com/uploads/u1/abc.jpg',
+        expires_in: 300,
+      }
+      vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(payload, 200))
+
+      const result = await apiPresignUpload('tok123', 'photo.jpg', 'image/jpeg')
+
+      expect(result).toEqual(payload)
+      expect(fetch).toHaveBeenCalledWith(
+        'http://localhost:8000/uploads/presign',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ filename: 'photo.jpg', content_type: 'image/jpeg' }),
+          headers: expect.objectContaining({ Authorization: 'Bearer tok123' }),
+        }),
+      )
+    })
+
+    it('throws ApiError with the code/message from a 401 response', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(
+        jsonResponse({ error: { code: 'UNAUTHORIZED', message: 'Missing or invalid token' } }, 401),
+      )
+
+      await expect(apiPresignUpload('bad-token', 'photo.jpg', 'image/jpeg')).rejects.toMatchObject({
+        code: 'UNAUTHORIZED',
+        message: 'Missing or invalid token',
+      })
+    })
+  })
+
+  describe('apiGetEarnings', () => {
+    it('GETs /users/me/earnings with a Bearer token and resolves with the summary', async () => {
+      const payload = {
+        total_earnings: 7000,
+        by_item: [
+          {
+            item_id: 'i1',
+            item_name: 'Taladro Bosch Professional',
+            total: 3000,
+            rentals: [{ start_date: '2026-07-01', end_date: '2026-07-03', amount: 3000 }],
+          },
+        ],
+      }
+      vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(payload, 200))
+
+      const result = await apiGetEarnings('tok123')
+
+      expect(result).toEqual(payload)
+      expect(fetch).toHaveBeenCalledWith(
+        'http://localhost:8000/users/me/earnings',
+        expect.objectContaining({ method: 'GET', headers: expect.objectContaining({ Authorization: 'Bearer tok123' }) }),
+      )
+    })
+
+    it('throws ApiError on a 401 response', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ error: { code: 'UNAUTHORIZED', message: 'Not authenticated' } }, 401))
+
+      await expect(apiGetEarnings('bad-token')).rejects.toBeInstanceOf(ApiError)
+    })
+  })
+
+  describe('apiGetTransactions', () => {
+    it('GETs /reservations/{id}/transactions with a Bearer token and resolves with the array of transactions', async () => {
+      const payload = [
+        { id: 't1', reservation_id: 'r1', type: 'hold', amount: 4500, created_at: '2026-07-10T08:00:00Z' },
+      ]
+      vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(payload, 200))
+
+      const result = await apiGetTransactions('tok123', 'r1')
+
+      expect(result).toEqual(payload)
+      expect(fetch).toHaveBeenCalledWith(
+        'http://localhost:8000/reservations/r1/transactions',
+        expect.objectContaining({ method: 'GET', headers: expect.objectContaining({ Authorization: 'Bearer tok123' }) }),
+      )
+    })
+
+    it('throws ApiError with the code/message from a 500 response', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(
+        jsonResponse({ error: { code: 'SERVER_ERROR', message: 'Transactions server exploded' } }, 500),
+      )
+
+      await expect(apiGetTransactions('tok123', 'r1')).rejects.toMatchObject({
+        code: 'SERVER_ERROR',
+        message: 'Transactions server exploded',
+      })
+    })
+
+    it('throws ApiError with the code/message from a 403 response', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(
+        jsonResponse({ error: { code: 'FORBIDDEN', message: 'Not the owner or renter of this reservation' } }, 403),
+      )
+
+      await expect(apiGetTransactions('tok123', 'r1')).rejects.toMatchObject({
+        code: 'FORBIDDEN',
+        message: 'Not the owner or renter of this reservation',
+      })
+    })
+  })
+
+  describe('apiReportProblem', () => {
+    it('POSTs to /reservations/{id}/report with a Bearer token and resolves with the created report', async () => {
+      const payload = {
+        id: 'rep1',
+        reservation_id: 'r1',
+        reported_by: 'u1',
+        reason: 'The drill bit was broken',
+        photo_url: 'https://storage.example.com/photos/broken.jpg',
+        created_at: '2026-07-27T10:00:00Z',
+      }
+      vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(payload, 201))
+
+      const result = await apiReportProblem('tok123', 'r1', {
+        reason: 'The drill bit was broken',
+        photo_url: 'https://storage.example.com/photos/broken.jpg',
+      })
+
+      expect(result).toEqual(payload)
+      expect(fetch).toHaveBeenCalledWith(
+        'http://localhost:8000/reservations/r1/report',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({
+            reason: 'The drill bit was broken',
+            photo_url: 'https://storage.example.com/photos/broken.jpg',
+          }),
+          headers: expect.objectContaining({ Authorization: 'Bearer tok123' }),
+        }),
+      )
+    })
+
+    it('throws ApiError with the code/message from a 409 response (report already exists)', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(
+        jsonResponse({ error: { code: 'INVALID_TRANSITION', message: 'Report already exists for this reservation' } }, 409),
+      )
+
+      await expect(
+        apiReportProblem('tok123', 'r1', { reason: 'x', photo_url: 'https://example.com/p.jpg' }),
+      ).rejects.toMatchObject({
+        code: 'INVALID_TRANSITION',
+        message: 'Report already exists for this reservation',
+      })
     })
   })
 })

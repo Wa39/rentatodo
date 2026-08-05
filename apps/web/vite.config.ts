@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 import path from 'node:path'
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   plugins: [react()],
   resolve: {
     alias: {
@@ -14,4 +14,9 @@ export default defineConfig({
     port: 8081,
     strictPort: true,
   },
-})
+  esbuild: {
+    // Strip console.* and debugger statements from the production bundle.
+    // In dev mode (command === 'serve') they are kept so debugging still works.
+    drop: command === 'build' ? ['console', 'debugger'] : [],
+  },
+}))

@@ -1,7 +1,7 @@
 import { ApiDataSource } from '@/data/api/api-data-source';
 import { getApiUrl } from '@/data/api/http';
 import { MockDataSource } from '@/data/mock-data-source';
-import type { Item, ItemDetail, Report, Reservation } from '@/data/types';
+import type { Item, ItemDetail, Report, Reservation, Transaction } from '@/data/types';
 
 /**
  * App data layer, shaped like the frozen contract (packages/contracts/openapi.yaml):
@@ -30,6 +30,11 @@ export interface DataSource {
    * reservation. Freezes the deposit; reservation status does NOT change.
    */
   reportProblem(reservationId: string, reason: string, photoUrl: string): Promise<Report>;
+  /**
+   * GET /reservations/{id}/transactions — the deposit's audit trail
+   * (hold/release/freeze). Read-only; oldest first.
+   */
+  listTransactions(reservationId: string): Promise<Transaction[]>;
 }
 
 export const dataSource: DataSource = getApiUrl() ? new ApiDataSource() : new MockDataSource();

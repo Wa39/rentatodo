@@ -32,11 +32,26 @@ export function setAccessToken(token: string | null): void {
   accessToken = token;
 }
 
+let onAuthError: (() => void) | null = null;
+
+/**
+ * Registered by the session layer. Invoked once when an *authenticated*
+ * request is rejected with 401 (expired/invalid token mid-session), so the
+ * session can sign out centrally instead of each screen handling expiry.
+ * A 401 from an unauthenticated call (e.g. bad login credentials) never
+ * triggers it, because no token was attached.
+ */
+export function setAuthErrorHandler(handler: (() => void) | null): void {
+  onAuthError = handler;
+}
+
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const base = getApiUrl();
   if (!base) {
     throw new ApiRequestError(0, 'NETWORK_ERROR', 'EXPO_PUBLIC_API_URL is not set (mock mode)');
   }
+
+  const hadToken = accessToken !== null;
 
   let response: Response;
   try {
@@ -53,6 +68,11 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   }
 
   if (!response.ok) {
+    // An authenticated request rejected with 401 means the session died
+    // (expired/invalid token): sign out centrally, then still throw so the
+    // caller's own error handling runs.
+    if (response.status === 401 && hadToken) onAuthError?.();
+
     let code: ApiErrorCode | 'NETWORK_ERROR' = 'NETWORK_ERROR';
     let message = `HTTP ${response.status}`;
     try {

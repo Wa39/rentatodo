@@ -268,6 +268,70 @@ def test_delete_item_returns_404_for_missing_id(client: TestClient) -> None:
     assert response.json()["error"]["code"] == "NOT_FOUND"
 
 
+def test_reactivate_item_happy_path_activates(client: TestClient) -> None:
+    """Happy path: PATCH .../reactivate sets is_active=True and returns the item."""
+    token = _register_and_login(client, "reactivator1@example.com")
+    create_response = client.post(
+        "/items",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "name": "A reactivar",
+            "description": "Descripcion",
+            "category": "tools",
+            "price_per_day": 5000,
+            "photo_url": "https://example.com/photo.jpg",
+        },
+    )
+    item_id = create_response.json()["id"]
+    client.delete(f"/items/{item_id}", headers={"Authorization": f"Bearer {token}"})
+
+    response = client.patch(
+        f"/items/{item_id}/reactivate", headers={"Authorization": f"Bearer {token}"}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["is_active"] is True
+
+
+def test_reactivate_item_returns_404_for_missing_id(client: TestClient) -> None:
+    """Failure path: reactivating a nonexistent item returns 404 NOT_FOUND."""
+    token = _register_and_login(client, "reactivator2@example.com")
+
+    response = client.patch(
+        "/items/00000000-0000-0000-0000-000000000000/reactivate",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "NOT_FOUND"
+
+
+def test_reactivate_item_returns_403_for_non_owner(client: TestClient) -> None:
+    """Failure path: a non-owner cannot reactivate someone else's item."""
+    token = _register_and_login(client, "reactivator3@example.com")
+    other_token = _register_and_login(client, "reactivator3-other@example.com")
+    create_response = client.post(
+        "/items",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "name": "Ajeno",
+            "description": "Descripcion",
+            "category": "tools",
+            "price_per_day": 5000,
+            "photo_url": "https://example.com/photo.jpg",
+        },
+    )
+    item_id = create_response.json()["id"]
+    client.delete(f"/items/{item_id}", headers={"Authorization": f"Bearer {token}"})
+
+    response = client.patch(
+        f"/items/{item_id}/reactivate", headers={"Authorization": f"Bearer {other_token}"}
+    )
+
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "FORBIDDEN"
+
+
 def test_list_my_items_requires_authentication(client: TestClient) -> None:
     """Failure path: no token returns 401 UNAUTHORIZED."""
     response = client.get("/users/me/items")
