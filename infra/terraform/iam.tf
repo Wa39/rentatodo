@@ -50,7 +50,16 @@ data "aws_iam_policy_document" "ec2_permissions" {
   # KMS: decrypt SecureString parameters (uses the default aws/ssm key).
   statement {
     actions   = ["kms:Decrypt"]
-    resources = ["arn:aws:kms:${var.aws_region}:*:key/alias/aws/ssm"]
+    resources = ["arn:aws:kms:${var.aws_region}:*:alias/aws/ssm"]
+  }
+  # S3: item-image uploads/downloads (bucket passed via AWS_S3_BUCKET env var).
+  statement {
+    actions = [
+      "s3:PutObject",
+      "s3:DeleteObject",
+      "s3:GetObject",
+    ]
+    resources = ["arn:aws:s3:::rentatodo-items-wa/*"]
   }
 }
 

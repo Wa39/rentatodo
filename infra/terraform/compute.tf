@@ -5,7 +5,7 @@ data "aws_ami" "amazon_linux_2023" {
 
   filter {
     name   = "name"
-    values = ["al2023-ami-*-x86_64"]
+    values = ["al2023-ami-2023*-kernel-*-x86_64"]
   }
 
   filter {
@@ -19,7 +19,8 @@ resource "aws_instance" "api" {
   instance_type          = "t2.micro"  # free tier: 750 h/month for 12 months
   subnet_id              = aws_subnet.public.id
   vpc_security_group_ids = [aws_security_group.ec2.id]
-  iam_instance_profile   = aws_iam_instance_profile.api.name
+  iam_instance_profile          = aws_iam_instance_profile.api.name
+  associate_public_ip_address   = true  # needed at boot: EIP attaches after launch, too late for dnf
 
   # Install Docker on first boot. The deploy workflow handles the first container run.
   user_data = <<-EOF

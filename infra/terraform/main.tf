@@ -16,6 +16,7 @@ terraform {
     bucket       = "rentatodo-tfstate-770018310906"
     key          = "rentatodo/terraform.tfstate"
     region       = "us-east-1"
+    encrypt      = true          # state contains RDS password + JWT key — must be encrypted at rest
     use_lockfile = true  # S3 native locking — requires Terraform >= 1.10
   }
 }

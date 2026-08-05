@@ -65,6 +65,8 @@ resource "aws_security_group" "ec2" {
   description = "API server: inbound on app port, all outbound."
   vpc_id      = aws_vpc.main.id
 
+  # HTTP only (no TLS) — plain-text traffic is an accepted risk for this educational project.
+  # To add HTTPS: provision an ALB with ACM certificate (~$18/month extra).
   ingress {
     description = "API"
     from_port   = var.app_port
