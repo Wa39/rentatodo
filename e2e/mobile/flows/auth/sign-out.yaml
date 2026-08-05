@@ -1,0 +1,20 @@
+# Sign-out from the Profile tab.
+# Verifies the session is cleared and the login screen is shown.
+# Run: maestro test e2e/mobile/flows/auth/sign-out.yaml
+
+appId: host.exp.Exponent
+---
+- runFlow: _login-as-renter.yaml
+
+- tapOn:
+    id: "tab-profile"
+- assertVisible:
+    id: "profile-user-name"
+
+- tapOn:
+    id: "profile-logout"
+
+- assertVisible:
+    id: "login-brand"
+- assertVisible:
+    id: "login-submit"
