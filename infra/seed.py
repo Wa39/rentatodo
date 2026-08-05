@@ -70,6 +70,7 @@ sys.path.insert(0, "apps/api")
 import bcrypt  # noqa: E402
 import boto3  # noqa: E402
 from botocore.exceptions import ClientError  # noqa: E402
+from sqlalchemy import select  # noqa: E402
 from sqlalchemy.orm import Session  # noqa: E402
 
 from app.config import settings  # noqa: E402
@@ -280,7 +281,7 @@ def seed() -> None:
 
     with Session(engine) as session:
         # ── Users ──────────────────────────────────────────────────────────
-        existing_emails = {u.email for u in session.query(User.email).all()}
+        existing_emails = set(session.scalars(select(User.email)))
         new_users = [u for u in TEST_USERS if u["email"] not in existing_emails]
 
         users_by_email: dict[str, User] = {}
@@ -297,7 +298,7 @@ def seed() -> None:
         else:
             print("Users already seeded.")
 
-        for user in session.query(User).all():
+        for user in session.scalars(select(User)):
             users_by_email[user.email] = user
 
         owner = users_by_email.get("owner@rentatodo.dev")
@@ -307,7 +308,7 @@ def seed() -> None:
             return
 
         # ── Items ───────────────────────────────────────────────────────────
-        existing_item_names = {i.name for i in session.query(Item.name).all()}
+        existing_item_names = set(session.scalars(select(Item.name)))
         new_items = [i for i in TEST_ITEMS if i["name"] not in existing_item_names]
 
         if new_items:
@@ -347,7 +348,7 @@ def seed() -> None:
             session.commit()
             return
 
-        items_by_name: dict[str, Item] = {i.name: i for i in session.query(Item).all()}
+        items_by_name: dict[str, Item] = {i.name: i for i in session.scalars(select(Item))}
 
         # One reservation per status, one per item — no double-booking possible.
         # Dates are relative to today so the seed stays meaningful over time.
