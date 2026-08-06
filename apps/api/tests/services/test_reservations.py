@@ -976,6 +976,42 @@ def test_get_transactions_happy_path(db_session: Session, make_user, make_item) 
     assert transactions[0].amount == 15000
 
 
+def test_get_transactions_does_not_lock_the_row(db_session: Session, make_user, make_item) -> None:
+    """get_transactions is read-only. Unlike the mutation endpoints, it
+    must not take a FOR UPDATE row lock — doing so blocks concurrent
+    writes to the same reservation for no reason (audit finding A2,
+    PR #94).
+    """
+    from sqlalchemy import event
+
+    from app.services.reservations import (
+        approve_reservation,
+        create_reservation,
+        get_transactions,
+    )
+
+    owner = make_user(email="transactions-owner3@example.com")
+    renter = make_user(email="transactions-renter3@example.com")
+    item = make_item(owner_id=owner.id, price_per_day=5000)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(5, 3)
+    )
+    approve_reservation(db_session, reservation_id=reservation.id, owner_id=owner.id)
+
+    captured_sql = []
+
+    def _capture(conn, cursor, statement, parameters, context, executemany):
+        captured_sql.append(statement)
+
+    event.listen(db_session.get_bind(), "before_cursor_execute", _capture)
+    try:
+        get_transactions(db_session, reservation_id=reservation.id, user_id=renter.id)
+    finally:
+        event.remove(db_session.get_bind(), "before_cursor_execute", _capture)
+
+    assert not any("FOR UPDATE" in sql.upper() for sql in captured_sql)
+
+
 def test_get_transactions_requires_participant(db_session: Session, make_user, make_item) -> None:
     """Failure path: a stranger can't view the transaction history, 403 FORBIDDEN."""
     from app.services.reservations import create_reservation, get_transactions

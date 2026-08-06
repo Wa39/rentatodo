@@ -5,7 +5,7 @@ prevention (Task 3), approve/reject/cancel (Task 4), and listing (Task 5).
 import uuid
 from datetime import date
 
-from sqlalchemy import func, select
+from sqlalchemy import Select, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload, selectinload
 
@@ -116,9 +116,30 @@ def create_reservation(
     return reservation
 
 
+def _reservation_lookup_query(reservation_id: uuid.UUID) -> Select:
+    """Base SELECT shared by the locking and read-only reservation
+    lookups: the item, renter, and transactions eager loads are the same
+    either way — only whether a row lock is taken differs.
+    """
+    return (
+        select(Reservation)
+        .options(
+            joinedload(Reservation.item),
+            joinedload(Reservation.renter),
+            selectinload(Reservation.transactions),
+        )
+        .where(Reservation.id == reservation_id)
+    )
+
+
 def _get_reservation_or_404(db: Session, reservation_id: uuid.UUID) -> Reservation:
-    """Look up a reservation by id, with its item and renter pre-loaded,
-    holding a row lock for the rest of the caller's transaction.
+    """Look up a reservation by id, with its item, renter, and
+    transactions pre-loaded, holding a row lock for the rest of the
+    caller's transaction.
+
+    Used by every endpoint that mutates a reservation. Read-only callers
+    should use `_get_reservation_or_404_readonly` instead — taking this
+    lock on a read blocks concurrent writes for no reason.
 
     Args:
         db: Database session.
@@ -140,15 +161,30 @@ def _get_reservation_or_404(db: Session, reservation_id: uuid.UUID) -> Reservati
     # join. Scoping the lock to just the reservations row also avoids
     # incidentally locking the joined item/user rows.
     reservation = db.scalar(
-        select(Reservation)
-        .options(
-            joinedload(Reservation.item),
-            joinedload(Reservation.renter),
-            selectinload(Reservation.transactions),
-        )
-        .where(Reservation.id == reservation_id)
-        .with_for_update(of=Reservation)
+        _reservation_lookup_query(reservation_id).with_for_update(of=Reservation)
     )
+    if reservation is None:
+        raise AppError(404, "NOT_FOUND", "Reservation not found")
+    return reservation
+
+
+def _get_reservation_or_404_readonly(db: Session, reservation_id: uuid.UUID) -> Reservation:
+    """Same lookup as `_get_reservation_or_404`, without the row lock —
+    for read-only callers (audit finding A2, PR #94: get_transactions
+    was taking a FOR UPDATE lock it never needed, blocking concurrent
+    writes on the same reservation).
+
+    Args:
+        db: Database session.
+        reservation_id: The reservation's id.
+
+    Returns:
+        The matching Reservation.
+
+    Raises:
+        AppError: 404 NOT_FOUND if no reservation exists with that id.
+    """
+    reservation = db.scalar(_reservation_lookup_query(reservation_id))
     if reservation is None:
         raise AppError(404, "NOT_FOUND", "Reservation not found")
     return reservation
@@ -477,7 +513,7 @@ def get_transactions(
         AppError: 404 NOT_FOUND if the reservation doesn't exist. 403
             FORBIDDEN if the caller is neither party.
     """
-    reservation = _get_reservation_or_404(db, reservation_id)
+    reservation = _get_reservation_or_404_readonly(db, reservation_id)
     _assert_participant(reservation, user_id)
     return reservation.transactions
 
