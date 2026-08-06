@@ -13,6 +13,7 @@ permissions:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: apps/api
@@ -55,11 +56,12 @@ jobs:
               \"set -e\",
               \"DATABASE_URL=\$(aws ssm get-parameter --name /rentatodo/database_url --with-decryption --query Parameter.Value --output text --region us-east-1)\",
               \"JWT_SECRET=\$(aws ssm get-parameter --name /rentatodo/jwt_secret --with-decryption --query Parameter.Value --output text --region us-east-1)\",
+              \"CORS_ORIGINS=\$(aws ssm get-parameter --name /rentatodo/cors_origins --query Parameter.Value --output text --region us-east-1)\",
               \"aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $REGISTRY\",
               \"docker pull $REGISTRY/$REPOSITORY:latest\",
               \"docker stop rentatodo-api 2>/dev/null || true\",
               \"docker rm rentatodo-api 2>/dev/null || true\",
-              \"docker run -d --name rentatodo-api --restart=always -e DATABASE_URL=\\\"\$DATABASE_URL\\\" -e JWT_SECRET=\\\"\$JWT_SECRET\\\" -e CORS_ORIGINS=\\\"*\\\" -e JWT_EXPIRATION_HOURS=24 -e AWS_S3_BUCKET=rentatodo-items-wa -e AWS_S3_REGION=us-east-1 -p 8000:8000 $REGISTRY/$REPOSITORY:latest\"
+              \"docker run -d --name rentatodo-api --restart=always -e DATABASE_URL=\\\"\$DATABASE_URL\\\" -e JWT_SECRET=\\\"\$JWT_SECRET\\\" -e CORS_ORIGINS=\\\"\$CORS_ORIGINS\\\" -e JWT_EXPIRATION_HOURS=24 -e AWS_S3_BUCKET=rentatodo-items-wa -e AWS_S3_REGION=us-east-1 -p 8000:8000 $REGISTRY/$REPOSITORY:latest\"
             ]" \
             --query "Command.CommandId" \
             --output text)
