@@ -1115,3 +1115,73 @@ def test_get_earnings_only_counts_this_owners_items(db_session: Session, make_us
 
     assert earnings_b.total_earnings == 0
     assert earnings_b.by_item == []
+
+
+def test_get_earnings_does_not_load_transactions(
+    db_session: Session, make_user, make_item
+) -> None:
+    """The 'released' filter now happens in SQL (a subquery on the
+    latest transaction per reservation), not by loading each closed
+    reservation's full transaction history into Python just to read
+    deposit_status. get_earnings must no longer issue a separate
+    round-trip to load the transactions table at all (audit finding M1,
+    PR #94, Option B).
+    """
+    from sqlalchemy import event
+
+    from app.services.reservations import get_earnings
+
+    owner = make_user(email="earnings-owner4@example.com")
+    renter = make_user(email="earnings-renter4@example.com")
+    item = make_item(owner_id=owner.id, price_per_day=5000)
+    _make_closed_reservation(db_session, owner, renter, item, start_offset=5)
+    db_session.expire_all()
+
+    captured_sql = []
+
+    def _capture(conn, cursor, statement, parameters, context, executemany):
+        captured_sql.append(statement)
+
+    event.listen(db_session.get_bind(), "before_cursor_execute", _capture)
+    try:
+        get_earnings(db_session, owner_id=owner.id)
+    finally:
+        event.remove(db_session.get_bind(), "before_cursor_execute", _capture)
+
+    assert not any(sql.strip().upper().startswith("SELECT TRANSACTIONS") for sql in captured_sql)
+
+
+def test_get_earnings_excludes_closed_reservation_without_a_release_transaction(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Defensive path: a "closed" reservation with no release Transaction
+    at all must not count toward earnings. This state is unreachable
+    through the service layer today — close_reservation always inserts
+    a release in the same commit that sets status="closed" — so it's
+    built directly here (status set without going through
+    close_reservation) to prove the SQL filter is a real safety net for
+    a future regression, not an assumption that `status == "closed"`
+    alone is enough.
+    """
+    from sqlalchemy import delete
+
+    from app.models.reservation import Transaction
+    from app.services.reservations import get_earnings
+
+    owner = make_user(email="earnings-owner5@example.com")
+    renter = make_user(email="earnings-renter5@example.com")
+    item = make_item(owner_id=owner.id, price_per_day=5000)
+    reservation = _make_closed_reservation(db_session, owner, renter, item, start_offset=5)
+    # Simulate a hypothetical future bug: status flipped to "closed"
+    # without a release Transaction ever being inserted. Deletes the
+    # release that _make_closed_reservation's close_reservation call
+    # already added, so this reservation is "closed" with zero
+    # transactions — append-only in real app code, but this is a test
+    # setup step, not application behavior.
+    db_session.execute(delete(Transaction).where(Transaction.reservation_id == reservation.id))
+    db_session.commit()
+
+    earnings = get_earnings(db_session, owner_id=owner.id)
+
+    assert earnings.total_earnings == 0
+    assert earnings.by_item == []

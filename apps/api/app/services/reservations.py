@@ -529,20 +529,40 @@ def get_earnings(db: Session, owner_id: uuid.UUID) -> EarningsResponse:
         Total earnings and a per-item breakdown with each rental's date
         range and amount. Renter names are never included.
     """
+    # "Released" is filtered here in SQL instead of loading every closed
+    # reservation's full transaction history into Python just to read
+    # Reservation.deposit_status. This deliberately checks for the
+    # EXISTENCE of a release transaction rather than ordering by
+    # created_at to find the "latest" one (the way deposit_status does):
+    # two Transactions can land on the exact same created_at (observed
+    # in practice — see the TDD notes on this change), which makes
+    # "latest by timestamp" ambiguous. EXISTS sidesteps that entirely,
+    # and is equivalent here: close_reservation refuses to close while
+    # frozen (FREEZE_ACTIVE) and there is no unfreeze path in this
+    # codebase, so a closed reservation can never have a freeze
+    # transaction — a release existing is enough. This is what would
+    # catch a violation of that invariant in the future, in SQL, rather
+    # than silently assuming it from `status == "closed"` alone (audit
+    # finding M1, PR #94).
+    has_release_transaction = (
+        select(Transaction.id)
+        .where(Transaction.reservation_id == Reservation.id, Transaction.type == "release")
+        .exists()
+    )
+
     reservations = db.scalars(
         select(Reservation)
-        .options(joinedload(Reservation.item), selectinload(Reservation.transactions))
+        .options(joinedload(Reservation.item))
         .where(
             Reservation.item_id.in_(select(Item.id).where(Item.owner_id == owner_id)),
             Reservation.status == "closed",
+            has_release_transaction,
         )
     ).unique()
 
     by_item: dict[uuid.UUID, EarningsByItem] = {}
     total_earnings = 0
     for reservation in reservations:
-        if reservation.deposit_status != "released":
-            continue
         total_earnings += reservation.deposit_amount
         item_id = reservation.item_id
         if item_id not in by_item:
