@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 
-import { setAccessToken, setAuthErrorHandler } from '@/data/api/http';
+import { ApiRequestError, setAccessToken, setAuthErrorHandler } from '@/data/api/http';
 import { authService } from '@/data/auth/auth-service';
 import { clearStoredToken, getStoredToken, storeToken } from '@/data/auth/token-store';
 import type { User } from '@/data/types';
@@ -48,10 +48,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         setAccessToken(token);
         setUser(await authService.getProfile());
         setStatus('signed_in');
-      } catch {
-        setAccessToken(null);
-        await clearStoredToken();
-        setStatus('signed_out');
+      } catch (e) {
+        // Only a genuine auth rejection (401) invalidates the stored token.
+        // A network/server error at startup (offline, server down, timeout)
+        // must NOT destroy the token — keep the session and trust the token;
+        // a later 401 on a real request signs out via the auth-error handler.
+        if (e instanceof ApiRequestError && e.status === 401) {
+          setAccessToken(null);
+          await clearStoredToken();
+          setStatus('signed_out');
+        } else {
+          setStatus('signed_in');
+        }
       }
     })();
   }, []);
