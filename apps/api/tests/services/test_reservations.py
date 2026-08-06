@@ -560,6 +560,32 @@ def test_get_reservation_or_404_locks_the_row(db_session: Session, make_user, ma
     assert any("FOR UPDATE" in sql.upper() for sql in captured_sql)
 
 
+def test_get_reservation_or_404_preloads_transactions(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Every mutating endpoint accesses reservation.transactions (directly
+    or via deposit_status) after this lookup, sometimes more than once
+    (e.g. close_reservation). Without eager loading, each access after
+    db.refresh() re-triggers a lazy SELECT — a hidden N+1 (audit finding
+    A3, PR #94). transactions must come back already loaded.
+    """
+    from sqlalchemy import inspect as sa_inspect
+
+    from app.services import reservations
+    from app.services.reservations import create_reservation
+
+    owner = make_user(email="preload-owner1@example.com")
+    renter = make_user(email="preload-renter1@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(5, 2)
+    )
+
+    fetched = reservations._get_reservation_or_404(db_session, reservation.id)
+
+    assert "transactions" not in sa_inspect(fetched).unloaded
+
+
 def test_assert_participant_allows_renter_and_owner(
     db_session: Session, make_user, make_item
 ) -> None:

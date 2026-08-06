@@ -141,7 +141,11 @@ def _get_reservation_or_404(db: Session, reservation_id: uuid.UUID) -> Reservati
     # incidentally locking the joined item/user rows.
     reservation = db.scalar(
         select(Reservation)
-        .options(joinedload(Reservation.item), joinedload(Reservation.renter))
+        .options(
+            joinedload(Reservation.item),
+            joinedload(Reservation.renter),
+            selectinload(Reservation.transactions),
+        )
         .where(Reservation.id == reservation_id)
         .with_for_update(of=Reservation)
     )
