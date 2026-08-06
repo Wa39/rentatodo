@@ -43,13 +43,15 @@ const RESERVATION = {
 }
 
 function Probe() {
-  const { requests, loading, error, approveRequest, rejectRequest, closeRequest } = useRequests()
+  const { requests, loading, error, hasMore, loadingMore, loadMore, approveRequest, rejectRequest, closeRequest } = useRequests()
   const { logout } = useAuth()
   return (
     <div>
       <span data-testid="loading">{loading ? 'loading' : 'idle'}</span>
       <span data-testid="error">{error ?? ''}</span>
       <span data-testid="count">{requests.length}</span>
+      <span data-testid="has-more">{hasMore ? 'yes' : 'no'}</span>
+      <span data-testid="loading-more">{loadingMore ? 'loading' : 'idle'}</span>
       <ul>
         {requests.map((r) => (
           <li key={r.id}>
@@ -60,6 +62,7 @@ function Probe() {
       <button onClick={() => approveRequest('r1').catch(() => {})}>approve</button>
       <button onClick={() => rejectRequest('r1').catch(() => {})}>reject</button>
       <button onClick={() => closeRequest('r1').catch(() => {})}>close</button>
+      <button onClick={() => loadMore().catch(() => {})}>load more</button>
       <button onClick={logout}>logout</button>
     </div>
   )
@@ -251,6 +254,66 @@ describe('RequestsContext', () => {
     act(() => screen.getByText('close').click())
 
     await waitFor(() => expect(screen.getByText('Jorge Salas · closed')).toBeInTheDocument())
+  })
+
+  it('reports hasMore when the first page does not cover the full total', async () => {
+    mockFetchRoutes({
+      '/users/me': [() => jsonResponse(PROFILE, 200)],
+      '/users/me/requests?page=1&limit=50': [() => jsonResponse({ reservations: [RESERVATION], page: 1, limit: 50, total: 2 }, 200)],
+    })
+
+    renderWithToken()
+
+    await waitFor(() => expect(screen.getByTestId('count')).toHaveTextContent('1'))
+    expect(screen.getByTestId('has-more')).toHaveTextContent('yes')
+  })
+
+  it('loadMore fetches the next page, appends it, and clears hasMore once the total is covered', async () => {
+    const page2Reservation = { ...RESERVATION, id: 'r2', renter_name: 'Camila Ríos' }
+    mockFetchRoutes({
+      '/users/me': [() => jsonResponse(PROFILE, 200)],
+      '/users/me/requests?page=1&limit=50': [() => jsonResponse({ reservations: [RESERVATION], page: 1, limit: 50, total: 2 }, 200)],
+      '/users/me/requests?page=2&limit=50': [() => jsonResponse({ reservations: [page2Reservation], page: 2, limit: 50, total: 2 }, 200)],
+    })
+
+    renderWithToken()
+    await waitFor(() => expect(screen.getByTestId('has-more')).toHaveTextContent('yes'))
+
+    act(() => screen.getByText('load more').click())
+
+    await waitFor(() => expect(screen.getByTestId('count')).toHaveTextContent('2'))
+    expect(screen.getByText('Camila Ríos · requested')).toBeInTheDocument()
+    expect(screen.getByTestId('has-more')).toHaveTextContent('no')
+  })
+
+  it('sets loadingMore while a loadMore fetch is in flight, without touching loading', async () => {
+    let resolvePage2: (r: Response) => void = () => {}
+    const page2Promise = new Promise<Response>((resolve) => {
+      resolvePage2 = resolve
+    })
+    mockFetchRoutes({
+      '/users/me': [() => jsonResponse(PROFILE, 200)],
+      '/users/me/requests?page=1&limit=50': [() => jsonResponse({ reservations: [RESERVATION], page: 1, limit: 50, total: 2 }, 200)],
+    })
+    renderWithToken()
+    await waitFor(() => expect(screen.getByTestId('has-more')).toHaveTextContent('yes'))
+
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.includes('page=2')) return page2Promise
+      throw new Error(`Unhandled fetch call: ${url}`)
+    })
+
+    act(() => screen.getByText('load more').click())
+
+    await waitFor(() => expect(screen.getByTestId('loading-more')).toHaveTextContent('loading'))
+    expect(screen.getByTestId('loading')).toHaveTextContent('idle')
+
+    await act(async () => {
+      resolvePage2(jsonResponse({ reservations: [{ ...RESERVATION, id: 'r2' }], page: 2, limit: 50, total: 2 }, 200))
+    })
+
+    await waitFor(() => expect(screen.getByTestId('loading-more')).toHaveTextContent('idle'))
   })
 
   it('throws an ApiError (not a generic Error) when a mutation is attempted without a token', async () => {

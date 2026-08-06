@@ -21,7 +21,7 @@ const TAB_STATUSES: Record<Tab, ReservationStatus[]> = {
 
 export function RequestsPage() {
   const t = useTranslation()
-  const { requests, loading, error, approveRequest, rejectRequest } = useRequests()
+  const { requests, loading, error, hasMore, loadingMore, loadMore, approveRequest, rejectRequest } = useRequests()
   const [tab, setTab] = useState<Tab>('pending')
   const [query, setQuery] = useState('')
   const [pendingId, setPendingId] = useState<string | null>(null)
@@ -136,6 +136,14 @@ export function RequestsPage() {
               </li>
             ))}
           </ul>
+        )}
+
+        {!loading && hasMore && (
+          <div className="flex justify-center">
+            <Button variant="outline" size="sm" disabled={loadingMore} onClick={() => loadMore().catch(() => {})}>
+              {loadingMore ? t.requests.loadingMore : t.requests.loadMore}
+            </Button>
+          </div>
         )}
       </div>
     </div>

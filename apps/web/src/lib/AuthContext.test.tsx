@@ -143,6 +143,7 @@ describe('AuthContext', () => {
   })
 
   it('keeps the session when the profile check fails for a reason other than an invalid token', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     localStorage.setItem('rentatodo_token', 'still-valid-tok')
     vi.mocked(fetch).mockRejectedValueOnce(new TypeError('Failed to fetch'))
 
@@ -155,6 +156,23 @@ describe('AuthContext', () => {
     expect(screen.getByTestId('status')).toHaveTextContent('in')
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
     expect(localStorage.getItem('rentatodo_token')).toBe('still-valid-tok')
+  })
+
+  it('logs a non-ApiError profile-load failure instead of silencing it', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    localStorage.setItem('rentatodo_token', 'still-valid-tok')
+    const parseError = new TypeError('Failed to fetch')
+    vi.mocked(fetch).mockRejectedValueOnce(parseError)
+
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    )
+
+    await waitFor(() => expect(consoleError).toHaveBeenCalledWith('[AuthContext] unexpected error loading profile:', parseError))
+    // The session must stay intact (see the test above) — only the visibility of the error changes.
+    expect(screen.getByTestId('status')).toHaveTextContent('in')
   })
 
   it('rolls back the token if the profile fetch fails right after a successful login', async () => {
