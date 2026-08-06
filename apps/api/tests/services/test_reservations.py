@@ -41,7 +41,7 @@ def test_create_reservation_happy_path_computes_deposit(
 def test_create_reservation_rejects_past_start_date(
     db_session: Session, make_user, make_item
 ) -> None:
-    """Failure path: start_date before today is 422 VALIDATION_ERROR."""
+    """Failure path: start_date before today is 422 INVALID_DATES."""
     from app.services.reservations import create_reservation
 
     owner = make_user(email="owner-res2@example.com")
@@ -55,13 +55,13 @@ def test_create_reservation_rejects_past_start_date(
         create_reservation(db_session, item_id=item.id, renter_id=renter.id, data=data)
 
     assert exc_info.value.status_code == 422
-    assert exc_info.value.code == "VALIDATION_ERROR"
+    assert exc_info.value.code == "INVALID_DATES"
 
 
 def test_create_reservation_rejects_end_before_start(
     db_session: Session, make_user, make_item
 ) -> None:
-    """Failure path: end_date < start_date is 422 VALIDATION_ERROR."""
+    """Failure path: end_date < start_date is 422 INVALID_DATES."""
     from app.services.reservations import create_reservation
 
     owner = make_user(email="owner-res3@example.com")
@@ -74,7 +74,7 @@ def test_create_reservation_rejects_end_before_start(
         create_reservation(db_session, item_id=item.id, renter_id=renter.id, data=data)
 
     assert exc_info.value.status_code == 422
-    assert exc_info.value.code == "VALIDATION_ERROR"
+    assert exc_info.value.code == "INVALID_DATES"
 
 
 def test_create_reservation_rejects_own_item(db_session: Session, make_user, make_item) -> None:

@@ -46,19 +46,20 @@ def create_reservation(
         The newly created Reservation, status "requested".
 
     Raises:
-        AppError: 422 VALIDATION_ERROR if start_date is in the past or
-            end_date < start_date. 404 NOT_FOUND if the item doesn't
-            exist or is inactive. 422 CANNOT_RENT_OWN_ITEM if the caller
-            owns the item. 409 DUPLICATE_RESERVATION if an identical
-            request (same renter+item+dates) is already "requested".
-            409 DATES_UNAVAILABLE if the dates overlap an existing
-            active reservation, caught either by the application check
-            or the database's EXCLUDE constraint.
+        AppError: 422 INVALID_DATES if start_date is in the past or
+            end_date < start_date (matches openapi.yaml's error code for
+            this case — see PR #94 finding C2). 404 NOT_FOUND if the item
+            doesn't exist or is inactive. 422 CANNOT_RENT_OWN_ITEM if the
+            caller owns the item. 409 DUPLICATE_RESERVATION if an
+            identical request (same renter+item+dates) is already
+            "requested". 409 DATES_UNAVAILABLE if the dates overlap an
+            existing active reservation, caught either by the
+            application check or the database's EXCLUDE constraint.
     """
     if data.start_date < date.today():
-        raise AppError(422, "VALIDATION_ERROR", "start_date must be today or in the future")
+        raise AppError(422, "INVALID_DATES", "start_date must be today or in the future")
     if data.end_date < data.start_date:
-        raise AppError(422, "VALIDATION_ERROR", "end_date must be on or after start_date")
+        raise AppError(422, "INVALID_DATES", "end_date must be on or after start_date")
 
     item = db.scalar(
         select(Item)
