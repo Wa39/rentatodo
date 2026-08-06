@@ -2,7 +2,7 @@
 database-level constraints.
 """
 
-from datetime import date
+from datetime import date, datetime, timezone
 
 import pytest
 from sqlalchemy.exc import IntegrityError
@@ -237,3 +237,81 @@ def test_deposit_status_raises_clear_error_for_unexpected_transaction_type(
 
     with pytest.raises(ValueError, match="bogus"):
         reservation.deposit_status
+
+
+def test_transaction_sequence_increments_with_insertion_order(
+    db_session: Session, make_user, make_item
+) -> None:
+    """`sequence` gives each Transaction a monotonic, gapless-enough
+    order independent of created_at — two Transactions inserted in
+    separate commits, even if their created_at lands on the exact same
+    instant (observed live, see the next test), must still be
+    distinguishable by sequence.
+    """
+    owner = make_user(email="resmodel-owner9@example.com")
+    renter = make_user(email="resmodel-renter9@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = Reservation(
+        item_id=item.id,
+        renter_id=renter.id,
+        start_date=date(2027, 1, 1),
+        end_date=date(2027, 1, 3),
+        deposit_amount=15000,
+    )
+    db_session.add(reservation)
+    db_session.commit()
+
+    first = Transaction(reservation_id=reservation.id, type="hold", amount=15000)
+    db_session.add(first)
+    db_session.commit()
+    db_session.refresh(first)
+
+    second = Transaction(reservation_id=reservation.id, type="release", amount=15000)
+    db_session.add(second)
+    db_session.commit()
+    db_session.refresh(second)
+
+    assert second.sequence > first.sequence
+
+
+def test_deposit_status_resolves_ties_correctly_when_created_at_is_identical(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Regression test for a real failure mode: two Transactions can
+    share the exact same created_at (Postgres's now() reflects
+    transaction start, and separate transactions can start at the same
+    clock tick — reproduced live while building this fix, not a
+    hypothetical). created_at alone can't order them; deposit_status
+    must still resolve to the one inserted last (release), via
+    `sequence`, not by relying on however Postgres happens to break a
+    created_at tie.
+    """
+    owner = make_user(email="resmodel-owner10@example.com")
+    renter = make_user(email="resmodel-renter10@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = Reservation(
+        item_id=item.id,
+        renter_id=renter.id,
+        start_date=date(2027, 1, 10),
+        end_date=date(2027, 1, 12),
+        deposit_amount=15000,
+    )
+    db_session.add(reservation)
+    db_session.commit()
+
+    tied_instant = datetime.now(timezone.utc)
+    db_session.add(
+        Transaction(
+            reservation_id=reservation.id, type="hold", amount=15000, created_at=tied_instant
+        )
+    )
+    db_session.commit()
+    db_session.add(
+        Transaction(
+            reservation_id=reservation.id, type="release", amount=15000, created_at=tied_instant
+        )
+    )
+    db_session.commit()
+    db_session.refresh(reservation)
+
+    assert reservation.deposit_status == "released"
