@@ -221,6 +221,34 @@ describe('RequestsPage', () => {
     )
   })
 
+  it('shows a Load more button when there are more requests than the first page, and hides it once all are loaded', async () => {
+    const page2 = { ...REQUESTED, id: 'r4', renter_name: 'Ana Torres' }
+    mockFetchRoutes({
+      '/users/me': [() => jsonResponse(PROFILE, 200)],
+      '/users/me/requests?page=1&limit=50': [() => jsonResponse({ reservations: RESERVATIONS, page: 1, limit: 50, total: 4 }, 200)],
+      '/users/me/requests?page=2&limit=50': [() => jsonResponse({ reservations: [page2], page: 2, limit: 50, total: 4 }, 200)],
+    })
+    const user = userEvent.setup()
+    renderPage()
+    await waitFor(() => expect(screen.getByText(new RegExp(REQUESTED.renter_name))).toBeInTheDocument())
+
+    const loadMoreButton = screen.getByRole('button', { name: 'Load more' })
+    await user.click(loadMoreButton)
+
+    await waitFor(() => expect(screen.getByText(new RegExp(page2.renter_name))).toBeInTheDocument())
+    expect(screen.queryByRole('button', { name: 'Load more' })).not.toBeInTheDocument()
+  })
+
+  it('does not show a Load more button when every request already fits on one page', async () => {
+    mockFetchRoutes({
+      '/users/me': [() => jsonResponse(PROFILE, 200)],
+      '/users/me/requests?page=1&limit=50': [() => jsonResponse({ reservations: RESERVATIONS, page: 1, limit: 50, total: 3 }, 200)],
+    })
+    renderPage()
+    await waitFor(() => expect(screen.getByText(new RegExp(REQUESTED.renter_name))).toBeInTheDocument())
+    expect(screen.queryByRole('button', { name: 'Load more' })).not.toBeInTheDocument()
+  })
+
   it('shows a loading message while requests are still being fetched', () => {
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
       const url = String(input)

@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -126,6 +126,34 @@ describe('ItemsPage', () => {
     await user.type(nameInput, 'Taladro (renovated)')
     await user.click(screen.getByRole('button', { name: 'Save item' }))
     await waitFor(() => expect(screen.getByText('Taladro (renovated)')).toBeInTheDocument())
+  })
+
+  it('converts the price field to centavos without float-rounding drift', async () => {
+    mockFetchRoutes({
+      '/users/me': [() => jsonResponse(PROFILE, 200)],
+      '/users/me/items': [() => jsonResponse(ITEMS, 200), () => jsonResponse(ITEMS, 200)],
+      '/items/i1': [() => jsonResponse(ITEMS[0], 200)],
+    })
+    const user = userEvent.setup({ delay: null })
+    renderPage()
+    const item = ITEMS[0]
+    await waitFor(() => expect(screen.getByText(item.name)).toBeInTheDocument())
+    const card = screen.getByTestId(`item-card-${item.id}`)
+    await user.click(within(card).getByRole('button', { name: 'Edit' }))
+    const priceInput = screen.getByLabelText('Price per day (USD)') as HTMLInputElement
+    const form = priceInput.closest('form')!
+    // A value with 3 decimals can't be *typed* into this step={0.01} field (the browser's
+    // native constraint validation blocks submission), but it can arrive pre-filled from
+    // elsewhere — set it directly and dispatch submit to exercise handleSubmit's conversion.
+    // Number('10.005') * 100 === 1000.4999999999999, which Math.round() used to floor to 1000 (10.00) instead of 1001 (10.01).
+    fireEvent.change(priceInput, { target: { value: '10.005' } })
+    fireEvent.submit(form)
+
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith('http://localhost:8000/items/i1', expect.objectContaining({ method: 'PATCH' })))
+    const patchCall = vi.mocked(fetch).mock.calls.find(([, options]) => (options as RequestInit | undefined)?.method === 'PATCH')
+    const patchOptions = patchCall?.[1] as RequestInit
+    const body = JSON.parse(patchOptions.body as string)
+    expect(body.price_per_day).toBe(1001)
   })
 
   it('shows an inline error in the dialog and keeps it open when the edit fails', async () => {

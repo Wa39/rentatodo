@@ -121,8 +121,8 @@ export function apiReactivateItem(token: string, id: string): Promise<Item> {
   return request(`/items/${id}/reactivate`, { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } })
 }
 
-export function apiListMyRequests(token: string): Promise<ReservationListResponse> {
-  return request('/users/me/requests?page=1&limit=50', { method: 'GET', headers: { Authorization: `Bearer ${token}` } })
+export function apiListMyRequests(token: string, page = 1, limit = 50): Promise<ReservationListResponse> {
+  return request(`/users/me/requests?page=${page}&limit=${limit}`, { method: 'GET', headers: { Authorization: `Bearer ${token}` } })
 }
 
 export function apiApproveReservation(token: string, id: string): Promise<Reservation> {

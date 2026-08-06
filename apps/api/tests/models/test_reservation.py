@@ -206,3 +206,34 @@ def test_deposit_status_reflects_the_latest_transaction(
     db_session.refresh(reservation)
 
     assert reservation.deposit_status == "released"
+
+
+def test_deposit_status_raises_clear_error_for_unexpected_transaction_type(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Failure path: an unexpected Transaction.type must raise a clear
+    ValueError, not an opaque KeyError that would surface as a 500 on
+    any endpoint serializing this reservation (audit finding A1, PR #94).
+
+    The DB's ck_transactions_type CHECK constraint blocks this today, so
+    the Transaction is appended to the in-memory collection without a
+    commit — this is deliberately exercising the property in isolation
+    from that constraint, the same way a future migration or a direct
+    write to the DB (bypassing the ORM) could.
+    """
+    owner = make_user(email="resmodel-owner8@example.com")
+    renter = make_user(email="resmodel-renter8@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = Reservation(
+        item_id=item.id,
+        renter_id=renter.id,
+        start_date=date(2026, 12, 20),
+        end_date=date(2026, 12, 22),
+        deposit_amount=15000,
+    )
+    reservation.transactions.append(
+        Transaction(reservation_id=reservation.id, type="bogus", amount=15000)
+    )
+
+    with pytest.raises(ValueError, match="bogus"):
+        reservation.deposit_status
