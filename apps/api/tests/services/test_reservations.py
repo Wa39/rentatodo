@@ -41,7 +41,7 @@ def test_create_reservation_happy_path_computes_deposit(
 def test_create_reservation_rejects_past_start_date(
     db_session: Session, make_user, make_item
 ) -> None:
-    """Failure path: start_date before today is 422 VALIDATION_ERROR."""
+    """Failure path: start_date before today is 422 INVALID_DATES."""
     from app.services.reservations import create_reservation
 
     owner = make_user(email="owner-res2@example.com")
@@ -55,13 +55,13 @@ def test_create_reservation_rejects_past_start_date(
         create_reservation(db_session, item_id=item.id, renter_id=renter.id, data=data)
 
     assert exc_info.value.status_code == 422
-    assert exc_info.value.code == "VALIDATION_ERROR"
+    assert exc_info.value.code == "INVALID_DATES"
 
 
 def test_create_reservation_rejects_end_before_start(
     db_session: Session, make_user, make_item
 ) -> None:
-    """Failure path: end_date < start_date is 422 VALIDATION_ERROR."""
+    """Failure path: end_date < start_date is 422 INVALID_DATES."""
     from app.services.reservations import create_reservation
 
     owner = make_user(email="owner-res3@example.com")
@@ -74,7 +74,7 @@ def test_create_reservation_rejects_end_before_start(
         create_reservation(db_session, item_id=item.id, renter_id=renter.id, data=data)
 
     assert exc_info.value.status_code == 422
-    assert exc_info.value.code == "VALIDATION_ERROR"
+    assert exc_info.value.code == "INVALID_DATES"
 
 
 def test_create_reservation_rejects_own_item(db_session: Session, make_user, make_item) -> None:
@@ -560,6 +560,32 @@ def test_get_reservation_or_404_locks_the_row(db_session: Session, make_user, ma
     assert any("FOR UPDATE" in sql.upper() for sql in captured_sql)
 
 
+def test_get_reservation_or_404_preloads_transactions(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Every mutating endpoint accesses reservation.transactions (directly
+    or via deposit_status) after this lookup, sometimes more than once
+    (e.g. close_reservation). Without eager loading, each access after
+    db.refresh() re-triggers a lazy SELECT — a hidden N+1 (audit finding
+    A3, PR #94). transactions must come back already loaded.
+    """
+    from sqlalchemy import inspect as sa_inspect
+
+    from app.services import reservations
+    from app.services.reservations import create_reservation
+
+    owner = make_user(email="preload-owner1@example.com")
+    renter = make_user(email="preload-renter1@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(5, 2)
+    )
+
+    fetched = reservations._get_reservation_or_404(db_session, reservation.id)
+
+    assert "transactions" not in sa_inspect(fetched).unloaded
+
+
 def test_assert_participant_allows_renter_and_owner(
     db_session: Session, make_user, make_item
 ) -> None:
@@ -950,6 +976,42 @@ def test_get_transactions_happy_path(db_session: Session, make_user, make_item) 
     assert transactions[0].amount == 15000
 
 
+def test_get_transactions_does_not_lock_the_row(db_session: Session, make_user, make_item) -> None:
+    """get_transactions is read-only. Unlike the mutation endpoints, it
+    must not take a FOR UPDATE row lock — doing so blocks concurrent
+    writes to the same reservation for no reason (audit finding A2,
+    PR #94).
+    """
+    from sqlalchemy import event
+
+    from app.services.reservations import (
+        approve_reservation,
+        create_reservation,
+        get_transactions,
+    )
+
+    owner = make_user(email="transactions-owner3@example.com")
+    renter = make_user(email="transactions-renter3@example.com")
+    item = make_item(owner_id=owner.id, price_per_day=5000)
+    reservation = create_reservation(
+        db_session, item_id=item.id, renter_id=renter.id, data=_dates(5, 3)
+    )
+    approve_reservation(db_session, reservation_id=reservation.id, owner_id=owner.id)
+
+    captured_sql = []
+
+    def _capture(conn, cursor, statement, parameters, context, executemany):
+        captured_sql.append(statement)
+
+    event.listen(db_session.get_bind(), "before_cursor_execute", _capture)
+    try:
+        get_transactions(db_session, reservation_id=reservation.id, user_id=renter.id)
+    finally:
+        event.remove(db_session.get_bind(), "before_cursor_execute", _capture)
+
+    assert not any("FOR UPDATE" in sql.upper() for sql in captured_sql)
+
+
 def test_get_transactions_requires_participant(db_session: Session, make_user, make_item) -> None:
     """Failure path: a stranger can't view the transaction history, 403 FORBIDDEN."""
     from app.services.reservations import create_reservation, get_transactions
@@ -1053,3 +1115,73 @@ def test_get_earnings_only_counts_this_owners_items(db_session: Session, make_us
 
     assert earnings_b.total_earnings == 0
     assert earnings_b.by_item == []
+
+
+def test_get_earnings_does_not_load_transactions(
+    db_session: Session, make_user, make_item
+) -> None:
+    """The 'released' filter now happens in SQL (a subquery on the
+    latest transaction per reservation), not by loading each closed
+    reservation's full transaction history into Python just to read
+    deposit_status. get_earnings must no longer issue a separate
+    round-trip to load the transactions table at all (audit finding M1,
+    PR #94, Option B).
+    """
+    from sqlalchemy import event
+
+    from app.services.reservations import get_earnings
+
+    owner = make_user(email="earnings-owner4@example.com")
+    renter = make_user(email="earnings-renter4@example.com")
+    item = make_item(owner_id=owner.id, price_per_day=5000)
+    _make_closed_reservation(db_session, owner, renter, item, start_offset=5)
+    db_session.expire_all()
+
+    captured_sql = []
+
+    def _capture(conn, cursor, statement, parameters, context, executemany):
+        captured_sql.append(statement)
+
+    event.listen(db_session.get_bind(), "before_cursor_execute", _capture)
+    try:
+        get_earnings(db_session, owner_id=owner.id)
+    finally:
+        event.remove(db_session.get_bind(), "before_cursor_execute", _capture)
+
+    assert not any(sql.strip().upper().startswith("SELECT TRANSACTIONS") for sql in captured_sql)
+
+
+def test_get_earnings_excludes_closed_reservation_without_a_release_transaction(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Defensive path: a "closed" reservation with no release Transaction
+    at all must not count toward earnings. This state is unreachable
+    through the service layer today — close_reservation always inserts
+    a release in the same commit that sets status="closed" — so it's
+    built directly here (status set without going through
+    close_reservation) to prove the SQL filter is a real safety net for
+    a future regression, not an assumption that `status == "closed"`
+    alone is enough.
+    """
+    from sqlalchemy import delete
+
+    from app.models.reservation import Transaction
+    from app.services.reservations import get_earnings
+
+    owner = make_user(email="earnings-owner5@example.com")
+    renter = make_user(email="earnings-renter5@example.com")
+    item = make_item(owner_id=owner.id, price_per_day=5000)
+    reservation = _make_closed_reservation(db_session, owner, renter, item, start_offset=5)
+    # Simulate a hypothetical future bug: status flipped to "closed"
+    # without a release Transaction ever being inserted. Deletes the
+    # release that _make_closed_reservation's close_reservation call
+    # already added, so this reservation is "closed" with zero
+    # transactions — append-only in real app code, but this is a test
+    # setup step, not application behavior.
+    db_session.execute(delete(Transaction).where(Transaction.reservation_id == reservation.id))
+    db_session.commit()
+
+    earnings = get_earnings(db_session, owner_id=owner.id)
+
+    assert earnings.total_earnings == 0
+    assert earnings.by_item == []

@@ -5,7 +5,7 @@ prevention (Task 3), approve/reject/cancel (Task 4), and listing (Task 5).
 import uuid
 from datetime import date
 
-from sqlalchemy import func, select
+from sqlalchemy import Select, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload, selectinload
 
@@ -46,19 +46,20 @@ def create_reservation(
         The newly created Reservation, status "requested".
 
     Raises:
-        AppError: 422 VALIDATION_ERROR if start_date is in the past or
-            end_date < start_date. 404 NOT_FOUND if the item doesn't
-            exist or is inactive. 422 CANNOT_RENT_OWN_ITEM if the caller
-            owns the item. 409 DUPLICATE_RESERVATION if an identical
-            request (same renter+item+dates) is already "requested".
-            409 DATES_UNAVAILABLE if the dates overlap an existing
-            active reservation, caught either by the application check
-            or the database's EXCLUDE constraint.
+        AppError: 422 INVALID_DATES if start_date is in the past or
+            end_date < start_date (matches openapi.yaml's error code for
+            this case — see PR #94 finding C2). 404 NOT_FOUND if the item
+            doesn't exist or is inactive. 422 CANNOT_RENT_OWN_ITEM if the
+            caller owns the item. 409 DUPLICATE_RESERVATION if an
+            identical request (same renter+item+dates) is already
+            "requested". 409 DATES_UNAVAILABLE if the dates overlap an
+            existing active reservation, caught either by the
+            application check or the database's EXCLUDE constraint.
     """
     if data.start_date < date.today():
-        raise AppError(422, "VALIDATION_ERROR", "start_date must be today or in the future")
+        raise AppError(422, "INVALID_DATES", "start_date must be today or in the future")
     if data.end_date < data.start_date:
-        raise AppError(422, "VALIDATION_ERROR", "end_date must be on or after start_date")
+        raise AppError(422, "INVALID_DATES", "end_date must be on or after start_date")
 
     item = db.scalar(
         select(Item)
@@ -115,9 +116,30 @@ def create_reservation(
     return reservation
 
 
+def _reservation_lookup_query(reservation_id: uuid.UUID) -> Select:
+    """Base SELECT shared by the locking and read-only reservation
+    lookups: the item, renter, and transactions eager loads are the same
+    either way — only whether a row lock is taken differs.
+    """
+    return (
+        select(Reservation)
+        .options(
+            joinedload(Reservation.item),
+            joinedload(Reservation.renter),
+            selectinload(Reservation.transactions),
+        )
+        .where(Reservation.id == reservation_id)
+    )
+
+
 def _get_reservation_or_404(db: Session, reservation_id: uuid.UUID) -> Reservation:
-    """Look up a reservation by id, with its item and renter pre-loaded,
-    holding a row lock for the rest of the caller's transaction.
+    """Look up a reservation by id, with its item, renter, and
+    transactions pre-loaded, holding a row lock for the rest of the
+    caller's transaction.
+
+    Used by every endpoint that mutates a reservation. Read-only callers
+    should use `_get_reservation_or_404_readonly` instead — taking this
+    lock on a read blocks concurrent writes for no reason.
 
     Args:
         db: Database session.
@@ -139,11 +161,30 @@ def _get_reservation_or_404(db: Session, reservation_id: uuid.UUID) -> Reservati
     # join. Scoping the lock to just the reservations row also avoids
     # incidentally locking the joined item/user rows.
     reservation = db.scalar(
-        select(Reservation)
-        .options(joinedload(Reservation.item), joinedload(Reservation.renter))
-        .where(Reservation.id == reservation_id)
-        .with_for_update(of=Reservation)
+        _reservation_lookup_query(reservation_id).with_for_update(of=Reservation)
     )
+    if reservation is None:
+        raise AppError(404, "NOT_FOUND", "Reservation not found")
+    return reservation
+
+
+def _get_reservation_or_404_readonly(db: Session, reservation_id: uuid.UUID) -> Reservation:
+    """Same lookup as `_get_reservation_or_404`, without the row lock —
+    for read-only callers (audit finding A2, PR #94: get_transactions
+    was taking a FOR UPDATE lock it never needed, blocking concurrent
+    writes on the same reservation).
+
+    Args:
+        db: Database session.
+        reservation_id: The reservation's id.
+
+    Returns:
+        The matching Reservation.
+
+    Raises:
+        AppError: 404 NOT_FOUND if no reservation exists with that id.
+    """
+    reservation = db.scalar(_reservation_lookup_query(reservation_id))
     if reservation is None:
         raise AppError(404, "NOT_FOUND", "Reservation not found")
     return reservation
@@ -472,7 +513,7 @@ def get_transactions(
         AppError: 404 NOT_FOUND if the reservation doesn't exist. 403
             FORBIDDEN if the caller is neither party.
     """
-    reservation = _get_reservation_or_404(db, reservation_id)
+    reservation = _get_reservation_or_404_readonly(db, reservation_id)
     _assert_participant(reservation, user_id)
     return reservation.transactions
 
@@ -488,20 +529,40 @@ def get_earnings(db: Session, owner_id: uuid.UUID) -> EarningsResponse:
         Total earnings and a per-item breakdown with each rental's date
         range and amount. Renter names are never included.
     """
+    # "Released" is filtered here in SQL instead of loading every closed
+    # reservation's full transaction history into Python just to read
+    # Reservation.deposit_status. This deliberately checks for the
+    # EXISTENCE of a release transaction rather than ordering by
+    # created_at to find the "latest" one (the way deposit_status does):
+    # two Transactions can land on the exact same created_at (observed
+    # in practice — see the TDD notes on this change), which makes
+    # "latest by timestamp" ambiguous. EXISTS sidesteps that entirely,
+    # and is equivalent here: close_reservation refuses to close while
+    # frozen (FREEZE_ACTIVE) and there is no unfreeze path in this
+    # codebase, so a closed reservation can never have a freeze
+    # transaction — a release existing is enough. This is what would
+    # catch a violation of that invariant in the future, in SQL, rather
+    # than silently assuming it from `status == "closed"` alone (audit
+    # finding M1, PR #94).
+    has_release_transaction = (
+        select(Transaction.id)
+        .where(Transaction.reservation_id == Reservation.id, Transaction.type == "release")
+        .exists()
+    )
+
     reservations = db.scalars(
         select(Reservation)
-        .options(joinedload(Reservation.item), selectinload(Reservation.transactions))
+        .options(joinedload(Reservation.item))
         .where(
             Reservation.item_id.in_(select(Item.id).where(Item.owner_id == owner_id)),
             Reservation.status == "closed",
+            has_release_transaction,
         )
     ).unique()
 
     by_item: dict[uuid.UUID, EarningsByItem] = {}
     total_earnings = 0
     for reservation in reservations:
-        if reservation.deposit_status != "released":
-            continue
         total_earnings += reservation.deposit_amount
         item_id = reservation.item_id
         if item_id not in by_item:
