@@ -1,8 +1,9 @@
 import { test, expect } from '../fixtures'
 
-// Minimal 1×1 transparent PNG (67 bytes) — real magic bytes so createImageBitmap() accepts it.
+// Minimal 1×1 transparent PNG (70 bytes, RGBA) — valid IDAT stream so
+// createImageBitmap() accepts it in Chromium without mocking the browser API.
 const PNG_1x1 = Buffer.from(
-  '89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000a49444154789c6260000000020001e221bc330000000049454e44ae426082',
+  '89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d4944415478da63606060600000000500017aa857500000000049454e44ae426082',
   'hex',
 )
 
@@ -13,7 +14,7 @@ test.describe('PublishItemPage — photo upload', () => {
   test.beforeEach(async ({ page }) => {
     await page.route('**/uploads/presign', (route) =>
       route.fulfill({
-        json: { upload_url: UPLOAD_URL, public_url: PUBLIC_URL, filename: 'test.png' },
+        json: { upload_url: UPLOAD_URL, public_url: PUBLIC_URL, expires_in: 300 },
       }),
     )
     await page.route(UPLOAD_URL, (route) => route.fulfill({ status: 200, body: '' }))
@@ -44,6 +45,7 @@ test.describe('PublishItemPage — photo upload', () => {
   })
 
   test('shows error when the S3 upload fails', async ({ page }) => {
+    // Last-registered route wins — overrides the beforeEach 200 with a 500 for this test only.
     await page.route(UPLOAD_URL, (route) => route.fulfill({ status: 500, body: '' }))
 
     await page.locator('#publish-photo').setInputFiles({
