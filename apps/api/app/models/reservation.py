@@ -108,6 +108,16 @@ class Reservation(Base):
         """The renter's display name, via the renter relationship."""
         return self.renter.name
 
+    _DEPOSIT_STATUS_BY_TRANSACTION_TYPE = {
+        "hold": "held",
+        "release": "released",
+        "freeze": "frozen",
+    }
+    """Maps each Transaction.type to the deposit_status it implies. Kept
+    in sync with ck_transactions_type — if that CHECK constraint's set of
+    allowed types ever changes, this dict must change with it.
+    """
+
     @property
     def deposit_status(self) -> str:
         """The deposit's current state, derived from the latest
@@ -118,11 +128,22 @@ class Reservation(Base):
             "none" if no transaction exists yet, otherwise the status
             implied by the most recent transaction's type (hold ->
             held, release -> released, freeze -> frozen).
+
+        Raises:
+            ValueError: If the latest transaction's type isn't one of
+                hold/release/freeze. The DB's ck_transactions_type CHECK
+                constraint should make this unreachable in practice —
+                this guards against a future migration widening that
+                constraint without updating this mapping, or a row
+                written directly to the DB outside the ORM.
         """
         if not self.transactions:
             return "none"
         latest = self.transactions[-1]
-        return {"hold": "held", "release": "released", "freeze": "frozen"}[latest.type]
+        status = self._DEPOSIT_STATUS_BY_TRANSACTION_TYPE.get(latest.type)
+        if status is None:
+            raise ValueError(f"Unexpected transaction type: {latest.type!r}")
+        return status
 
 
 class Transaction(Base):
