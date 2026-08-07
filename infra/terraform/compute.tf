@@ -16,7 +16,7 @@ data "aws_ami" "amazon_linux_2023" {
 
 resource "aws_instance" "api" {
   ami                    = data.aws_ami.amazon_linux_2023.id
-  instance_type          = "t2.micro"  # free tier: 750 h/month for 12 months
+  instance_type          = "t3.micro"  # free tier: 750 h/month for 12 months
   subnet_id              = aws_subnet.public.id
   vpc_security_group_ids = [aws_security_group.ec2.id]
   iam_instance_profile          = aws_iam_instance_profile.api.name

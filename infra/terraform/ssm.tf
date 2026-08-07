@@ -22,3 +22,15 @@ resource "aws_ssm_parameter" "jwt_secret" {
 
   tags = { Name = "${var.project}-jwt-secret" }
 }
+
+# Plain string — not a secret. Initial value "*" allows all origins during
+# initial setup. Update to the real public URL (EC2 IP or custom domain) once
+# the EC2 Elastic IP is known: run `terraform apply` with a new tfvars entry
+# or update the parameter directly in the AWS Console / CLI.
+resource "aws_ssm_parameter" "cors_origins" {
+  name  = "/${var.project}/cors_origins"
+  type  = "String"
+  value = var.cors_origins
+
+  tags = { Name = "${var.project}-cors-origins" }
+}
