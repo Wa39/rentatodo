@@ -53,8 +53,23 @@ describe('dollarsToCentavos', () => {
     expect(dollarsToCentavos('abc')).toBeNaN()
   })
 
-  it('falls back to a float conversion for exponential notation, which <input type="number"> accepts', () => {
+  it('expands exponential notation to plain decimal, which <input type="number"> accepts', () => {
     expect(dollarsToCentavos('5e2')).toBe(50000)
+  })
+
+  it('rounds exponential notation with float-unsafe precision correctly, not via Number(x) * 100', () => {
+    // 1.005e0 === 1.005; Number('1.005e0') * 100 === 100.49999999999999,
+    // which Math.round() would floor to 100 instead of the correct 101.
+    expect(dollarsToCentavos('1.005e0')).toBe(101)
+  })
+
+  it('expands negative exponential notation', () => {
+    expect(dollarsToCentavos('-1.005e0')).toBe(-101)
+  })
+
+  it('expands a negative-exponent value into a small fraction', () => {
+    // 5e-1 === 0.5
+    expect(dollarsToCentavos('5e-1')).toBe(50)
   })
 })
 
