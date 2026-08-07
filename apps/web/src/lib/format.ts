@@ -11,9 +11,18 @@ function expandExponential(input: string): string | null {
   if (!match) return null
   const [, sign, wholeDigits = '', fractionDigits = '', expStr] = match
   if (wholeDigits === '' && fractionDigits === '') return null
+  const exp = Number(expStr)
+  // A price field has no legitimate use for a value requiring more than a
+  // few hundred digits once expanded. Bail out to null (parsed as invalid,
+  // same as any other unparseable input) rather than building a huge string
+  // — an unbounded exponent like '1e999999999' would otherwise reach the
+  // '0'.repeat(...) calls below with a count large enough to throw a
+  // RangeError, and this function is called unguarded from render bodies
+  // (e.g. PublishItemPage's live price preview) on every keystroke.
+  if (!Number.isFinite(exp) || Math.abs(exp) > 1000) return null
   const digits = wholeDigits + fractionDigits
   // Where the decimal point lands within `digits`, counted from the left.
-  const pointIndex = wholeDigits.length + Number(expStr)
+  const pointIndex = wholeDigits.length + exp
   let plain: string
   if (pointIndex <= 0) {
     plain = `0.${'0'.repeat(-pointIndex)}${digits}`

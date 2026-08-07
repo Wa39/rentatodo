@@ -44,6 +44,12 @@ export function RequestsProvider({ children }: { children: ReactNode }) {
   const requestsRef = useRef(requests)
   const totalRef = useRef(total)
 
+  // Always go through these wrappers to change page/requests/total, never
+  // the raw setPage/setRequests/setTotal — the whole point of pageRef/
+  // requestsRef/totalRef is to stay exactly in sync with state so the queue
+  // above can read "current" values synchronously; bypassing a wrapper
+  // desyncs its ref from state and reintroduces the stale-read race these
+  // refs exist to prevent.
   function setPageAnd(next: number) {
     pageRef.current = next
     setPage(next)
@@ -72,7 +78,11 @@ export function RequestsProvider({ children }: { children: ReactNode }) {
   }, [token])
 
   function enqueue<T>(operation: () => Promise<T>): Promise<T> {
-    const run = queueRef.current.then(operation, operation)
+    // queueRef.current is always a fulfilled-only chain by construction (see
+    // the .then() below), so `operation` only ever needs to be the
+    // onFulfilled handler here — there's nothing for an onRejected handler
+    // to ever catch.
+    const run = queueRef.current.then(operation)
     // Keep the chain alive even if this operation throws, so one failure
     // doesn't permanently wedge every operation queued after it.
     queueRef.current = run.then(
@@ -117,14 +127,18 @@ export function RequestsProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    if (!token) {
-      setRequestsAnd([])
-      setTotalAnd(0)
-      setPageAnd(1)
-      setLoading(false)
-      setLoadingMore(false)
-      return
-    }
+    // Reset unconditionally on every token change — not just the transition
+    // to logged-out — so switching directly from one user's session to
+    // another's (no intervening logout) can't carry the previous user's
+    // pageRef/requestsRef/totalRef into this user's refetch(), which would
+    // otherwise over-fetch (or otherwise mismatch) based on stale state.
+    setRequestsAnd([])
+    setTotalAnd(0)
+    setPageAnd(1)
+    setLoading(false)
+    setLoadingMore(false)
+    setError(null)
+    if (!token) return
     // Fire-and-forget: the mount effect only cares about updating state
     // (handled inside refetch itself), not about the rejection that
     // refetch() now throws for callers that need to react to failure.
@@ -141,8 +155,9 @@ export function RequestsProvider({ children }: { children: ReactNode }) {
     if (!token || loadingMore || loading || !hasMore) return Promise.resolve()
     const currentToken = token
     // Set synchronously, outside the queue, for the same reason as
-    // refetch()'s setLoading(true) above.
+    // refetch()'s setLoading(true)/setError(null) above.
     setLoadingMore(true)
+    setError(null)
     return enqueue(async () => {
       // Re-check now that it's actually our turn, using live refs rather
       // than the `requests`/`total` this closure captured back when
