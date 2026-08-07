@@ -60,7 +60,8 @@ docker compose -f infra/docker-compose.yml up -d
 **API:**
 ```bash
 cd apps/api
-python -m venv .venv && source .venv/bin/activate  # first time only
+python -m venv .venv && source .venv/bin/activate  # first time only (Mac/Linux)
+# Windows: python -m venv .venv && .venv\Scripts\Activate.ps1
 pip install -r requirements.txt                     # first time only
 cp .env.example .env                                # first time only — fill in values
 alembic upgrade head
@@ -82,6 +83,28 @@ npx expo start
 ```
 
 **Web:** TBD — Silverk's scaffold pending.
+
+### E2E tests
+
+- Web: Playwright (once `apps/web` scaffold exists)
+- Mobile: Maestro (Expo confirmed by Zero)
+
+**Install Maestro (once, any OS):**
+```bash
+curl -Ls "https://get.maestro.mobile.dev" | bash
+```
+
+**Run a single flow:**
+```bash
+maestro test e2e/mobile/flows/auth/login.yaml
+```
+
+**Run the full mobile suite:**
+```bash
+maestro test e2e/mobile/flows/
+```
+
+Requires the API running locally (`uvicorn app.main:app --reload`) and Expo Go open on a device/simulator pointed at the dev server.
 
 ## What an agent MUST NOT do in this repo
 

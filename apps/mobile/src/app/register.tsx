@@ -35,7 +35,7 @@ export default function RegisterScreen() {
   async function onSubmit() {
     // The contract requires an 8-72 character password; validate before the round trip.
     if (password.length < 8) {
-      setError('La contraseña debe tener al menos 8 caracteres.');
+      setError('The password must be at least 8 characters.');
       return;
     }
     setError(null);
@@ -56,59 +56,67 @@ export default function RegisterScreen() {
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.content}>
-          <Text style={styles.title}>Crear cuenta</Text>
-          <Text style={styles.subtitle}>Solo se necesita nombre, correo y contraseña</Text>
+          <Text style={styles.title}>Create account</Text>
+          <Text testID="register-subtitle" style={styles.subtitle}>Only name, email and password are needed</Text>
 
-          <Text style={styles.label}>Nombre</Text>
+          <Text style={styles.label}>Name</Text>
           <TextInput
+            testID="register-name"
             style={styles.input}
             value={name}
             onChangeText={setName}
-            placeholder="Nombre y apellido"
+            placeholder="First and last name"
             placeholderTextColor={Brand.muted}
             autoComplete="name"
           />
 
-          <Text style={styles.label}>Correo electrónico</Text>
+          <Text style={styles.label}>Email</Text>
           <TextInput
+            testID="register-email"
             style={styles.input}
             value={email}
             onChangeText={setEmail}
-            placeholder="correo@ejemplo.com"
+            placeholder="email@example.com"
             placeholderTextColor={Brand.muted}
             autoCapitalize="none"
             autoComplete="email"
             keyboardType="email-address"
           />
 
-          <Text style={styles.label}>Contraseña</Text>
+          <Text style={styles.label}>Password</Text>
           <TextInput
+            testID="register-password"
             style={styles.input}
             value={password}
             onChangeText={setPassword}
-            placeholder="Mínimo 8 caracteres"
+            placeholder="At least 8 characters"
             placeholderTextColor={Brand.muted}
             secureTextEntry
             autoComplete="new-password"
           />
 
-          {error && <Text style={styles.error}>{error}</Text>}
+          {error && (
+            <Text testID="register-error" style={styles.error}>
+              {error}
+            </Text>
+          )}
 
           <Pressable
+            testID="register-submit"
             style={[styles.button, !canSubmit && styles.buttonDisabled]}
             disabled={!canSubmit}
             onPress={onSubmit}>
             {submitting ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.buttonText}>Crear cuenta</Text>
+              <Text style={styles.buttonText}>Create account</Text>
             )}
           </Pressable>
 
           <View style={styles.footer}>
-            <Text style={styles.footerText}>¿Ya tiene cuenta?</Text>
-            <Link href="/login" style={styles.footerLink}>
-              Iniciar sesión
+            <Text style={styles.footerText}>Already have an account?</Text>
+            <Link testID="register-to-login" href="/login" style={styles.footerLink}>
+              Sign in
             </Link>
           </View>
         </View>
@@ -136,7 +144,7 @@ const styles = StyleSheet.create({
   },
   error: { color: Brand.red, fontSize: 12, marginTop: 12 },
   button: {
-    backgroundColor: Brand.teal,
+    backgroundColor: Brand.primary,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
@@ -146,5 +154,5 @@ const styles = StyleSheet.create({
   buttonText: { color: '#fff', fontSize: 15, fontWeight: '700' },
   footer: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 18 },
   footerText: { fontSize: 13, color: Brand.muted },
-  footerLink: { fontSize: 13, fontWeight: '700', color: Brand.teal },
+  footerLink: { fontSize: 13, fontWeight: '700', color: Brand.primary },
 });

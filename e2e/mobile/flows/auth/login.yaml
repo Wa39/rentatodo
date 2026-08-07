@@ -1,0 +1,28 @@
+# Happy-path login with seeded renter account.
+# Seed credentials: renter@rentatodo.dev / Rentatodo2026!
+# Run: maestro test e2e/mobile/flows/auth/login.yaml
+
+appId: host.exp.Exponent  # Expo Go; replace with bundle ID for standalone builds
+---
+- launchApp
+- assertVisible:
+    id: "login-brand"
+- assertVisible:
+    id: "login-submit"
+- tapOn:
+    id: "login-email"
+- clearText
+- inputText:
+    text: "renter@rentatodo.dev"
+- tapOn:
+    id: "login-password"
+- inputText:
+    text: "Rentatodo2026!"
+- tapOn:
+    id: "login-submit"
+- assertVisible:
+    id: "tab-home"
+- assertVisible:
+    id: "tab-rentals"
+- assertVisible:
+    id: "tab-profile"

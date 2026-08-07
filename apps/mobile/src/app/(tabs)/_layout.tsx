@@ -1,5 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Redirect, Tabs } from 'expo-router';
+import { Pressable } from 'react-native';
 
 import { Brand } from '@/constants/brand';
 import { useSession } from '@/context/session-context';
@@ -22,35 +23,43 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: Brand.teal,
+        tabBarActiveTintColor: Brand.primary,
         tabBarInactiveTintColor: Brand.muted,
       }}>
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Inicio',
+          title: 'Home',
           tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" color={color} size={size} />,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          tabBarButton: (props) => <Pressable testID="tab-home" {...(props as any)} />,
         }}
       />
       <Tabs.Screen
         name="rentals"
         options={{
-          title: 'Mis rentas',
+          title: 'My rentals',
           tabBarIcon: ({ color, size }) => <Ionicons name="cube-outline" color={color} size={size} />,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          tabBarButton: (props) => <Pressable testID="tab-rentals" {...(props as any)} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Perfil',
+          title: 'Profile',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person-circle-outline" color={color} size={size} />
           ),
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          tabBarButton: (props) => <Pressable testID="tab-profile" {...(props as any)} />,
         }}
       />
       {/* Internal routes, hidden from the tab bar */}
       <Tabs.Screen name="item/[id]" options={{ href: null }} />
       <Tabs.Screen name="reservation/[id]" options={{ href: null }} />
+      <Tabs.Screen name="check/[id]" options={{ href: null }} />
+      <Tabs.Screen name="report/[id]" options={{ href: null }} />
     </Tabs>
   );
 }

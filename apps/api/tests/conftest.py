@@ -2,7 +2,9 @@
 per test, and a TestClient wired to use it.
 """
 
+import uuid
 from collections.abc import Iterator
+from datetime import date
 
 import pytest
 from fastapi.testclient import TestClient
@@ -11,6 +13,8 @@ from sqlalchemy.orm import Session
 
 from app.database import engine, get_db
 from app.main import app
+from app.models.item import Item
+from app.models.reservation import Reservation
 from app.models.user import User
 from app.services.auth import hash_password
 
@@ -80,3 +84,82 @@ def make_user(db_session: Session):
         return user
 
     return _make_user
+
+
+@pytest.fixture()
+def make_item(db_session: Session):
+    """Factory fixture: persists an Item for a given owner.
+
+    Returns:
+        A callable ``make_item(owner_id, name=..., description=...,
+        category=..., price_per_day=..., photo_url=..., is_active=...) ->
+        Item`` that inserts and returns a fully persisted Item.
+    """
+
+    def _make_item(
+        owner_id: uuid.UUID,
+        name: str = "Taladro Bosch",
+        description: str = "Taladro percutor profesional",
+        category: str = "tools",
+        price_per_day: int = 5000,
+        photo_url: str = "https://example.com/photo.jpg",
+        is_active: bool = True,
+    ) -> Item:
+        item = Item(
+            owner_id=owner_id,
+            name=name,
+            description=description,
+            category=category,
+            price_per_day=price_per_day,
+            photo_url=photo_url,
+            is_active=is_active,
+        )
+        db_session.add(item)
+        db_session.commit()
+        db_session.refresh(item)
+        return item
+
+    return _make_item
+
+
+@pytest.fixture()
+def make_reservation(db_session: Session):
+    """Factory fixture: persists a Reservation directly, bypassing the
+    service layer's validations (dates, ownership, double-booking).
+    Only for constructing fixtures in states unreachable through Week
+    2's endpoints alone (e.g. arbitrary status values for testing list
+    filters) — prefer calling create_reservation/approve_reservation/
+    reject_reservation/cancel_reservation directly when testing a real
+    transition.
+
+    Returns:
+        A callable ``make_reservation(item_id, renter_id, start_date=...,
+        end_date=..., status=..., deposit_amount=...) -> Reservation``
+        that inserts and returns a fully persisted Reservation. Callers
+        creating multiple reservations for the SAME item must pass
+        distinct, non-overlapping dates (or a status outside
+        BLOCKING_STATUSES) to avoid the no_double_booking constraint.
+    """
+
+    def _make_reservation(
+        item_id,
+        renter_id,
+        start_date: date = date(2027, 1, 1),
+        end_date: date = date(2027, 1, 3),
+        status: str = "requested",
+        deposit_amount: int = 15000,
+    ) -> Reservation:
+        reservation = Reservation(
+            item_id=item_id,
+            renter_id=renter_id,
+            start_date=start_date,
+            end_date=end_date,
+            status=status,
+            deposit_amount=deposit_amount,
+        )
+        db_session.add(reservation)
+        db_session.commit()
+        db_session.refresh(reservation)
+        return reservation
+
+    return _make_reservation

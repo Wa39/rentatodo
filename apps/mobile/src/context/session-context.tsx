@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 
-import { setAccessToken } from '@/data/api/http';
+import { ApiRequestError, setAccessToken, setAuthErrorHandler } from '@/data/api/http';
 import { authService } from '@/data/auth/auth-service';
 import { clearStoredToken, getStoredToken, storeToken } from '@/data/auth/token-store';
 import type { User } from '@/data/types';
@@ -17,7 +17,8 @@ import type { User } from '@/data/types';
  * Session state for the whole app. On startup it restores the stored token
  * and fetches the profile; the (tabs) layout redirects to /login while
  * signed out. Token lifetime is 24h with no refresh (contract), so an
- * invalid/expired token simply signs the user out.
+ * invalid/expired token signs the user out — on startup and, via the
+ * data layer's auth-error handler, if it expires mid-session too.
  */
 
 type SessionStatus = 'loading' | 'signed_out' | 'signed_in';
@@ -47,10 +48,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         setAccessToken(token);
         setUser(await authService.getProfile());
         setStatus('signed_in');
-      } catch {
-        setAccessToken(null);
-        await clearStoredToken();
-        setStatus('signed_out');
+      } catch (e) {
+        // Only a genuine auth rejection (401) invalidates the stored token.
+        // A network/server error at startup (offline, server down, timeout)
+        // must NOT destroy the token — keep the session and trust the token;
+        // a later 401 on a real request signs out via the auth-error handler.
+        if (e instanceof ApiRequestError && e.status === 401) {
+          setAccessToken(null);
+          await clearStoredToken();
+          setStatus('signed_out');
+        } else {
+          setStatus('signed_in');
+        }
       }
     })();
   }, []);
@@ -78,6 +87,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setStatus('signed_out');
   }, []);
+
+  // A 401 on an authenticated request (token expired mid-session) signs out
+  // centrally, so no screen has to handle expiry on its own.
+  useEffect(() => {
+    setAuthErrorHandler(() => {
+      void logout();
+    });
+    return () => setAuthErrorHandler(null);
+  }, [logout]);
 
   const value = useMemo(
     () => ({ status, user, login, register, logout }),
