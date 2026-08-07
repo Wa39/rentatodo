@@ -4,10 +4,12 @@ import uuid
 from datetime import date, datetime
 
 from sqlalchemy import (
+    BigInteger,
     CheckConstraint,
     Date,
     DateTime,
     ForeignKey,
+    Identity,
     Index,
     Integer,
     String,
@@ -90,7 +92,7 @@ class Reservation(Base):
     item: Mapped[Item] = relationship()
     renter: Mapped[User] = relationship()
     transactions: Mapped[list["Transaction"]] = relationship(
-        order_by="Transaction.created_at", back_populates="reservation"
+        order_by="Transaction.sequence", back_populates="reservation"
     )
 
     @property
@@ -155,6 +157,13 @@ class Transaction(Base):
         reservation_id: The Reservation this entry belongs to.
         type: One of hold/release/freeze.
         amount: In USD centavos.
+        sequence: Monotonic insertion order, backed by a real Postgres
+            identity sequence — this, not created_at, is what
+            "latest transaction" ordering is based on. created_at
+            reflects the enclosing transaction's start time, and two
+            separate transactions can start at the same clock tick,
+            making created_at alone unreliable for ordering (observed
+            live — see tests/models/test_reservation.py).
         created_at: When this entry was recorded.
         reservation: The owning Reservation, via relationship.
     """
@@ -173,6 +182,9 @@ class Transaction(Base):
     )
     type: Mapped[str] = mapped_column(String(20), nullable=False)
     amount: Mapped[int] = mapped_column(Integer, nullable=False)
+    sequence: Mapped[int] = mapped_column(
+        BigInteger, Identity(always=True), unique=True, nullable=False
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
