@@ -52,6 +52,10 @@ describe('dollarsToCentavos', () => {
   it('returns NaN for non-numeric input', () => {
     expect(dollarsToCentavos('abc')).toBeNaN()
   })
+
+  it('falls back to a float conversion for exponential notation, which <input type="number"> accepts', () => {
+    expect(dollarsToCentavos('5e2')).toBe(50000)
+  })
 })
 
 describe('formatCentavos', () => {

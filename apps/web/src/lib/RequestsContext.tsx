@@ -32,20 +32,42 @@ export function RequestsProvider({ children }: { children: ReactNode }) {
   // token that is no longer current (e.g. the user logged out or logged in
   // as someone else while the request was in flight) is discarded.
   const tokenRef = useRef(token)
+  // Tracks the live `page` value the same way tokenRef tracks `token`, so
+  // loadMore() can detect that a concurrent refetch() (triggered by an
+  // approve/reject/close) already changed the list out from under it and
+  // discard its now-stale response instead of appending onto fresh data.
+  const pageRef = useRef(page)
 
   useEffect(() => {
     tokenRef.current = token
   }, [token])
 
+  useEffect(() => {
+    pageRef.current = page
+  }, [page])
+
+  // Re-fetches every page currently loaded (not just page 1), so that
+  // approve/reject/close — which all call this after mutating — don't throw
+  // away pages the user brought in via loadMore().
   async function refetch(currentToken: string) {
     setLoading(true)
     setError(null)
     try {
-      const fetched = await apiListMyRequests(currentToken, 1)
-      if (tokenRef.current !== currentToken) return
-      setRequests(fetched.reservations)
-      setTotal(fetched.total)
-      setPage(1)
+      const targetPage = Math.max(page, 1)
+      let all: Reservation[] = []
+      let fetchedTotal = 0
+      let pagesFetched = 0
+      for (let p = 1; p <= targetPage; p++) {
+        const fetched = await apiListMyRequests(currentToken, p)
+        if (tokenRef.current !== currentToken) return
+        all = [...all, ...fetched.reservations]
+        fetchedTotal = fetched.total
+        pagesFetched = p
+        if (all.length >= fetchedTotal) break
+      }
+      setRequests(all)
+      setTotal(fetchedTotal)
+      setPage(pagesFetched)
     } catch (err) {
       if (tokenRef.current === currentToken) {
         setError(getErrorMessage(err, t.requests.loadError))
@@ -62,6 +84,7 @@ export function RequestsProvider({ children }: { children: ReactNode }) {
       setTotal(0)
       setPage(1)
       setLoading(false)
+      setLoadingMore(false)
       return
     }
     // Fire-and-forget: the mount effect only cares about updating state
@@ -79,11 +102,17 @@ export function RequestsProvider({ children }: { children: ReactNode }) {
   async function loadMore() {
     if (!token || loadingMore || loading || !hasMore) return
     const currentToken = token
-    const nextPage = page + 1
+    const pageAtStart = page
+    const nextPage = pageAtStart + 1
     setLoadingMore(true)
     try {
       const fetched = await apiListMyRequests(currentToken, nextPage)
       if (tokenRef.current !== currentToken) return
+      // A mutation's refetch() may have changed the page count while this
+      // request was in flight — its result already reflects the current
+      // list, so appending this now-stale page on top would duplicate or
+      // reintroduce invalidated rows.
+      if (pageRef.current !== pageAtStart) return
       setRequests((prev) => [...prev, ...fetched.reservations])
       setTotal(fetched.total)
       setPage(nextPage)

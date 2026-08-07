@@ -7,6 +7,7 @@ import { ItemCard } from '@/components/ItemCard'
 import { AuthErrorBanner } from '@/components/AuthErrorBanner'
 import { PhotoUploadField } from '@/components/PhotoUploadField'
 import { getErrorMessage } from '@/lib/api'
+import { dollarsToCentavos } from '@/lib/format'
 import type { Category, Item } from '@/lib/types'
 import { useTranslation } from '@/lib/i18n'
 import { Button } from '@/components/ui/button'
@@ -34,7 +35,7 @@ export function PublishItemPage() {
     name: name || t.publish.previewEmptyName,
     description: description || t.publish.previewEmptyDescription,
     category,
-    price_per_day: Math.round(Number(priceDollars || '0') * 100),
+    price_per_day: dollarsToCentavos(priceDollars || '0'),
     photo_url: photoUrl,
     is_active: true,
     owner_id: user?.id ?? '',
@@ -52,7 +53,7 @@ export function PublishItemPage() {
         name,
         description,
         category,
-        price_per_day: Math.round(Number(priceDollars || '0') * 100),
+        price_per_day: dollarsToCentavos(priceDollars || '0'),
         photo_url: photoUrl,
       })
       navigate('/items')

@@ -316,6 +316,71 @@ describe('RequestsContext', () => {
     await waitFor(() => expect(screen.getByTestId('loading-more')).toHaveTextContent('idle'))
   })
 
+  it('a mutation refetch re-fetches every page already loaded, instead of collapsing back to page 1', async () => {
+    const page2Reservation = { ...RESERVATION, id: 'r2', renter_name: 'Camila Ríos' }
+    mockFetchRoutes({
+      '/users/me': [() => jsonResponse(PROFILE, 200)],
+      '/users/me/requests?page=1&limit=50': [
+        () => jsonResponse({ reservations: [RESERVATION], page: 1, limit: 50, total: 2 }, 200),
+        () => jsonResponse({ reservations: [{ ...RESERVATION, status: 'approved', deposit_status: 'held' }], page: 1, limit: 50, total: 2 }, 200),
+      ],
+      '/users/me/requests?page=2&limit=50': [
+        () => jsonResponse({ reservations: [page2Reservation], page: 2, limit: 50, total: 2 }, 200),
+        () => jsonResponse({ reservations: [page2Reservation], page: 2, limit: 50, total: 2 }, 200),
+      ],
+      '/reservations/r1/approve': [() => jsonResponse({ ...RESERVATION, status: 'approved', deposit_status: 'held' }, 200)],
+    })
+
+    renderWithToken()
+    await waitFor(() => expect(screen.getByTestId('has-more')).toHaveTextContent('yes'))
+    act(() => screen.getByText('load more').click())
+    await waitFor(() => expect(screen.getByTestId('count')).toHaveTextContent('2'))
+
+    act(() => screen.getByText('approve').click())
+
+    await waitFor(() => expect(screen.getByText('Jorge Salas · approved')).toBeInTheDocument())
+    // The page-2 row must still be there — a refetch that only re-fetched
+    // page 1 would have replaced the list and dropped it.
+    expect(screen.getByText('Camila Ríos · requested')).toBeInTheDocument()
+    expect(screen.getByTestId('count')).toHaveTextContent('2')
+  })
+
+  it('resets loadingMore on logout even if the loadMore fetch never resolves', async () => {
+    let resolvePage2: (r: Response) => void = () => {}
+    const page2Promise = new Promise<Response>((resolve) => {
+      resolvePage2 = resolve
+    })
+    mockFetchRoutes({
+      '/users/me': [() => jsonResponse(PROFILE, 200)],
+      '/users/me/requests?page=1&limit=50': [() => jsonResponse({ reservations: [RESERVATION], page: 1, limit: 50, total: 2 }, 200)],
+    })
+    renderWithToken()
+    await waitFor(() => expect(screen.getByTestId('has-more')).toHaveTextContent('yes'))
+
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.includes('page=2')) return page2Promise
+      throw new Error(`Unhandled fetch call: ${url}`)
+    })
+
+    act(() => screen.getByText('load more').click())
+    await waitFor(() => expect(screen.getByTestId('loading-more')).toHaveTextContent('loading'))
+
+    act(() => screen.getByText('logout').click())
+
+    expect(screen.getByTestId('loading-more')).toHaveTextContent('idle')
+    expect(screen.getByTestId('count')).toHaveTextContent('0')
+
+    // The abandoned page-2 response arriving late must not resurrect state.
+    await act(async () => {
+      resolvePage2(jsonResponse({ reservations: [{ ...RESERVATION, id: 'r2' }], page: 2, limit: 50, total: 2 }, 200))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(screen.getByTestId('loading-more')).toHaveTextContent('idle')
+    expect(screen.getByTestId('count')).toHaveTextContent('0')
+  })
+
   it('throws an ApiError (not a generic Error) when a mutation is attempted without a token', async () => {
     render(
       <AuthProvider>
