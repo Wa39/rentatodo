@@ -59,7 +59,7 @@ data "aws_iam_policy_document" "ec2_permissions" {
       "s3:DeleteObject",
       "s3:GetObject",
     ]
-    resources = ["arn:aws:s3:::rentatodo-items-wa/*"]
+    resources = ["arn:aws:s3:::rentatodo-items/*"]
   }
 }
 

@@ -61,7 +61,8 @@ jobs:
               \"docker pull $REGISTRY/$REPOSITORY:latest\",
               \"docker stop rentatodo-api 2>/dev/null || true\",
               \"docker rm rentatodo-api 2>/dev/null || true\",
-              \"docker run -d --name rentatodo-api --restart=always -e DATABASE_URL=\\\"\$DATABASE_URL\\\" -e JWT_SECRET=\\\"\$JWT_SECRET\\\" -e CORS_ORIGINS=\\\"\$CORS_ORIGINS\\\" -e JWT_EXPIRATION_HOURS=24 -e AWS_S3_BUCKET=rentatodo-items-wa -e AWS_S3_REGION=us-east-1 -p 8000:8000 $REGISTRY/$REPOSITORY:latest\"
+              \"docker run -d --name rentatodo-api --restart=always -e DATABASE_URL=\\\"\$DATABASE_URL\\\" -e JWT_SECRET=\\\"\$JWT_SECRET\\\" -e CORS_ORIGINS=\\\"\$CORS_ORIGINS\\\" -e JWT_EXPIRATION_HOURS=24 -e AWS_S3_BUCKET=rentatodo-items -e AWS_S3_REGION=us-east-1 -p 8000:8000 $REGISTRY/$REPOSITORY:latest\",
+              \"sleep 5 && docker ps -q -f name=rentatodo-api -f status=running | grep -q . || (echo 'Container failed to start' >&2 && exit 1)\"
             ]" \
             --query "Command.CommandId" \
             --output text)
