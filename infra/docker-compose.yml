@@ -36,7 +36,7 @@ volumes:
 #
 # Create the S3 bucket in MiniStack (first time only, needs AWS CLI):
 #   AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test \
-#   aws --endpoint-url http://localhost:4566 s3 mb s3://rentatodo-items-wa
+#   aws --endpoint-url http://localhost:4566 s3 mb s3://rentatodo-items
 #
 # Then from apps/api/ (with virtualenv active):
 #   alembic upgrade head

@@ -13,7 +13,7 @@ infra/docker-compose.yml and the bucket created):
     JWT_SECRET=dev-secret \
     AWS_ACCESS_KEY_ID=ministack \
     AWS_SECRET_ACCESS_KEY=ministack \
-    AWS_S3_BUCKET=rentatodo-items-wa \
+    AWS_S3_BUCKET=rentatodo-items \
     AWS_ENDPOINT_URL=http://localhost:4566 \
     python infra/seed.py
 
