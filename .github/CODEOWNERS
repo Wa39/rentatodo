@@ -3,6 +3,11 @@
 # and must be reviewed by every consumer (api, web, mobile, qa).
 packages/contracts/  @Josepicado95 @j0sMedina @psced10-creator @Wa39
 
+# Each app is owned by its primary author.
+apps/api/            @Josepicado95
+apps/web/            @j0sMedina
+apps/mobile/         @psced10-creator
+
 # CI/CD pipeline, E2E tests, and infrastructure belong to Platform/QA (Wa).
 .github/             @Wa39
 e2e/                 @Wa39

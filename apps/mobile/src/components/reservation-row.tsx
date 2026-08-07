@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { StatusBadge } from '@/components/status-badge';
 import { Brand } from '@/constants/brand';
 import type { Reservation } from '@/data/types';
-import { formatDateRangeEs } from '@/utils/dates';
+import { formatDateRange } from '@/utils/dates';
 
 /** Row in reservation lists; taps into the reservation detail. */
 export function ReservationRow({ reservation }: { reservation: Reservation }) {
@@ -12,7 +12,7 @@ export function ReservationRow({ reservation }: { reservation: Reservation }) {
     <Link
       href={{ pathname: '/reservation/[id]', params: { id: reservation.id } }}
       asChild>
-      <Pressable style={styles.row}>
+      <Pressable testID={`reservation-row-${reservation.id}`} style={styles.row}>
         <View style={styles.thumb}>
           <Text style={styles.initial}>{reservation.item_name.charAt(0)}</Text>
         </View>
@@ -21,7 +21,7 @@ export function ReservationRow({ reservation }: { reservation: Reservation }) {
             {reservation.item_name}
           </Text>
           <Text style={styles.dates}>
-            {formatDateRangeEs(reservation.start_date, reservation.end_date)}
+            {formatDateRange(reservation.start_date, reservation.end_date)}
           </Text>
         </View>
         <StatusBadge status={reservation.status} />
@@ -46,14 +46,14 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 10,
-    backgroundColor: Brand.tealSoft,
+    backgroundColor: Brand.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
   initial: {
     fontSize: 18,
     fontWeight: '800',
-    color: Brand.teal,
+    color: Brand.primary,
     opacity: 0.55,
   },
   info: {

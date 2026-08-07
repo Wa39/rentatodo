@@ -1,0 +1,49 @@
+# Report a problem — navigation happy path.
+# Verifies the renter can reach the report screen from a returned reservation.
+#
+# Prerequisites:
+#   - API running: uvicorn app.main:app --reload (apps/api/)
+#   - DB seeded: python infra/seed.py
+#   - Expo Go open on device/simulator pointed at dev server
+#
+# Item used: "Bicicleta de montaña Trek" (status: returned, seeded by infra/seed.py)
+# Returned reservations show the "Reportar problema" button on detail when
+# the deposit is not frozen (no freeze transaction in the seeded data).
+#
+# Limitation: photo and reason submission are not tested — the camera/gallery
+# picker is a native OS dialog and submitting would freeze the seeded deposit.
+# The flow asserts the full report form UI is present and stops there.
+#
+# Run: maestro test e2e/mobile/flows/reservations/report.yaml
+
+appId: host.exp.Exponent
+---
+- runFlow: ../auth/_login-as-renter.yaml
+
+# Navigate to reservation detail via rentals list
+- tapOn:
+    id: "tab-rentals"
+- tapOn:
+    text: "Bicicleta de montaña Trek"
+- assertVisible:
+    id: "reservation-detail-title"
+- assertVisible:
+    id: "status-badge-returned"
+- assertVisible:
+    id: "reservation-report"
+
+# Open the report screen
+- tapOn:
+    id: "reservation-report"
+
+# Assert report screen elements
+- assertVisible:
+    id: "report-title"
+- assertVisible:
+    id: "report-reason"
+- assertVisible:
+    id: "report-pick-camera"
+- assertVisible:
+    id: "report-pick-library"
+- assertVisible:
+    id: "report-submit"

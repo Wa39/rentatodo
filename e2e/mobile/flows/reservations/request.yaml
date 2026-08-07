@@ -1,0 +1,44 @@
+# Request a reservation — happy path.
+# Renter selects dates on the item calendar and submits a request.
+#
+# Prerequisites:
+#   - API running: uvicorn app.main:app --reload (apps/api/)
+#   - DB seeded: python infra/seed.py
+#   - Expo Go open on device/simulator pointed at dev server
+#
+# Item used: "Karaoke profesional con 2 micrófonos" (category: other)
+# Its seeded reservation is cancelled — no date conflicts.
+# Dates: navigate to next month and pick days 12-16. All months have at
+# least 16 days, and the next month is always in the future relative to today.
+#
+# Run: maestro test e2e/mobile/flows/reservations/request.yaml
+
+appId: host.exp.Exponent
+---
+- runFlow: ../auth/_login-as-renter.yaml
+
+# Navigate to item detail via name (seeded by infra/seed.py)
+- tapOn:
+    text: "Karaoke profesional con 2 micrófonos"
+- assertVisible:
+    id: "item-request-submit"
+
+# Advance to next month so selected dates are always in the future
+- tapOn:
+    description: "Siguiente mes"
+
+# Select date range (first tap = start, second = end)
+- tapOn:
+    text: "12"
+- tapOn:
+    text: "16"
+
+# Submit the request
+- tapOn:
+    id: "item-request-submit"
+
+# App navigates to /rentals after a successful request
+- assertVisible:
+    id: "tab-rentals"
+- assertVisible:
+    id: "status-badge-requested"

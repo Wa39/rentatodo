@@ -6,7 +6,7 @@ import type { ReservationStatus } from '@/data/types';
 export function StatusBadge({ status }: { status: ReservationStatus }) {
   const meta = STATUS_META[status];
   return (
-    <View style={[styles.badge, { backgroundColor: meta.bg }]}>
+    <View testID={`status-badge-${status}`} style={[styles.badge, { backgroundColor: meta.bg }]}>
       <Text style={[styles.text, { color: meta.color }]}>{meta.label}</Text>
     </View>
   );

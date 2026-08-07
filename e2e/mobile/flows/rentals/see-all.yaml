@@ -1,0 +1,26 @@
+# Home screen "See all" → navigates to My Rentals tab.
+# Verifies that tapping the "See all" pressable (testID=home-see-all) in the
+# "My requests" section of the home screen opens the rentals list — introduced
+# in PR #80 (mobile English audit + UI dedup).
+#
+# Prerequisites:
+#   - API running: uvicorn app.main:app --reload (apps/api/)
+#   - DB seeded: python infra/seed.py
+#   - Expo Go open on device/simulator pointed at dev server
+#
+# Run: maestro test e2e/mobile/flows/rentals/see-all.yaml
+
+appId: host.exp.Exponent
+---
+- runFlow: ../auth/_login-as-renter.yaml
+
+# The home screen loads with the items list and a "My requests" section at the
+# bottom. Tap the "See all" link to navigate to the My Rentals tab.
+- tapOn:
+    id: "home-see-all"
+
+# My Rentals screen is now active — both tab selectors must be visible.
+- assertVisible:
+    id: "rentals-tab-active"
+- assertVisible:
+    id: "rentals-tab-past"

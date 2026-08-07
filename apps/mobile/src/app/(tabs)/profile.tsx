@@ -20,31 +20,31 @@ export default function ProfileScreen() {
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{(user?.name ?? 'Z').charAt(0).toUpperCase()}</Text>
           </View>
-          <Text style={styles.name}>{user?.name ?? 'Persona arrendataria'}</Text>
+          <Text testID="profile-user-name" style={styles.name}>{user?.name ?? 'Renter'}</Text>
           <Text style={styles.email}>{user?.email ?? ''}</Text>
         </View>
 
-        <View style={styles.item}>
-          <Ionicons name="card-outline" size={19} color={Brand.teal} />
+        <View testID="profile-payment-method" style={styles.item}>
+          <Ionicons name="card-outline" size={19} color={Brand.primary} />
           <View style={styles.itemInfo}>
-            <Text style={styles.itemTitle}>Método de pago</Text>
-            <Text style={styles.itemSub}>Simulado (mock) · sin cargos reales</Text>
+            <Text style={styles.itemTitle}>Payment method</Text>
+            <Text style={styles.itemSub}>Simulated (mock) · no real charges</Text>
           </View>
         </View>
 
-        <View style={styles.item}>
-          <Ionicons name="settings-outline" size={19} color={Brand.teal} />
+        <View testID="profile-settings" style={styles.item}>
+          <Ionicons name="settings-outline" size={19} color={Brand.primary} />
           <View style={styles.itemInfo}>
-            <Text style={styles.itemTitle}>Configuración</Text>
-            <Text style={styles.itemSub}>Notificaciones dentro de la app (polling)</Text>
+            <Text style={styles.itemTitle}>Settings</Text>
+            <Text style={styles.itemSub}>In-app notifications (polling)</Text>
           </View>
         </View>
 
-        <Pressable style={styles.item} onPress={logout}>
+        <Pressable testID="profile-logout" style={styles.item} onPress={logout}>
           <Ionicons name="log-out-outline" size={19} color={Brand.red} />
           <View style={styles.itemInfo}>
-            <Text style={[styles.itemTitle, { color: Brand.red }]}>Cerrar sesión</Text>
-            <Text style={styles.itemSub}>Borra el token del dispositivo</Text>
+            <Text style={[styles.itemTitle, { color: Brand.red }]}>Sign out</Text>
+            <Text style={styles.itemSub}>Clears the token from the device</Text>
           </View>
         </Pressable>
       </View>
@@ -60,11 +60,11 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: Brand.tealSoft,
+    backgroundColor: Brand.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: { fontSize: 24, fontWeight: '800', color: Brand.teal },
+  avatarText: { fontSize: 24, fontWeight: '800', color: Brand.primary },
   name: { fontSize: 16, fontWeight: '800', color: Brand.ink },
   email: { fontSize: 12, color: Brand.muted },
   item: {

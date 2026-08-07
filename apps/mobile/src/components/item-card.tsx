@@ -13,7 +13,7 @@ import { formatUSD, type Item } from '@/data/types';
 export function ItemCard({ item }: { item: Item }) {
   return (
     <Link href={{ pathname: '/item/[id]', params: { id: item.id } }} asChild>
-      <Pressable style={styles.card}>
+      <Pressable testID={`item-card-${item.id}`} style={styles.card}>
         <View style={styles.thumb}>
           <Text style={styles.initial}>{item.name.charAt(0)}</Text>
         </View>
@@ -21,7 +21,7 @@ export function ItemCard({ item }: { item: Item }) {
           <Text style={styles.name} numberOfLines={2}>
             {item.name}
           </Text>
-          <Text style={styles.price}>{formatUSD(item.price_per_day)} / día</Text>
+          <Text style={styles.price}>{formatUSD(item.price_per_day)} / day</Text>
           <Text style={styles.meta} numberOfLines={1}>
             {CATEGORY_LABELS[item.category]}
           </Text>
@@ -43,14 +43,14 @@ const styles = StyleSheet.create({
   },
   thumb: {
     height: 90,
-    backgroundColor: Brand.tealSoft,
+    backgroundColor: Brand.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
   initial: {
     fontSize: 30,
     fontWeight: '800',
-    color: Brand.teal,
+    color: Brand.primary,
     opacity: 0.55,
   },
   info: {
@@ -65,7 +65,7 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 12,
     fontWeight: '700',
-    color: Brand.teal,
+    color: Brand.primary,
     marginTop: 3,
   },
   meta: {

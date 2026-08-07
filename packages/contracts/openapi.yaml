@@ -60,6 +60,8 @@ components:
         password:
           type: string
           minLength: 8
+          maxLength: 72
+          description: "72-character limit imposed by bcrypt"
           example: "securepass123"
 
     LoginRequest:
@@ -74,7 +76,7 @@ components:
 
     LoginResponse:
       type: object
-      required: [expires_in]
+      required: [access_token, token_type, expires_in]
       properties:
         access_token:
           type: string
@@ -89,6 +91,7 @@ components:
 
     UserResponse:
       type: object
+      required: [id, name, email, created_at]
       properties:
         id:
           type: string
@@ -112,6 +115,7 @@ components:
         - sports
         - electronics
         - home
+        - other
 
     CreateItemRequest:
       type: object
@@ -157,6 +161,7 @@ components:
 
     ItemResponse:
       type: object
+      required: [id, name, description, category, price_per_day, photo_url, is_active, owner_id, owner_name, created_at]
       properties:
         id:
           type: string
@@ -204,6 +209,7 @@ components:
 
     ItemListResponse:
       type: object
+      required: [items, page, limit, total]
       properties:
         items:
           type: array
@@ -245,6 +251,7 @@ components:
 
     ReservationResponse:
       type: object
+      required: [id, item_id, item_name, item_photo_url, renter_id, renter_name, start_date, end_date, status, deposit_amount, deposit_status, created_at, updated_at]
       properties:
         id:
           type: string
@@ -286,6 +293,7 @@ components:
 
     ReservationListResponse:
       type: object
+      required: [reservations, page, limit, total]
       properties:
         reservations:
           type: array
@@ -329,6 +337,7 @@ components:
 
     ReportResponse:
       type: object
+      required: [id, reservation_id, reported_by, reason, photo_url, created_at]
       properties:
         id:
           type: string
@@ -358,6 +367,7 @@ components:
 
     TransactionResponse:
       type: object
+      required: [id, reservation_id, type, amount, created_at]
       properties:
         id:
           type: string
@@ -374,9 +384,45 @@ components:
           type: string
           format: date-time
 
+    # ── UPLOADS ──
+    PresignRequest:
+      type: object
+      required: [filename, content_type]
+      properties:
+        filename:
+          type: string
+          minLength: 1
+          description: "Original filename. Used to derive the S3 key."
+          example: "drill.jpg"
+        content_type:
+          type: string
+          enum: [image/jpeg, image/png, image/webp]
+          description: "MIME type of the file to upload"
+          example: "image/jpeg"
+
+    PresignResponse:
+      type: object
+      required: [upload_url, public_url, expires_in]
+      properties:
+        upload_url:
+          type: string
+          format: uri
+          description: "Short-lived pre-signed S3 PUT URL. The client uploads the file directly to this URL."
+          example: "https://s3.amazonaws.com/rentatodo-items/..."
+        public_url:
+          type: string
+          format: uri
+          description: "Permanent public URL to store as the item's photo_url after a successful upload."
+          example: "https://rentatodo-items.s3.amazonaws.com/..."
+        expires_in:
+          type: integer
+          description: "Seconds until upload_url expires"
+          example: 300
+
     # ── EARNINGS ──
     EarningsResponse:
       type: object
+      required: [total_earnings, by_item]
       properties:
         total_earnings:
           type: integer
@@ -724,6 +770,51 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /items/{item_id}/reactivate:
+    patch:
+      tags: [Items]
+      summary: Reactivate a soft-deleted item (set is_active = true)
+      description: |
+        Only the owner can reactivate. Idempotent — reactivating an
+        already-active item just re-confirms the same state, same as
+        `DELETE /items/{item_id}`'s idempotent behavior on an
+        already-inactive item.
+      operationId: reactivateItem
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: item_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Item reactivated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItemResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Not the owner
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Item not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /users/me/items:
     get:
       tags: [Items]
@@ -814,7 +905,10 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
         "422":
-          description: Invalid dates or trying to rent own item
+          description: |
+            Validation error. Possible error.code values:
+            - INVALID_DATES: end_date < start_date, or start_date is in the past
+            - CANNOT_RENT_OWN_ITEM: the authenticated user is the item's owner
           content:
             application/json:
               schema:
@@ -1283,6 +1377,49 @@ paths:
                 $ref: "#/components/schemas/Error"
         "403":
           description: Not the owner or renter of this reservation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # ══════════════════════════════════════════
+  # UPLOADS — Week 2-3
+  # ══════════════════════════════════════════
+
+  /uploads/presign:
+    post:
+      tags: [Uploads]
+      summary: Get a pre-signed URL to upload a photo directly to S3
+      description: |
+        Returns a short-lived pre-signed PUT URL for uploading a photo to S3.
+        The client PUTs the file directly to upload_url (no server in the middle),
+        then stores public_url as the item's photo_url.
+        Supported: image/jpeg, image/png, image/webp.
+        upload_url expires in 5 minutes.
+      operationId: presignUpload
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PresignRequest"
+      responses:
+        "200":
+          description: Pre-signed upload URL and permanent public URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PresignResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: Unsupported content_type or invalid filename
           content:
             application/json:
               schema:

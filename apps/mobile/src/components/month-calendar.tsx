@@ -4,11 +4,11 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Brand } from '@/constants/brand';
 import { isoDate } from '@/utils/dates';
 
-// Costa Rican-style weekday header: K = martes, M = miércoles.
-const WEEKDAYS = ['L', 'K', 'M', 'J', 'V', 'S', 'D'];
+// Weekday header, Monday-first (the week starts on Monday below).
+const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 const MONTHS = [
-  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-  'Julio', 'Agosto', 'Setiembre', 'Octubre', 'Noviembre', 'Diciembre',
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
 type Props = {
@@ -43,33 +43,33 @@ export function MonthCalendar({
   const daysInMonth = new Date(year, month, 0).getDate();
   // Offset so the week starts on Monday.
   const offset = (new Date(year, month - 1, 1).getDay() + 6) % 7;
-
   const cells: (number | null)[] = [
     ...Array.from({ length: offset }, () => null),
     ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
   ];
   while (cells.length % 7 !== 0) cells.push(null);
 
+  const renderNav = (delta: -1 | 1, icon: 'chevron-back' | 'chevron-forward', label: string) =>
+    onNavigateMonth ? (
+      <Pressable
+        onPress={() => onNavigateMonth(delta)}
+        hitSlop={8}
+        style={styles.navButton}
+        accessibilityLabel={label}>
+        <Ionicons name={icon} size={16} color={Brand.ink} />
+      </Pressable>
+    ) : (
+      <View style={styles.navButton} />
+    );
+
   return (
     <View style={styles.cal}>
       <View style={styles.titleRow}>
-        {onNavigateMonth ? (
-          <Pressable onPress={() => onNavigateMonth(-1)} hitSlop={8} style={styles.navButton}>
-            <Ionicons name="chevron-back" size={16} color={Brand.ink} />
-          </Pressable>
-        ) : (
-          <View style={styles.navButton} />
-        )}
+        {renderNav(-1, 'chevron-back', 'Previous month')}
         <Text style={styles.title}>
           {MONTHS[month - 1]} {year}
         </Text>
-        {onNavigateMonth ? (
-          <Pressable onPress={() => onNavigateMonth(1)} hitSlop={8} style={styles.navButton}>
-            <Ionicons name="chevron-forward" size={16} color={Brand.ink} />
-          </Pressable>
-        ) : (
-          <View style={styles.navButton} />
-        )}
+        {renderNav(1, 'chevron-forward', 'Next month')}
       </View>
       <View style={styles.row}>
         {WEEKDAYS.map((d, i) => (
@@ -118,11 +118,11 @@ export function MonthCalendar({
       ))}
       <View style={styles.legend}>
         <View style={[styles.dot, { backgroundColor: Brand.line }]} />
-        <Text style={styles.legendText}>Ocupada</Text>
+        <Text style={styles.legendText}>Booked</Text>
         {onSelectDay && (
           <>
-            <View style={[styles.dot, { backgroundColor: Brand.teal }]} />
-            <Text style={styles.legendText}>Selección</Text>
+            <View style={[styles.dot, { backgroundColor: Brand.primary }]} />
+            <Text style={styles.legendText}>Selection</Text>
           </>
         )}
       </View>
@@ -178,8 +178,8 @@ const styles = StyleSheet.create({
   pastText: { color: '#C4CCD2' },
   unavailable: { backgroundColor: '#EFF2F4' },
   unavailableText: { color: '#B9C2C9', textDecorationLine: 'line-through' },
-  inRange: { backgroundColor: Brand.tealSoft },
-  edge: { backgroundColor: Brand.teal },
+  inRange: { backgroundColor: Brand.primarySoft },
+  edge: { backgroundColor: Brand.primary },
   edgeText: { color: '#fff', fontWeight: '800' },
   legend: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
   dot: { width: 10, height: 10, borderRadius: 3 },

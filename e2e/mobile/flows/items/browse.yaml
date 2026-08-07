@@ -1,0 +1,12 @@
+# Browse items on home screen — search + filter segments.
+# Requires 7 seeded items (infra/seed.py).
+# Run: maestro test e2e/mobile/flows/items/browse.yaml
+
+appId: host.exp.Exponent
+---
+- runFlow: ../auth/_login-as-renter.yaml
+- tapOn:
+    id: "home-search"
+- inputText:
+    text: "bicicleta"
+- assertVisible: "Bicicleta de montaña Trek"

@@ -1,0 +1,162 @@
+import type { Category, EarningsSummary, Item, Reservation, Transaction } from './types'
+
+export class ApiError extends Error {
+  code: string
+
+  constructor(code: string, message: string) {
+    super(message)
+    this.code = code
+  }
+}
+
+export function getErrorMessage(err: unknown, fallback: string): string {
+  return err instanceof ApiError ? err.message : fallback
+}
+
+interface LoginResult {
+  access_token: string
+  token_type: string
+  expires_in: number
+}
+
+interface UserProfile {
+  id: string
+  name: string
+  email: string
+  created_at: string
+}
+
+export interface CreateItemPayload {
+  name: string
+  description: string
+  category: Category
+  price_per_day: number
+  photo_url: string
+}
+
+export type UpdateItemPayload = Partial<CreateItemPayload>
+
+export interface ReservationListResponse {
+  reservations: Reservation[]
+  page: number
+  limit: number
+  total: number
+}
+
+export type UploadContentType = 'image/jpeg' | 'image/png' | 'image/webp'
+
+export interface PresignResponse {
+  upload_url: string
+  public_url: string
+  expires_in: number
+}
+
+export interface ReportProblemPayload {
+  reason: string
+  photo_url: string
+}
+
+export interface ReportResponse {
+  id: string
+  reservation_id: string
+  reported_by: string
+  reason: string
+  photo_url: string
+  created_at: string
+}
+
+async function request<T>(path: string, options: RequestInit): Promise<T> {
+  const baseUrl = import.meta.env.VITE_API_URL
+  const response = await fetch(`${baseUrl}${path}`, {
+    ...options,
+    headers: { 'Content-Type': 'application/json', ...options.headers },
+  })
+  const body = await response.json().catch(() => null)
+  if (!response.ok) {
+    if (body?.error?.code === 'TOKEN_EXPIRED') {
+      window.dispatchEvent(new CustomEvent('rentatodo:token-expired'))
+    }
+    throw new ApiError(body?.error?.code ?? 'UNKNOWN_ERROR', body?.error?.message ?? 'Something went wrong. Please try again.')
+  }
+  return body as T
+}
+
+export function apiLogin(email: string, password: string): Promise<LoginResult> {
+  return request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) })
+}
+
+export function apiRegister(name: string, email: string, password: string): Promise<UserProfile> {
+  return request('/auth/register', { method: 'POST', body: JSON.stringify({ name, email, password }) })
+}
+
+export function apiGetMe(token: string): Promise<UserProfile> {
+  return request('/users/me', { method: 'GET', headers: { Authorization: `Bearer ${token}` } })
+}
+
+export function apiCreateItem(token: string, data: CreateItemPayload): Promise<Item> {
+  return request('/items', {
+    method: 'POST',
+    body: JSON.stringify(data),
+    headers: { Authorization: `Bearer ${token}` },
+  })
+}
+
+export function apiListMyItems(token: string): Promise<Item[]> {
+  return request('/users/me/items', { method: 'GET', headers: { Authorization: `Bearer ${token}` } })
+}
+
+export function apiUpdateItem(token: string, id: string, data: UpdateItemPayload): Promise<Item> {
+  return request(`/items/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+    headers: { Authorization: `Bearer ${token}` },
+  })
+}
+
+export function apiDeleteItem(token: string, id: string): Promise<Item> {
+  return request(`/items/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
+}
+
+export function apiReactivateItem(token: string, id: string): Promise<Item> {
+  return request(`/items/${id}/reactivate`, { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } })
+}
+
+export function apiListMyRequests(token: string, page = 1, limit = 50): Promise<ReservationListResponse> {
+  return request(`/users/me/requests?page=${page}&limit=${limit}`, { method: 'GET', headers: { Authorization: `Bearer ${token}` } })
+}
+
+export function apiApproveReservation(token: string, id: string): Promise<Reservation> {
+  return request(`/reservations/${id}/approve`, { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } })
+}
+
+export function apiRejectReservation(token: string, id: string): Promise<Reservation> {
+  return request(`/reservations/${id}/reject`, { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } })
+}
+
+export function apiCloseReservation(token: string, id: string): Promise<Reservation> {
+  return request(`/reservations/${id}/close`, { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } })
+}
+
+export function apiPresignUpload(token: string, filename: string, contentType: UploadContentType): Promise<PresignResponse> {
+  return request('/uploads/presign', {
+    method: 'POST',
+    body: JSON.stringify({ filename, content_type: contentType }),
+    headers: { Authorization: `Bearer ${token}` },
+  })
+}
+
+export function apiGetEarnings(token: string): Promise<EarningsSummary> {
+  return request('/users/me/earnings', { method: 'GET', headers: { Authorization: `Bearer ${token}` } })
+}
+
+export function apiGetTransactions(token: string, id: string): Promise<Transaction[]> {
+  return request(`/reservations/${id}/transactions`, { method: 'GET', headers: { Authorization: `Bearer ${token}` } })
+}
+
+export function apiReportProblem(token: string, id: string, data: ReportProblemPayload): Promise<ReportResponse> {
+  return request(`/reservations/${id}/report`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+    headers: { Authorization: `Bearer ${token}` },
+  })
+}
