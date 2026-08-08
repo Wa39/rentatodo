@@ -156,6 +156,34 @@ describe('ItemsPage', () => {
     expect(body.price_per_day).toBe(1001)
   })
 
+  it('sends 0 (not null) when the price field is submitted empty', async () => {
+    mockFetchRoutes({
+      '/users/me': [() => jsonResponse(PROFILE, 200)],
+      '/users/me/items': [() => jsonResponse(ITEMS, 200), () => jsonResponse(ITEMS, 200)],
+      '/items/i1': [() => jsonResponse(ITEMS[0], 200)],
+    })
+    const user = userEvent.setup({ delay: null })
+    renderPage()
+    const item = ITEMS[0]
+    await waitFor(() => expect(screen.getByText(item.name)).toBeInTheDocument())
+    const card = screen.getByTestId(`item-card-${item.id}`)
+    await user.click(within(card).getByRole('button', { name: 'Edit' }))
+    const priceInput = screen.getByLabelText('Price per day (USD)') as HTMLInputElement
+    const form = priceInput.closest('form')!
+    // Same native-validation caveat as above: an empty required field can't
+    // be *submitted* by clicking the button, but dollarsToCentavos('') is
+    // NaN regardless of how handleSubmit gets invoked — dispatch submit
+    // directly to exercise that conversion.
+    fireEvent.change(priceInput, { target: { value: '' } })
+    fireEvent.submit(form)
+
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith('http://localhost:8000/items/i1', expect.objectContaining({ method: 'PATCH' })))
+    const patchCall = vi.mocked(fetch).mock.calls.find(([, options]) => (options as RequestInit | undefined)?.method === 'PATCH')
+    const patchOptions = patchCall?.[1] as RequestInit
+    const body = JSON.parse(patchOptions.body as string)
+    expect(body.price_per_day).toBe(0)
+  })
+
   it('shows an inline error in the dialog and keeps it open when the edit fails', async () => {
     mockFetchRoutes({
       '/users/me': [() => jsonResponse(PROFILE, 200)],

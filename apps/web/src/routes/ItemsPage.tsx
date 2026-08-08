@@ -66,7 +66,10 @@ export function ItemsPage() {
     setDialogSubmitting(true)
     setDialogError(null)
     try {
-      const priceCentavos = dollarsToCentavos(form.priceDollars)
+      // Match PublishItemPage's fallback: an empty field should mean "$0",
+      // not NaN — dollarsToCentavos('') is NaN, which JSON.stringify would
+      // otherwise silently turn into `price_per_day: null` in the request.
+      const priceCentavos = dollarsToCentavos(form.priceDollars || '0')
       await updateItem(editingId, {
         name: form.name,
         description: form.description,
