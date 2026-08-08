@@ -284,6 +284,16 @@ components:
           type: string
           enum: [none, held, released, frozen]
           description: "Derived from the latest transaction record"
+        checkin_photo_url:
+          type: string
+          format: uri
+          nullable: true
+          description: "Check-in evidence photo. Null until the renter checks in."
+        checkout_photo_url:
+          type: string
+          format: uri
+          nullable: true
+          description: "Check-out evidence photo. Null until the renter checks out."
         created_at:
           type: string
           format: date-time
@@ -1338,6 +1348,48 @@ paths:
                 $ref: "#/components/schemas/Error"
         "409":
           description: "Invalid status for reporting OR report already exists for this reservation"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    get:
+      tags: [Reports]
+      summary: Get the problem report filed against a reservation
+      description: |
+        Both owner and renter can view.
+        404 if no report has been filed for this reservation yet.
+      operationId: getReport
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: reservation_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The reservation's report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Not the owner or renter of this reservation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: "Reservation not found, or no report has been filed for it"
           content:
             application/json:
               schema:
