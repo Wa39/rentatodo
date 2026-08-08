@@ -41,7 +41,7 @@ export function EarningsPage() {
     <div>
       <PageHeader title={t.earnings.title} subtitle={t.earnings.subtitle} />
       <div className="space-y-four p-four">
-        <div className="grid grid-cols-3 gap-three">
+        <div className="grid grid-cols-1 gap-three sm:grid-cols-3">
           <div className="rounded-lg border border-sidebar-border bg-sidebar p-three">
             <p className="text-xs font-medium text-sidebar-foreground/70">{t.earnings.kpiTotal}</p>
             <p className="font-display text-2xl font-semibold text-on-dark-accent">{formatCentavos(earnings.total_earnings)}</p>
@@ -73,7 +73,7 @@ export function EarningsPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-four">
+        <div className="grid grid-cols-1 gap-four lg:grid-cols-2">
           <div>
             <h2 className="font-medium text-foreground">{t.earnings.byItemHeading}</h2>
             <p className="mb-two text-sm text-muted-foreground">{t.earnings.byItemSubtitle}</p>

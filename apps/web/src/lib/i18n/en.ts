@@ -14,6 +14,8 @@ export const en = {
     calendar: 'Calendar',
     earnedThisMonth: 'Earned this month',
     vsLastMonth: 'vs. last month',
+    openMenu: 'Open menu',
+    closeMenu: 'Close menu',
   },
   login: {
     title: 'Sign in',
