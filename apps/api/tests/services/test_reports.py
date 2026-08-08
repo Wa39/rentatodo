@@ -152,3 +152,106 @@ def test_report_problem_rejects_duplicate_report(db_session: Session, make_user,
 
     assert exc_info.value.status_code == 409
     assert exc_info.value.code == "REPORT_EXISTS"
+
+
+def test_get_report_happy_path_by_renter(db_session: Session, make_user, make_item) -> None:
+    """Happy path: the renter who filed the report can read it back."""
+    from app.services.reports import get_report, report_problem
+
+    owner = make_user(email="report-owner6@example.com")
+    renter = make_user(email="report-renter6@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = _make_delivered_reservation(db_session, owner, renter, item)
+    filed = report_problem(
+        db_session,
+        reservation_id=reservation.id,
+        reporter_id=renter.id,
+        data=CreateReportRequest(reason="Damaged", photo_url="https://example.com/damaged.jpg"),
+    )
+
+    fetched = get_report(db_session, reservation_id=reservation.id, user_id=renter.id)
+
+    assert fetched.id == filed.id
+    assert fetched.reason == "Damaged"
+
+
+def test_get_report_happy_path_by_owner(db_session: Session, make_user, make_item) -> None:
+    """Happy path: the item's owner (not just the reporter) can read the
+    report back too — anyone who's a participant, not just who filed it.
+    """
+    from app.services.reports import get_report, report_problem
+
+    owner = make_user(email="report-owner7@example.com")
+    renter = make_user(email="report-renter7@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = _make_delivered_reservation(db_session, owner, renter, item)
+    report_problem(
+        db_session,
+        reservation_id=reservation.id,
+        reporter_id=renter.id,
+        data=CreateReportRequest(reason="Damaged", photo_url="https://example.com/damaged.jpg"),
+    )
+
+    fetched = get_report(db_session, reservation_id=reservation.id, user_id=owner.id)
+
+    assert fetched.reason == "Damaged"
+
+
+def test_get_report_requires_participant(db_session: Session, make_user, make_item) -> None:
+    """Failure path: a stranger can't read the report, 403 FORBIDDEN."""
+    from app.services.reports import get_report, report_problem
+
+    owner = make_user(email="report-owner8@example.com")
+    renter = make_user(email="report-renter8@example.com")
+    stranger = make_user(email="report-stranger8@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = _make_delivered_reservation(db_session, owner, renter, item)
+    report_problem(
+        db_session,
+        reservation_id=reservation.id,
+        reporter_id=renter.id,
+        data=CreateReportRequest(reason="Damaged", photo_url="https://example.com/damaged.jpg"),
+    )
+
+    with pytest.raises(AppError) as exc_info:
+        get_report(db_session, reservation_id=reservation.id, user_id=stranger.id)
+
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.code == "FORBIDDEN"
+
+
+def test_get_report_raises_not_found_when_none_filed(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Failure path: a reservation with no report yet is 404 NOT_FOUND,
+    not an empty/null body.
+    """
+    from app.services.reports import get_report
+
+    owner = make_user(email="report-owner9@example.com")
+    renter = make_user(email="report-renter9@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = _make_delivered_reservation(db_session, owner, renter, item)
+
+    with pytest.raises(AppError) as exc_info:
+        get_report(db_session, reservation_id=reservation.id, user_id=renter.id)
+
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.code == "NOT_FOUND"
+
+
+def test_get_report_raises_not_found_for_missing_reservation(
+    db_session: Session, make_user
+) -> None:
+    """Failure path: a nonexistent reservation is 404 NOT_FOUND."""
+    import uuid
+
+    from app.services.reports import get_report
+
+    user = make_user(email="report-owner10@example.com")
+
+    with pytest.raises(AppError) as exc_info:
+        get_report(db_session, reservation_id=uuid.uuid4(), user_id=user.id)
+
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.code == "NOT_FOUND"
