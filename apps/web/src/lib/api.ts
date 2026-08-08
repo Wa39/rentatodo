@@ -160,3 +160,15 @@ export function apiReportProblem(token: string, id: string, data: ReportProblemP
     headers: { Authorization: `Bearer ${token}` },
   })
 }
+
+export async function apiGetReport(token: string, id: string): Promise<ReportResponse | undefined> {
+  try {
+    return await request<ReportResponse>(`/reservations/${id}/report`, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+  } catch (err) {
+    if (err instanceof ApiError && err.code === 'NOT_FOUND') return undefined
+    throw err
+  }
+}
