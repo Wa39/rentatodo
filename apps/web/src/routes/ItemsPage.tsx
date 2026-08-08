@@ -259,7 +259,7 @@ export function ItemsPage() {
         {loading ? (
           <p className="text-sm text-muted-foreground">{t.items.loading}</p>
         ) : (
-          <div className="grid grid-cols-4 gap-three">
+          <div className="grid grid-cols-1 gap-three sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {filteredItems.map((item) => (
               <ItemCard key={item.id} item={item} onEdit={openEditDialog} onDelete={handleDelete} onReactivate={handleReactivate} />
             ))}
