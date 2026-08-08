@@ -1,3 +1,22 @@
+## Production deploy (Vercel)
+
+Hosted on Vercel, Root Directory `apps/web`. The API (`apps/api`, on EC2) is
+served over plain HTTP with no domain in front of it yet, while Vercel always
+serves over HTTPS — so the browser calling the API directly gets blocked as
+mixed content. `vercel.json` works around this with a same-origin rewrite:
+the browser calls `/api/...` (HTTPS, same origin as the page), and Vercel
+proxies that server-to-server to the EC2 IP over HTTP, where the
+browser's mixed-content check doesn't apply. `VITE_API_URL` is set to `/api`
+in the Vercel project's environment variables to match.
+
+This is a deliberate, temporary exception to this repo's "no hardcoded
+IPs in source code" rule (see root `CLAUDE.md`) — `vercel.json` rewrite
+destinations can't reference an environment variable, so the EC2 IP has to
+be a literal here. The real fix is putting the API behind a domain with a
+real TLS certificate (e.g. an ALB with ACM, or Nginx + Let's Encrypt) and
+pointing `VITE_API_URL` straight at `https://` that domain — at which point
+this file's rewrite (and this note) can go away.
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
