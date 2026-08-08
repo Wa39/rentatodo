@@ -52,6 +52,35 @@ describe('dollarsToCentavos', () => {
   it('returns NaN for non-numeric input', () => {
     expect(dollarsToCentavos('abc')).toBeNaN()
   })
+
+  it('expands exponential notation to plain decimal, which <input type="number"> accepts', () => {
+    expect(dollarsToCentavos('5e2')).toBe(50000)
+  })
+
+  it('rounds exponential notation with float-unsafe precision correctly, not via Number(x) * 100', () => {
+    // 1.005e0 === 1.005; Number('1.005e0') * 100 === 100.49999999999999,
+    // which Math.round() would floor to 100 instead of the correct 101.
+    expect(dollarsToCentavos('1.005e0')).toBe(101)
+  })
+
+  it('expands negative exponential notation', () => {
+    expect(dollarsToCentavos('-1.005e0')).toBe(-101)
+  })
+
+  it('returns NaN instead of throwing for an absurdly large exponent, which <input type="number"> still accepts as syntactically valid', () => {
+    // This is called unguarded from render bodies (e.g. the live price
+    // preview) on every keystroke, so it must never throw — a naive
+    // expansion would call '0'.repeat(999999999) and throw a RangeError.
+    expect(() => dollarsToCentavos('1e999999999')).not.toThrow()
+    expect(dollarsToCentavos('1e999999999')).toBeNaN()
+    expect(() => dollarsToCentavos('1e-999999999')).not.toThrow()
+    expect(dollarsToCentavos('1e-999999999')).toBeNaN()
+  })
+
+  it('expands a negative-exponent value into a small fraction', () => {
+    // 5e-1 === 0.5
+    expect(dollarsToCentavos('5e-1')).toBe(50)
+  })
 })
 
 describe('formatCentavos', () => {

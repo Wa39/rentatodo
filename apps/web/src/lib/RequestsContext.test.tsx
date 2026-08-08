@@ -316,6 +316,140 @@ describe('RequestsContext', () => {
     await waitFor(() => expect(screen.getByTestId('loading-more')).toHaveTextContent('idle'))
   })
 
+  it('a mutation refetch re-fetches every page already loaded, instead of collapsing back to page 1', async () => {
+    const page2Reservation = { ...RESERVATION, id: 'r2', renter_name: 'Camila Ríos' }
+    mockFetchRoutes({
+      '/users/me': [() => jsonResponse(PROFILE, 200)],
+      '/users/me/requests?page=1&limit=50': [
+        () => jsonResponse({ reservations: [RESERVATION], page: 1, limit: 50, total: 2 }, 200),
+        () => jsonResponse({ reservations: [{ ...RESERVATION, status: 'approved', deposit_status: 'held' }], page: 1, limit: 50, total: 2 }, 200),
+      ],
+      '/users/me/requests?page=2&limit=50': [
+        () => jsonResponse({ reservations: [page2Reservation], page: 2, limit: 50, total: 2 }, 200),
+        () => jsonResponse({ reservations: [page2Reservation], page: 2, limit: 50, total: 2 }, 200),
+      ],
+      '/reservations/r1/approve': [() => jsonResponse({ ...RESERVATION, status: 'approved', deposit_status: 'held' }, 200)],
+    })
+
+    renderWithToken()
+    await waitFor(() => expect(screen.getByTestId('has-more')).toHaveTextContent('yes'))
+    act(() => screen.getByText('load more').click())
+    await waitFor(() => expect(screen.getByTestId('count')).toHaveTextContent('2'))
+
+    act(() => screen.getByText('approve').click())
+
+    await waitFor(() => expect(screen.getByText('Jorge Salas · approved')).toBeInTheDocument())
+    // The page-2 row must still be there — a refetch that only re-fetched
+    // page 1 would have replaced the list and dropped it.
+    expect(screen.getByText('Camila Ríos · requested')).toBeInTheDocument()
+    expect(screen.getByTestId('count')).toHaveTextContent('2')
+  })
+
+  it('serializes a concurrent loadMore and mutation refetch, instead of the refetch clobbering pages loadMore already added', async () => {
+    const page2Reservation = { ...RESERVATION, id: 'r2', renter_name: 'Camila Ríos' }
+    let resolveLoadMorePage2: (r: Response) => void = () => {}
+    const loadMorePage2Promise = new Promise<Response>((resolve) => {
+      resolveLoadMorePage2 = resolve
+    })
+    const page1Responses = [
+      () => jsonResponse({ reservations: [RESERVATION], page: 1, limit: 50, total: 2 }, 200),
+      () =>
+        jsonResponse(
+          { reservations: [{ ...RESERVATION, status: 'approved', deposit_status: 'held' }], page: 1, limit: 50, total: 2 },
+          200,
+        ),
+    ]
+    const laterPage2Responses = [() => jsonResponse({ reservations: [page2Reservation], page: 2, limit: 50, total: 2 }, 200)]
+    let page2CallCount = 0
+
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.endsWith('/users/me')) return Promise.resolve(jsonResponse(PROFILE, 200))
+      if (url.endsWith('/users/me/requests?page=1&limit=50')) {
+        const next = page1Responses.shift()
+        if (!next) throw new Error(`Unhandled fetch call: ${url}`)
+        return Promise.resolve(next())
+      }
+      if (url.endsWith('/users/me/requests?page=2&limit=50')) {
+        page2CallCount += 1
+        // The first call is loadMore's — held open until the test resolves
+        // it explicitly, to force the mutation refetch to queue up behind
+        // loadMore's still-in-flight fetch. Later calls are refetch's own.
+        if (page2CallCount === 1) return loadMorePage2Promise
+        const next = laterPage2Responses.shift()
+        if (!next) throw new Error(`Unhandled fetch call: ${url}`)
+        return Promise.resolve(next())
+      }
+      if (url.endsWith('/reservations/r1/approve')) {
+        return Promise.resolve(jsonResponse({ ...RESERVATION, status: 'approved', deposit_status: 'held' }, 200))
+      }
+      throw new Error(`Unhandled fetch call: ${url}`)
+    })
+
+    renderWithToken()
+    await waitFor(() => expect(screen.getByTestId('has-more')).toHaveTextContent('yes'))
+
+    act(() => screen.getByText('load more').click())
+    await waitFor(() => expect(screen.getByTestId('loading-more')).toHaveTextContent('loading'))
+
+    act(() => screen.getByText('approve').click())
+    // Let the approve PATCH resolve and its refetch() call reach and enqueue
+    // behind loadMore's still-pending page-2 fetch, without resolving that
+    // fetch yet.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+    expect(screen.getByTestId('loading-more')).toHaveTextContent('loading')
+
+    await act(async () => {
+      resolveLoadMorePage2(jsonResponse({ reservations: [page2Reservation], page: 2, limit: 50, total: 2 }, 200))
+    })
+
+    await waitFor(() => expect(screen.getByText('Jorge Salas · approved')).toBeInTheDocument())
+    // Camila's page-2 row must survive the mutation's refetch — a refetch
+    // that read a stale page count (or ran concurrently instead of after
+    // loadMore) would replace the list with page 1 alone and drop it.
+    expect(screen.getByText('Camila Ríos · requested')).toBeInTheDocument()
+    expect(screen.getByTestId('count')).toHaveTextContent('2')
+    expect(screen.getByTestId('has-more')).toHaveTextContent('no')
+  })
+
+  it('resets loadingMore on logout even if the loadMore fetch never resolves', async () => {
+    let resolvePage2: (r: Response) => void = () => {}
+    const page2Promise = new Promise<Response>((resolve) => {
+      resolvePage2 = resolve
+    })
+    mockFetchRoutes({
+      '/users/me': [() => jsonResponse(PROFILE, 200)],
+      '/users/me/requests?page=1&limit=50': [() => jsonResponse({ reservations: [RESERVATION], page: 1, limit: 50, total: 2 }, 200)],
+    })
+    renderWithToken()
+    await waitFor(() => expect(screen.getByTestId('has-more')).toHaveTextContent('yes'))
+
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.includes('page=2')) return page2Promise
+      throw new Error(`Unhandled fetch call: ${url}`)
+    })
+
+    act(() => screen.getByText('load more').click())
+    await waitFor(() => expect(screen.getByTestId('loading-more')).toHaveTextContent('loading'))
+
+    act(() => screen.getByText('logout').click())
+
+    expect(screen.getByTestId('loading-more')).toHaveTextContent('idle')
+    expect(screen.getByTestId('count')).toHaveTextContent('0')
+
+    // The abandoned page-2 response arriving late must not resurrect state.
+    await act(async () => {
+      resolvePage2(jsonResponse({ reservations: [{ ...RESERVATION, id: 'r2' }], page: 2, limit: 50, total: 2 }, 200))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(screen.getByTestId('loading-more')).toHaveTextContent('idle')
+    expect(screen.getByTestId('count')).toHaveTextContent('0')
+  })
+
   it('throws an ApiError (not a generic Error) when a mutation is attempted without a token', async () => {
     render(
       <AuthProvider>
