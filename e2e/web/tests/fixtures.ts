@@ -1,5 +1,17 @@
 import { test as base, expect } from '@playwright/test'
 
+// Shared by every spec that drives PhotoUploadField (items/photo-upload.spec.ts,
+// reservations/reservation-detail.spec.ts) — was independently copy-pasted
+// into each before being extracted here.
+// Minimal 1×1 transparent PNG (70 bytes, RGBA) — valid IDAT stream so
+// createImageBitmap() accepts it in Chromium without mocking the browser API.
+export const PNG_1x1 = Buffer.from(
+  '89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d4944415478da63606060600000000500017aa857500000000049454e44ae426082',
+  'hex',
+)
+export const MOCK_UPLOAD_URL = 'https://s3.example.com/photos/upload-test'
+export const MOCK_PHOTO_PUBLIC_URL = 'https://cdn.rentatodo.com/photos/test.png'
+
 export const TEST_CREDENTIALS = {
   email: 'owner@rentatodo.dev',
   password: 'Rentatodo2026!',

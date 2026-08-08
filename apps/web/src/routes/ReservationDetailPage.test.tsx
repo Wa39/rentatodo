@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthProvider } from '@/lib/AuthContext'
 import { RequestsProvider } from '@/lib/RequestsContext'
+import { JPEG_HEADER, makeFile } from '@/test/photoFixtures'
 import { ReservationDetailPage } from './ReservationDetailPage'
 
 function jsonResponse(body: unknown, status: number) {
@@ -24,12 +25,6 @@ function mockFetchRoutes(routes: Record<string, Array<() => Response>>) {
     return Promise.resolve(next())
   })
 }
-
-function makeFile(bytes: number[], name: string, type: string): File {
-  return new File([new Uint8Array(bytes)], name, { type })
-}
-
-const JPEG_HEADER = [0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01]
 
 // A fresh route map per call — mockFetchRoutes shifts responses off these
 // arrays as they're consumed, so a shared object would be exhausted after

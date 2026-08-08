@@ -71,7 +71,11 @@ export function ReservationDetailPage() {
 
   async function handleReportSubmit(event: FormEvent) {
     event.preventDefault()
-    if (!token || !id || photoUploading) return
+    // Mirrors the submit button's own disabled expression exactly (see the
+    // Button below) — the old <input required> enforced !photoUrl at the
+    // DOM level regardless of call path; PhotoUploadField doesn't, so the
+    // handler has to assert it itself now.
+    if (!token || !id || !photoUrl || photoUploading || submitting) return
     setSubmitting(true)
     setReportError(null)
     try {

@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthProvider } from '@/lib/AuthContext'
 import { ItemsProvider } from '@/lib/ItemsContext'
 import { RequestsProvider } from '@/lib/RequestsContext'
+import { JPEG_HEADER, makeFile } from '@/test/photoFixtures'
 import { PublishItemPage } from './PublishItemPage'
 import { ItemsPage } from './ItemsPage'
 
@@ -26,12 +27,6 @@ function mockFetchRoutes(routes: Record<string, Array<() => Response>>) {
     return Promise.resolve(next())
   })
 }
-
-function makeFile(bytes: number[], name: string, type: string): File {
-  return new File([new Uint8Array(bytes)], name, { type })
-}
-
-const JPEG_HEADER = [0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01]
 
 const PROFILE = { id: 'u1', name: 'María Vargas', email: 'maria@example.com', created_at: '2026-01-01T00:00:00Z' }
 

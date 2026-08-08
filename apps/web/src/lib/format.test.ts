@@ -112,4 +112,12 @@ describe('formatDateTime', () => {
     const freeze = formatDateTime('2026-08-08T18:29:57.401944Z')
     expect(hold).not.toBe(freeze)
   })
+
+  it('keeps entries less than a minute apart distinguishable', () => {
+    // reservation.py documents transactions landing in the same clock
+    // tick as an observed-live case, not a hypothetical one.
+    const hold = formatDateTime('2026-08-08T18:13:04Z')
+    const freeze = formatDateTime('2026-08-08T18:13:41Z')
+    expect(hold).not.toBe(freeze)
+  })
 })

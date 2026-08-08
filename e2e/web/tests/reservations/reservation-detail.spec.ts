@@ -1,20 +1,18 @@
-import { test, expect, MOCK_RETURNED_RESERVATION, ALL_MOCK_RESERVATIONS } from '../fixtures'
+import {
+  test,
+  expect,
+  MOCK_RETURNED_RESERVATION,
+  ALL_MOCK_RESERVATIONS,
+  PNG_1x1,
+  MOCK_UPLOAD_URL,
+  MOCK_PHOTO_PUBLIC_URL,
+} from '../fixtures'
 
 // IDs match fixtures in ../fixtures.ts — RequestsContext uses the mocked GET /users/me/requests
 // route and transaction history comes from the mocked GET /reservations/*/transactions route.
 const REQUESTED_ID = '55555555-5555-4555-8555-555555555555' // Taladro, status=requested, no transactions
 const DELIVERED_ID = '77777777-7777-4777-8777-777777777777' // Carpa, status=delivered, has a hold tx
 const RETURNED_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' // Taladro, status=returned (enables Close button)
-
-// Minimal 1×1 transparent PNG (70 bytes, RGBA) — valid IDAT stream so
-// createImageBitmap() accepts it in Chromium without mocking the browser API.
-// Matches ../items/photo-upload.spec.ts, which covers PhotoUploadField itself.
-const PNG_1x1 = Buffer.from(
-  '89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d4944415478da63606060600000000500017aa857500000000049454e44ae426082',
-  'hex',
-)
-const UPLOAD_URL = 'https://s3.example.com/photos/upload-test'
-const PUBLIC_URL = 'https://cdn.rentatodo.com/photos/test.png'
 
 test('shows item name, date range and status for a pending reservation', async ({ page }) => {
   await page.goto(`/reservations/${REQUESTED_ID}`)
@@ -45,10 +43,10 @@ test('delivered reservation shows a hold transaction row in the deposit history'
 test('report form shows confirmation after submit', async ({ page }) => {
   await page.route('**/uploads/presign', (route) =>
     route.fulfill({
-      json: { upload_url: UPLOAD_URL, public_url: PUBLIC_URL, expires_in: 300 },
+      json: { upload_url: MOCK_UPLOAD_URL, public_url: MOCK_PHOTO_PUBLIC_URL, expires_in: 300 },
     }),
   )
-  await page.route(UPLOAD_URL, (route) => route.fulfill({ status: 200, body: '' }))
+  await page.route(MOCK_UPLOAD_URL, (route) => route.fulfill({ status: 200, body: '' }))
 
   // Report form is only shown for delivered/returned reservations (API enforces this).
   await page.goto(`/reservations/${DELIVERED_ID}`)
