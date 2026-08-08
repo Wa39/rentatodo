@@ -27,12 +27,13 @@ Done below for full detail. Separately, **PR #99**/**PR #100** (Wa's
 audit findings + the transaction-sequence fix) both merged since the
 last update; the migration-chain rebase they flagged is already resolved
 (`8e7726cb59ad` chains cleanly after `5178682e6cef`, single head).
-**Also flagged, not yet acted on:** PR #133 (j0sMedina, `apps/api`+`apps/web`,
-excludes "returned" reservations from blocking availability) is open and
-requesting review directly from Josepicado95 — untouched as of this
-update. Touches `app/models/reservation.py` near (but not overlapping)
-where PR #137 made its changes; low but nonzero conflict risk depending
-on merge order.
+**Also flagged:** PR #133 (j0sMedina, excludes "returned" reservations
+from blocking availability — good content, verified) **targets `main`,
+not `develop`** — same misconfiguration diagnosed on PR #75, 2026-07-31.
+Its branch's own history is cut from `main` too, which is 108 commits
+behind `develop`. GitHub already shows it `BLOCKED`, so no accidental-merge
+risk, but it needs to be retargeted/recut against `develop` before review
+is meaningful — flagged to j0sMedina directly, not `apps/api`'s to fix.
 
 Context from the session that opened PR #77 — Wa relayed three
 teammate-blocker claims secondhand
@@ -175,7 +176,7 @@ see Open questions.
 
 ## Next up (not started)
 
-- [ ] **PR #133** (j0sMedina, `apps/api`+`apps/web`) — excludes `"returned"` reservations from `BLOCKING_STATUSES`, so a checked-out item's dates free up immediately instead of waiting for `close`. Open, requesting review directly from Josepicado95, untouched as of this update. Touches `app/models/reservation.py` near (not overlapping) PR #137's changes — check for conflicts depending on merge order.
+- [ ] **PR #133** (j0sMedina) — good content (excludes `"returned"` from `BLOCKING_STATUSES`, verified: migration + drift-guard test correctly mirror the app-level change at the DB level), but **targets `main` instead of `develop`** and its branch is cut from `main` too (108 commits behind `develop`) — flagged to j0sMedina, not mergeable as-is regardless of review outcome. Not `apps/api`'s to fix.
 - [ ] Otherwise nothing new queued on the `apps/api` side beyond PR #137 review feedback or a teammate's integration surfacing a real gap (see Open questions for what's already flagged to Wa/Silverk).
 
 ## Decisions log
@@ -281,4 +282,4 @@ see Open questions.
 
   With the contract settled, executed the `apps/api` implementation subagent-driven (plan: `docs/superpowers/plans/2026-08-08-reservation-evidence-endpoint.md`, workspace `.superpowers/sdd/2026-08-08-reservation-evidence-endpoint/`, deleted after the final review went clean — git history is the record now). Task 1 (`checkin_photo_url`/`checkout_photo_url`, mirroring the `deposit_status` computed-property pattern) and Task 2 (`GET /reservations/{reservation_id}/report`, mirroring `get_transactions`'s read-only shape) each built by a fresh implementer subagent and independently reviewed clean (spec ✅, quality Approved, no Critical/Important findings, 2 Minors deferred to the ledger). Manually verified both live against a real `uvicorn` + Postgres: full happy path (request → approve → checkin → checkout → report) showed both photo URLs correctly on `GET /users/me/reservations`, `GET .../report` correctly returned the report to a participant who didn't file it (the owner), and 404 for an unknown reservation; cleaned up the test item and re-ran 226/226 clean. The final whole-branch review (dispatched on the most capable model per the subagent-driven-development skill) caught a real cross-task issue neither task-level review could see: the new `check_evidence` relationship was never eager-loaded at any of the 3 query sites in `app/services/reservations.py` that already eager-load `transactions` for the identical reason (a computed property reads it) — up to 50 extra lazy-load queries per list response, invisible to every test and to the live check (which only ever touched one reservation). Fixed in one round (`selectinload(Reservation.check_evidence)` added to all 3 sites), fix re-reviewed clean, two more Minors parked (an asymmetric docstring, a missing dedicated eager-load test — see Decisions log). Logged the general lesson (new computed properties on `Reservation` need their backing relationship added to the eager-load list, not just the model) so it isn't rediscovered the same way next time.
 
-  Pushed `feature/reservation-evidence-endpoint` and opened **PR #137** against `develop` via the finishing-a-development-branch skill (push+PR was the only option consistent with this repo's "nobody pushes directly to develop" rule), requesting review from j0sMedina/psced10-creator/Wa39 for visibility (not `CODEOWNERS`-gated — `apps/api` is single-owner). While updating this file, noticed **PR #133** (j0sMedina, excludes `"returned"` from `BLOCKING_STATUSES`) is open and has been requesting Jose's review directly, untouched — flagged in Current focus/Next up above, not yet acted on. Next: get PR #137 reviewed; separately, review PR #133 (touches `app/models/reservation.py` near, not overlapping, PR #137's changes).
+  Pushed `feature/reservation-evidence-endpoint` and opened **PR #137** against `develop` via the finishing-a-development-branch skill (push+PR was the only option consistent with this repo's "nobody pushes directly to develop" rule), requesting review from j0sMedina/psced10-creator/Wa39 for visibility (not `CODEOWNERS`-gated — `apps/api` is single-owner). While updating this file, noticed **PR #133** (j0sMedina, excludes `"returned"` from `BLOCKING_STATUSES`) was open requesting Jose's review directly. Reviewed the content (good — migration + drift-guard test correctly mirror `BLOCKING_STATUSES`' app-level change at the DB level) but a trial merge against this branch surfaced dozens of spurious "add/add" conflicts across totally unrelated files (terraform, mobile, i18n) — traced to the real issue: **PR #133 targets `main`, not `develop`**, and its branch is cut from `main` too (108 commits behind `develop`), the identical misconfiguration diagnosed on PR #75 (2026-07-31 entry). GitHub already shows it `BLOCKED`, so no accidental-merge risk. Flagged to j0sMedina directly — not `apps/api`'s to fix, and not mergeable as-is regardless of content quality. Next: get PR #137 reviewed; wait for j0sMedina to retarget/recut PR #133 before it can be usefully reviewed again.
