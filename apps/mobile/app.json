@@ -45,14 +45,6 @@
           "cameraPermission": "RentaTodo uses the camera to document the item condition at handover and return.",
           "photosPermission": "RentaTodo uses your photos as evidence of the item condition."
         }
-      ],
-      [
-        "expo-build-properties",
-        {
-          "android": {
-            "usesCleartextTraffic": true
-          }
-        }
       ]
     ],
     "experiments": {
