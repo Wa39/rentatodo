@@ -20,6 +20,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+from app.models.check_evidence import CheckEvidence
 from app.models.item import Item
 from app.models.user import User
 
@@ -94,6 +95,9 @@ class Reservation(Base):
     transactions: Mapped[list["Transaction"]] = relationship(
         order_by="Transaction.sequence", back_populates="reservation"
     )
+    check_evidence: Mapped[list["CheckEvidence"]] = relationship(
+        order_by="CheckEvidence.created_at"
+    )
 
     @property
     def item_name(self) -> str:
@@ -109,6 +113,31 @@ class Reservation(Base):
     def renter_name(self) -> str:
         """The renter's display name, via the renter relationship."""
         return self.renter.name
+
+    @property
+    def checkin_photo_url(self) -> str | None:
+        """The check-in evidence photo, or None if the renter hasn't
+        checked in yet.
+
+        Picks the oldest matching check_evidence row if more than one
+        exists for this type — safe today only because no DB constraint
+        prevents duplicates and the state machine has no re-check-in path
+        (checkin_reservation requires status "approved", and nothing
+        moves a reservation back to "approved"). A future re-check-in
+        feature must add a uniqueness guarantee or this will silently
+        pick the wrong photo.
+        """
+        return next(
+            (e.photo_url for e in self.check_evidence if e.type == "check_in"), None
+        )
+
+    @property
+    def checkout_photo_url(self) -> str | None:
+        """The check-out evidence photo, or None if the renter hasn't
+        checked out yet."""
+        return next(
+            (e.photo_url for e in self.check_evidence if e.type == "check_out"), None
+        )
 
     _DEPOSIT_STATUS_BY_TRANSACTION_TYPE = {
         "hold": "held",
