@@ -6,6 +6,16 @@ const REQUESTED_ID = '55555555-5555-4555-8555-555555555555' // Taladro, status=r
 const DELIVERED_ID = '77777777-7777-4777-8777-777777777777' // Carpa, status=delivered, has a hold tx
 const RETURNED_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' // Taladro, status=returned (enables Close button)
 
+// Minimal 1×1 transparent PNG (70 bytes, RGBA) — valid IDAT stream so
+// createImageBitmap() accepts it in Chromium without mocking the browser API.
+// Matches ../items/photo-upload.spec.ts, which covers PhotoUploadField itself.
+const PNG_1x1 = Buffer.from(
+  '89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d4944415478da63606060600000000500017aa857500000000049454e44ae426082',
+  'hex',
+)
+const UPLOAD_URL = 'https://s3.example.com/photos/upload-test'
+const PUBLIC_URL = 'https://cdn.rentatodo.com/photos/test.png'
+
 test('shows item name, date range and status for a pending reservation', async ({ page }) => {
   await page.goto(`/reservations/${REQUESTED_ID}`)
   await expect(page.getByRole('heading', { name: 'Taladro Bosch Professional' })).toBeVisible()
@@ -33,11 +43,23 @@ test('delivered reservation shows a hold transaction row in the deposit history'
 })
 
 test('report form shows confirmation after submit', async ({ page }) => {
+  await page.route('**/uploads/presign', (route) =>
+    route.fulfill({
+      json: { upload_url: UPLOAD_URL, public_url: PUBLIC_URL, expires_in: 300 },
+    }),
+  )
+  await page.route(UPLOAD_URL, (route) => route.fulfill({ status: 200, body: '' }))
+
   // Report form is only shown for delivered/returned reservations (API enforces this).
   await page.goto(`/reservations/${DELIVERED_ID}`)
   await expect(page.getByRole('heading', { name: 'Report a problem' })).toBeVisible()
   await page.getByLabel('What went wrong?').fill('Item was damaged on arrival')
-  await page.getByLabel('Photo URL').fill('https://example.com/evidence.jpg')
+  await page.locator('#report-photo').setInputFiles({
+    name: 'evidence.png',
+    mimeType: 'image/png',
+    buffer: PNG_1x1,
+  })
+  await expect(page.getByRole('img', { name: 'Photo' })).toBeVisible()
   await page.getByRole('button', { name: 'Submit report' }).click()
   await expect(page.getByText('Report submitted.')).toBeVisible()
 })
