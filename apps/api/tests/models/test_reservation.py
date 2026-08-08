@@ -2,9 +2,11 @@
 database-level constraints.
 """
 
+import re
 from datetime import date, datetime, timezone
 
 import pytest
+from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -125,6 +127,71 @@ def test_double_booking_constraint_ignores_rejected_reservations(
     db_session.refresh(new)
 
     assert new.id is not None
+
+
+def test_double_booking_constraint_ignores_returned_reservations(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Edge case: a "returned" reservation doesn't block a new one on
+    overlapping dates, at the database level — bypasses application code
+    entirely, the same way test_no_double_booking_constraint_blocks_direct_overlapping_insert
+    proves the opposite case. This is the direct DB-level counterpart to
+    the service-layer test in test_reservations.py; that one only proves
+    BLOCKING_STATUSES (Python) permits it, not that the EXCLUDE
+    constraint's WHERE clause (raw SQL, migration e51457c9bb90) agrees.
+    """
+    owner = make_user(email="resmodel-owner5@example.com")
+    renter = make_user(email="resmodel-renter5@example.com")
+    item = make_item(owner_id=owner.id)
+    returned = Reservation(
+        item_id=item.id,
+        renter_id=renter.id,
+        start_date=date(2026, 11, 1),
+        end_date=date(2026, 11, 5),
+        status="returned",
+        deposit_amount=25000,
+    )
+    db_session.add(returned)
+    db_session.commit()
+
+    new = Reservation(
+        item_id=item.id,
+        renter_id=renter.id,
+        start_date=date(2026, 11, 2),
+        end_date=date(2026, 11, 4),
+        deposit_amount=25000,
+    )
+    db_session.add(new)
+    db_session.commit()
+    db_session.refresh(new)
+
+    assert new.id is not None
+
+
+def test_no_double_booking_constraint_matches_blocking_statuses(db_session: Session) -> None:
+    """Drift guard: BLOCKING_STATUSES (Python, app/models/reservation.py)
+    and no_double_booking's WHERE clause (raw SQL, set once at migration
+    time) are two independent descriptions of the same rule, kept in sync
+    only by a docstring's promise — nothing structural stops them from
+    diverging. This reads the constraint's actual live definition back out
+    of Postgres and checks it against BLOCKING_STATUSES directly, so a
+    future status-list change that updates one but not the other fails
+    here instead of surfacing as a live 500 (app allows it, DB rejects it
+    with an unhandled IntegrityError) or a silent double-booking (DB
+    allows it, app never expected to).
+    """
+    from app.models.reservation import BLOCKING_STATUSES
+    from app.schemas.reservation import ReservationStatusEnum
+
+    constraint_def = db_session.execute(
+        text("SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname = 'no_double_booking'")
+    ).scalar_one()
+
+    excluded = set(re.findall(r"'(\w+)'::character varying", constraint_def))
+    all_statuses = {s.value for s in ReservationStatusEnum}
+    blocking_per_constraint = all_statuses - excluded
+
+    assert blocking_per_constraint == set(BLOCKING_STATUSES)
 
 
 def test_transaction_type_must_be_a_valid_value(

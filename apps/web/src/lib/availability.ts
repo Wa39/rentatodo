@@ -11,8 +11,10 @@ export const RESERVED_STATUSES: ReservationStatus[] = ['approved', 'delivered', 
 // "returned": once the renter checks out, the item is back with the owner,
 // so those dates must free up immediately for a new booking — mirrors
 // apps/api's BLOCKING_STATUSES (app/models/reservation.py), which the same
-// distinction was fixed in.
-const BLOCKING_STATUSES: ReservationStatus[] = ['approved', 'delivered']
+// distinction was fixed in. Derived from RESERVED_STATUSES (rather than a
+// second hand-typed array) so the two can never drift apart on any status
+// other than "returned" — the exact class of bug this file was fixed for.
+const BLOCKING_STATUSES: ReservationStatus[] = RESERVED_STATUSES.filter((s) => s !== 'returned')
 
 export function getItemDateStates(itemId: string, reservations: Reservation[]): DateRangeState[] {
   return reservations
