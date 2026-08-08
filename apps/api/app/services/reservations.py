@@ -127,6 +127,7 @@ def _reservation_lookup_query(reservation_id: uuid.UUID) -> Select:
             joinedload(Reservation.item),
             joinedload(Reservation.renter),
             selectinload(Reservation.transactions),
+            selectinload(Reservation.check_evidence),
         )
         .where(Reservation.id == reservation_id)
     )
@@ -448,6 +449,7 @@ def list_my_reservations(
             joinedload(Reservation.item),
             joinedload(Reservation.renter),
             selectinload(Reservation.transactions),
+            selectinload(Reservation.check_evidence),
         )
         .where(Reservation.renter_id == renter_id)
     )
@@ -483,6 +485,7 @@ def list_my_requests(
             joinedload(Reservation.item),
             joinedload(Reservation.renter),
             selectinload(Reservation.transactions),
+            selectinload(Reservation.check_evidence),
         )
         .where(Reservation.item_id.in_(select(Item.id).where(Item.owner_id == owner_id)))
     )

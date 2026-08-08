@@ -1,4 +1,4 @@
-"""Reports endpoint: file a problem report against a reservation."""
+"""Reports endpoints: file a problem report against a reservation, and read it back."""
 
 from uuid import UUID
 

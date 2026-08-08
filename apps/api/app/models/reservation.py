@@ -117,7 +117,16 @@ class Reservation(Base):
     @property
     def checkin_photo_url(self) -> str | None:
         """The check-in evidence photo, or None if the renter hasn't
-        checked in yet."""
+        checked in yet.
+
+        Picks the oldest matching check_evidence row if more than one
+        exists for this type — safe today only because no DB constraint
+        prevents duplicates and the state machine has no re-check-in path
+        (checkin_reservation requires status "approved", and nothing
+        moves a reservation back to "approved"). A future re-check-in
+        feature must add a uniqueness guarantee or this will silently
+        pick the wrong photo.
+        """
         return next(
             (e.photo_url for e in self.check_evidence if e.type == "check_in"), None
         )
