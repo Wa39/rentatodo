@@ -71,7 +71,7 @@ export function PublishItemPage() {
   return (
     <div>
       <PageHeader title={t.publish.title} subtitle={t.publish.subtitle} />
-      <div className="grid grid-cols-2 gap-four p-four">
+      <div className="grid grid-cols-1 gap-four p-four lg:grid-cols-2">
         <form onSubmit={handleSubmit} className="space-y-three rounded-lg border border-border bg-card p-four">
           <AuthErrorBanner message={error} />
           <div className="space-y-half">
