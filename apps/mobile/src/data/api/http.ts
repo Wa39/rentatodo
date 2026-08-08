@@ -25,6 +25,9 @@ export function getApiUrl(): string | undefined {
   return process.env.EXPO_PUBLIC_API_URL;
 }
 
+/** Abort a request after this long so a hung/unreachable server can't freeze the UI. */
+const REQUEST_TIMEOUT_MS = 10_000;
+
 let accessToken: string | null = null;
 
 /** Set by the session layer; sent as "Authorization: Bearer" on every request. */
@@ -52,19 +55,29 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   }
 
   const hadToken = accessToken !== null;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   let response: Response;
   try {
     response = await fetch(`${base}${path}`, {
       ...init,
+      signal: controller.signal,
       headers: {
         'Content-Type': 'application/json',
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         ...init?.headers,
       },
     });
-  } catch {
-    throw new ApiRequestError(0, 'NETWORK_ERROR', 'Could not reach the server');
+  } catch (err) {
+    const timedOut = err instanceof Error && err.name === 'AbortError';
+    throw new ApiRequestError(
+      0,
+      'NETWORK_ERROR',
+      timedOut ? 'The request timed out' : 'Could not reach the server',
+    );
+  } finally {
+    clearTimeout(timeout);
   }
 
   if (!response.ok) {

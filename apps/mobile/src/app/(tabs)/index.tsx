@@ -14,7 +14,7 @@ import type { Item, Reservation } from '@/data/types';
 type Sort = 'popular' | 'recent';
 
 /**
- * Home screen — per the approved mockup (docs/mock_flujo_arrendatario.html):
+ * Home screen — per the agreed renter flow (see docs/search-and-filters.md):
  * search, Popular/Recent toggle and the requests list.
  * There is NO "near me" section nor zone search (out of scope).
  */
@@ -26,6 +26,7 @@ export default function HomeScreen() {
   const [itemsLoading, setItemsLoading] = useState(true);
   const [itemsError, setItemsError] = useState<string | null>(null);
   const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [reservationsError, setReservationsError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   // Debounce the search box so typing a word is one request, not one per keystroke.
@@ -51,7 +52,16 @@ export default function HomeScreen() {
   }, [loadItems]);
 
   const loadReservations = useCallback(
-    () => dataSource.listReservations().then((r) => setReservations(r.slice(0, 3))).catch(() => {}),
+    () =>
+      dataSource
+        .listReservations()
+        .then((r) => {
+          setReservations(r.slice(0, 3));
+          setReservationsError(null);
+        })
+        // A 401 already signs out via the auth-error handler; for other
+        // failures show a message instead of a misleading "no requests yet".
+        .catch((e) => setReservationsError(errorMessage(e))),
     [],
   );
 
@@ -88,7 +98,11 @@ export default function HomeScreen() {
             colors={[Brand.primary]}
           />
         }
-        ListEmptyComponent={<Text style={styles.sideEmpty}>{"You don't have any requests yet."}</Text>}
+        ListEmptyComponent={
+          <Text style={styles.sideEmpty}>
+            {reservationsError ?? "You don't have any requests yet."}
+          </Text>
+        }
         ListHeaderComponent={
           <View style={styles.content}>
             <Text testID="home-title" style={styles.title}>RentaTodo</Text>

@@ -1,6 +1,7 @@
 """Tests for the CheckEvidence model and its database-level constraints."""
 
 import pytest
+from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -52,3 +53,18 @@ def test_check_evidence_type_must_be_check_in_or_check_out(
 
     with pytest.raises(IntegrityError):
         db_session.commit()
+
+
+def test_reservation_id_has_an_index(db_session: Session) -> None:
+    """Postgres doesn't create an index on a foreign key automatically —
+    without one, every lookup of a reservation's check-in/check-out
+    evidence is a full table scan (audit finding M2, PR #94).
+    """
+    result = db_session.execute(
+        text(
+            "SELECT indexdef FROM pg_indexes "
+            "WHERE tablename = 'check_evidence' AND indexdef LIKE '%reservation_id%'"
+        )
+    ).fetchall()
+
+    assert len(result) > 0

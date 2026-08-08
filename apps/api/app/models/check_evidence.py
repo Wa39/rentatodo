@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, String, func, text
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String, func, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -27,6 +27,7 @@ class CheckEvidence(Base):
     __tablename__ = "check_evidence"
     __table_args__ = (
         CheckConstraint("type IN ('check_in', 'check_out')", name="ck_check_evidence_type"),
+        Index("ix_check_evidence_reservation_id", "reservation_id"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(

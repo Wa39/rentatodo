@@ -4,10 +4,12 @@ import uuid
 from datetime import date, datetime
 
 from sqlalchemy import (
+    BigInteger,
     CheckConstraint,
     Date,
     DateTime,
     ForeignKey,
+    Identity,
     Index,
     Integer,
     String,
@@ -90,7 +92,7 @@ class Reservation(Base):
     item: Mapped[Item] = relationship()
     renter: Mapped[User] = relationship()
     transactions: Mapped[list["Transaction"]] = relationship(
-        order_by="Transaction.created_at", back_populates="reservation"
+        order_by="Transaction.sequence", back_populates="reservation"
     )
 
     @property
@@ -108,6 +110,16 @@ class Reservation(Base):
         """The renter's display name, via the renter relationship."""
         return self.renter.name
 
+    _DEPOSIT_STATUS_BY_TRANSACTION_TYPE = {
+        "hold": "held",
+        "release": "released",
+        "freeze": "frozen",
+    }
+    """Maps each Transaction.type to the deposit_status it implies. Kept
+    in sync with ck_transactions_type — if that CHECK constraint's set of
+    allowed types ever changes, this dict must change with it.
+    """
+
     @property
     def deposit_status(self) -> str:
         """The deposit's current state, derived from the latest
@@ -118,11 +130,22 @@ class Reservation(Base):
             "none" if no transaction exists yet, otherwise the status
             implied by the most recent transaction's type (hold ->
             held, release -> released, freeze -> frozen).
+
+        Raises:
+            ValueError: If the latest transaction's type isn't one of
+                hold/release/freeze. The DB's ck_transactions_type CHECK
+                constraint should make this unreachable in practice —
+                this guards against a future migration widening that
+                constraint without updating this mapping, or a row
+                written directly to the DB outside the ORM.
         """
         if not self.transactions:
             return "none"
         latest = self.transactions[-1]
-        return {"hold": "held", "release": "released", "freeze": "frozen"}[latest.type]
+        status = self._DEPOSIT_STATUS_BY_TRANSACTION_TYPE.get(latest.type)
+        if status is None:
+            raise ValueError(f"Unexpected transaction type: {latest.type!r}")
+        return status
 
 
 class Transaction(Base):
@@ -134,6 +157,13 @@ class Transaction(Base):
         reservation_id: The Reservation this entry belongs to.
         type: One of hold/release/freeze.
         amount: In USD centavos.
+        sequence: Monotonic insertion order, backed by a real Postgres
+            identity sequence — this, not created_at, is what
+            "latest transaction" ordering is based on. created_at
+            reflects the enclosing transaction's start time, and two
+            separate transactions can start at the same clock tick,
+            making created_at alone unreliable for ordering (observed
+            live — see tests/models/test_reservation.py).
         created_at: When this entry was recorded.
         reservation: The owning Reservation, via relationship.
     """
@@ -152,6 +182,9 @@ class Transaction(Base):
     )
     type: Mapped[str] = mapped_column(String(20), nullable=False)
     amount: Mapped[int] = mapped_column(Integer, nullable=False)
+    sequence: Mapped[int] = mapped_column(
+        BigInteger, Identity(always=True), unique=True, nullable=False
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
