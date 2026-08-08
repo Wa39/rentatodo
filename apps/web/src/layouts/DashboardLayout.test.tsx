@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthProvider } from '@/lib/AuthContext'
@@ -53,6 +54,7 @@ function renderLayout() {
             <Routes>
               <Route element={<DashboardLayout />}>
                 <Route path="/dashboard" element={<div>Home content</div>} />
+                <Route path="/items" element={<div>Items content</div>} />
               </Route>
             </Routes>
           </MemoryRouter>
@@ -60,6 +62,10 @@ function renderLayout() {
       </RequestsProvider>
     </AuthProvider>,
   )
+}
+
+function getSidebar() {
+  return screen.getByRole('link', { name: 'Overview' }).closest('aside')!
 }
 
 describe('DashboardLayout', () => {
@@ -175,5 +181,45 @@ describe('DashboardLayout', () => {
 
     await waitFor(() => expect(screen.getByText('Ana Torres')).toBeInTheDocument())
     expect(screen.getByText('AT')).toBeInTheDocument()
+  })
+
+  it('starts with the mobile drawer closed and opens it via the hamburger button', async () => {
+    const user = userEvent.setup()
+    renderLayout()
+
+    expect(getSidebar()).toHaveClass('-translate-x-full')
+    expect(getSidebar()).not.toHaveClass('translate-x-0')
+
+    await user.click(screen.getByRole('button', { name: 'Open menu' }))
+
+    expect(getSidebar()).toHaveClass('translate-x-0')
+    expect(getSidebar()).not.toHaveClass('-translate-x-full')
+  })
+
+  it('closes the mobile drawer when tapping the backdrop', async () => {
+    const user = userEvent.setup()
+    renderLayout()
+
+    await user.click(screen.getByRole('button', { name: 'Open menu' }))
+    expect(getSidebar()).toHaveClass('translate-x-0')
+
+    // The backdrop is the only other fixed-inset overlay rendered while open.
+    const backdrop = document.querySelector('[aria-hidden="true"].fixed.inset-0')!
+    await user.click(backdrop)
+
+    expect(getSidebar()).toHaveClass('-translate-x-full')
+  })
+
+  it('closes the mobile drawer after navigating to a different route', async () => {
+    const user = userEvent.setup()
+    renderLayout()
+
+    await user.click(screen.getByRole('button', { name: 'Open menu' }))
+    expect(getSidebar()).toHaveClass('translate-x-0')
+
+    await user.click(screen.getByRole('link', { name: 'My items' }))
+
+    await waitFor(() => expect(screen.getByText('Items content')).toBeInTheDocument())
+    expect(getSidebar()).toHaveClass('-translate-x-full')
   })
 })

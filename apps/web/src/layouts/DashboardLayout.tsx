@@ -1,5 +1,6 @@
+import { useEffect, useState } from 'react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
-import { Calendar, DollarSign, LayoutGrid, MessageSquare, Package, Plus } from 'lucide-react'
+import { Calendar, DollarSign, LayoutGrid, Menu, MessageSquare, Package, Plus, X } from 'lucide-react'
 import { useAuth } from '@/lib/AuthContext'
 import { useTranslation } from '@/lib/i18n'
 import { formatCentavos, getInitials } from '@/lib/format'
@@ -11,6 +12,13 @@ export function DashboardLayout() {
   const { logout, user } = useAuth()
   const location = useLocation()
   const t = useTranslation()
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
+
+  // Close the drawer whenever the route changes, instead of leaving it open
+  // over the new page after tapping a nav link.
+  useEffect(() => {
+    setMobileNavOpen(false)
+  }, [location.pathname])
   const { requests } = useRequests()
   const { earnings } = useEarnings()
   const pendingCount = requests.filter((r) => r.status === 'requested').length
@@ -42,8 +50,38 @@ export function DashboardLayout() {
   ]
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground">
-      <aside className="flex w-72 flex-shrink-0 flex-col bg-sidebar p-four text-sidebar-foreground">
+    <div className="flex min-h-screen flex-col bg-background text-foreground lg:flex-row">
+      {/* Mobile top bar — hidden from lg up, where the sidebar is always visible instead. */}
+      <div className="sticky top-0 z-20 flex items-center gap-two border-b border-border bg-sidebar p-three text-sidebar-foreground lg:hidden">
+        <button
+          type="button"
+          aria-label={mobileNavOpen ? t.nav.closeMenu : t.nav.openMenu}
+          onClick={() => setMobileNavOpen((open) => !open)}
+          className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent"
+        >
+          {mobileNavOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </button>
+        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gradient-to-br from-primary to-secondary-foreground font-display text-base font-bold text-primary-foreground">
+          R
+        </div>
+        <span className="font-display text-base font-semibold text-white">RentaTodo</span>
+      </div>
+
+      {/* Backdrop — closes the drawer on tap, only rendered (and only ever
+          visible below lg) while the drawer is open. */}
+      {mobileNavOpen && (
+        <div
+          className="fixed inset-0 z-20 bg-black/50 lg:hidden"
+          onClick={() => setMobileNavOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      <aside
+        className={`fixed inset-y-0 left-0 z-30 flex w-72 flex-shrink-0 flex-col overflow-y-auto bg-sidebar p-four text-sidebar-foreground transition-transform duration-200 ease-in-out lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${
+          mobileNavOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
         <div className="mb-five flex items-center gap-two px-one">
           <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gradient-to-br from-primary to-secondary-foreground font-display text-base font-bold text-primary-foreground">
             R
