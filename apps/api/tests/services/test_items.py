@@ -362,6 +362,52 @@ def test_get_unavailable_dates_excludes_rejected_reservations(
     assert ranges == []
 
 
+def test_get_unavailable_dates_excludes_returned_reservations(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Edge case: once checked out ("returned"), the item is physically
+    back — its original dates must not still show as unavailable.
+    """
+    from app.schemas.check_evidence import CheckInOutRequest
+    from app.schemas.reservation import CreateReservationRequest
+    from app.services.items import get_unavailable_dates
+    from app.services.reservations import (
+        approve_reservation,
+        checkin_reservation,
+        checkout_reservation,
+        create_reservation,
+    )
+
+    owner = make_user(email="avail-owner3@example.com")
+    renter = make_user(email="avail-renter3@example.com")
+    item = make_item(owner_id=owner.id)
+    start = date.today() + timedelta(days=15)
+    end = date.today() + timedelta(days=17)
+    reservation = create_reservation(
+        db_session,
+        item_id=item.id,
+        renter_id=renter.id,
+        data=CreateReservationRequest(start_date=start, end_date=end),
+    )
+    approve_reservation(db_session, reservation_id=reservation.id, owner_id=owner.id)
+    checkin_reservation(
+        db_session,
+        reservation_id=reservation.id,
+        renter_id=renter.id,
+        data=CheckInOutRequest(photo_url="https://example.com/checkin.jpg"),
+    )
+    checkout_reservation(
+        db_session,
+        reservation_id=reservation.id,
+        renter_id=renter.id,
+        data=CheckInOutRequest(photo_url="https://example.com/checkout.jpg"),
+    )
+
+    ranges = get_unavailable_dates(db_session, item.id)
+
+    assert ranges == []
+
+
 def test_list_items_excludes_item_with_overlapping_reservation_in_available_range(
     db_session: Session, make_user, make_item
 ) -> None:
