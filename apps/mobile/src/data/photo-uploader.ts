@@ -1,3 +1,6 @@
+import { File, UploadType } from 'expo-file-system';
+import { Platform } from 'react-native';
+
 import { ApiRequestError, apiFetch, getApiUrl } from '@/data/api/http';
 
 /**
@@ -79,33 +82,36 @@ class PresignedUrlUploader implements PhotoUploader {
       body: JSON.stringify({ filename: fileName, content_type: contentType }),
     });
 
-    // 2. Read the local file. fetch() resolves file:// on native and blob: on web.
-    let body: Blob;
+    // 2. Upload the file straight to S3 with a binary PUT (the presigned URL
+    //    carries the auth, so no bearer token here; Content-Type must match
+    //    what was signed). Native uses expo-file-system's File.upload, which
+    //    reads and PUTs the file natively — reliable in release APKs, unlike
+    //    fetch(uri).blob() which fails on Android standalone builds. Web keeps
+    //    the fetch/blob path (blob: URIs work in the browser).
+    let status: number;
     try {
-      body = await (await fetch(photo.uri)).blob();
+      if (Platform.OS === 'web') {
+        const body = await (await fetch(photo.uri)).blob();
+        const response = await fetch(presign.upload_url, {
+          method: 'PUT',
+          headers: { 'Content-Type': contentType },
+          body,
+        });
+        status = response.status;
+      } else {
+        const result = await new File(photo.uri).upload(presign.upload_url, {
+          uploadType: UploadType.BINARY_CONTENT,
+          httpMethod: 'PUT',
+          headers: { 'Content-Type': contentType },
+        });
+        status = result.status;
+      }
     } catch {
-      throw new ApiRequestError(0, 'NETWORK_ERROR', 'Could not read the photo from the device.');
+      throw new ApiRequestError(0, 'NETWORK_ERROR', 'The photo upload failed. Please try again.');
     }
-
-    // 3. PUT it straight to S3. The signature carries the auth, so no bearer
-    //    token here, and Content-Type must match what was signed.
-    let response: Response;
-    try {
-      response = await fetch(presign.upload_url, {
-        method: 'PUT',
-        headers: { 'Content-Type': contentType },
-        body,
-      });
-    } catch {
-      throw new ApiRequestError(0, 'NETWORK_ERROR', 'Could not upload the photo.');
-    }
-    if (!response.ok) {
+    if (status < 200 || status >= 300) {
       // S3 answers with XML, not the contract's Error shape.
-      throw new ApiRequestError(
-        response.status,
-        'NETWORK_ERROR',
-        'The photo upload failed. Please try again.',
-      );
+      throw new ApiRequestError(status, 'NETWORK_ERROR', 'The photo upload failed. Please try again.');
     }
 
     return presign.public_url;
