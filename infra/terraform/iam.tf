@@ -153,6 +153,13 @@ data "aws_iam_policy_document" "github_permissions" {
     actions   = ["ssm:GetCommandInvocation"]
     resources = ["*"]
   }
+  # EC2 describe — needed by `aws ssm wait command-executed` to resolve instance
+  # ID from tag at deploy time. ec2:DescribeInstances does not support resource-
+  # level restrictions in IAM; `*` is required by the service.
+  statement {
+    actions   = ["ec2:DescribeInstances"]
+    resources = ["*"]
+  }
 }
 
 resource "aws_iam_policy" "github_permissions" {
