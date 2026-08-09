@@ -62,7 +62,7 @@ export function DashboardPage() {
         <AuthErrorBanner message={itemsError} />
         <AuthErrorBanner message={requestsError} />
         <AuthErrorBanner message={earningsError} />
-        <div className="grid grid-cols-4 gap-three">
+        <div className="grid grid-cols-2 gap-three sm:grid-cols-4">
           <div className="rounded-lg border border-border bg-card p-three">
             <p className="text-xs font-medium text-muted-foreground">{t.dashboard.kpiActiveItems}</p>
             <p className="font-display text-2xl font-semibold text-foreground">{activeItems}</p>

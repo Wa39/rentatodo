@@ -187,8 +187,14 @@ export const test = base.extend({
     await page.route('**/reservations/*/transactions', (route) =>
       route.fulfill({ json: [MOCK_HOLD_TRANSACTION] })
     )
-    await page.route('**/reservations/*/report', (route) =>
-      route.fulfill({
+    await page.route('**/reservations/*/report', (route) => {
+      if (route.request().method() === 'GET') {
+        return route.fulfill({
+          status: 404,
+          json: { error: { code: 'NOT_FOUND', message: 'No report has been filed for this reservation' } },
+        })
+      }
+      return route.fulfill({
         status: 201,
         json: {
           id: 'rrrrrrrr-rrrr-4rrr-8rrr-rrrrrrrrrrrr',
@@ -199,7 +205,7 @@ export const test = base.extend({
           created_at: '2026-07-28T10:00:00Z',
         },
       })
-    )
+    })
     await use(page)
   },
 })

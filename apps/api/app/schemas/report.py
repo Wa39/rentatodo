@@ -18,7 +18,7 @@ class CreateReportRequest(BaseModel):
 
 
 class ReportResponse(BaseModel):
-    """Public report representation, as returned by POST .../report."""
+    """Public report representation, as returned by both POST and GET .../report."""
 
     model_config = ConfigDict(from_attributes=True)
 

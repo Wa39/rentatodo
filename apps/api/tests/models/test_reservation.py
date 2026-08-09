@@ -382,3 +382,74 @@ def test_deposit_status_resolves_ties_correctly_when_created_at_is_identical(
     db_session.refresh(reservation)
 
     assert reservation.deposit_status == "released"
+
+
+def test_checkin_and_checkout_photo_urls_are_none_without_evidence(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Happy path: a fresh reservation with no CheckEvidence rows has
+    both photo URLs as None.
+    """
+    owner = make_user(email="resmodel-owner11@example.com")
+    renter = make_user(email="resmodel-renter11@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = Reservation(
+        item_id=item.id,
+        renter_id=renter.id,
+        start_date=date(2027, 2, 1),
+        end_date=date(2027, 2, 3),
+        deposit_amount=15000,
+    )
+    db_session.add(reservation)
+    db_session.commit()
+    db_session.refresh(reservation)
+
+    assert reservation.checkin_photo_url is None
+    assert reservation.checkout_photo_url is None
+
+
+def test_checkin_and_checkout_photo_urls_reflect_recorded_evidence(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Happy path: each photo URL appears only after its own evidence
+    type is recorded — check-in doesn't leak into checkout_photo_url
+    or vice versa.
+    """
+    from app.models.check_evidence import CheckEvidence
+
+    owner = make_user(email="resmodel-owner12@example.com")
+    renter = make_user(email="resmodel-renter12@example.com")
+    item = make_item(owner_id=owner.id)
+    reservation = Reservation(
+        item_id=item.id,
+        renter_id=renter.id,
+        start_date=date(2027, 2, 10),
+        end_date=date(2027, 2, 12),
+        deposit_amount=15000,
+    )
+    db_session.add(reservation)
+    db_session.commit()
+
+    db_session.add(
+        CheckEvidence(
+            reservation_id=reservation.id,
+            type="check_in",
+            photo_url="https://example.com/in.jpg",
+        )
+    )
+    db_session.commit()
+    db_session.refresh(reservation)
+    assert reservation.checkin_photo_url == "https://example.com/in.jpg"
+    assert reservation.checkout_photo_url is None
+
+    db_session.add(
+        CheckEvidence(
+            reservation_id=reservation.id,
+            type="check_out",
+            photo_url="https://example.com/out.jpg",
+        )
+    )
+    db_session.commit()
+    db_session.refresh(reservation)
+    assert reservation.checkin_photo_url == "https://example.com/in.jpg"
+    assert reservation.checkout_photo_url == "https://example.com/out.jpg"

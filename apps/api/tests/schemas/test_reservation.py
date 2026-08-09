@@ -62,3 +62,5 @@ def test_reservation_response_builds_from_a_reservation_model_including_derived_
     assert response.item_name == "Taladro Bosch"
     assert response.renter_name == "Carlos Renter"
     assert response.deposit_status == "none"
+    assert response.checkin_photo_url is None
+    assert response.checkout_photo_url is None
