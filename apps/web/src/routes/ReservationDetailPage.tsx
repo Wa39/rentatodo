@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useParams } from 'react-router-dom'
-import { apiGetTransactions, apiReportProblem, getErrorMessage } from '@/lib/api'
+import { apiGetTransactions, apiGetReport, apiReportProblem, getErrorMessage, type ReportResponse } from '@/lib/api'
 import { useAuth } from '@/lib/AuthContext'
 import { useRequests } from '@/lib/RequestsContext'
 import { formatCentavos } from '@/lib/format'
@@ -59,6 +59,8 @@ export function ReservationDetailPage() {
   const [closing, setClosing] = useState(false)
   const [closeError, setCloseError] = useState<string | null>(null)
   const [enlargedPhoto, setEnlargedPhoto] = useState<string | null>(null)
+  const [report, setReport] = useState<ReportResponse | undefined>(undefined)
+  const [reportLoadError, setReportLoadError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!token || !id) return
@@ -74,6 +76,23 @@ export function ReservationDetailPage() {
       cancelled = true
     }
   }, [token, id])
+
+  const reservationStatus = reservation?.status
+
+  useEffect(() => {
+    if (!token || !id || (reservationStatus !== 'delivered' && reservationStatus !== 'returned')) return
+    let cancelled = false
+    apiGetReport(token, id)
+      .then((fetched) => {
+        if (!cancelled) setReport(fetched)
+      })
+      .catch((err) => {
+        if (!cancelled) setReportLoadError(getErrorMessage(err, "Couldn't load the report. Try refreshing the page."))
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [token, id, reservationStatus])
 
   if (!reservation) {
     return <p className="text-muted-foreground">Reservation not found.</p>
@@ -181,7 +200,21 @@ export function ReservationDetailPage() {
 
       <div>
         <h2 className="font-medium text-foreground">Report a problem</h2>
-        {reportSubmitted ? (
+        <AuthErrorBanner message={reportLoadError} />
+        {report ? (
+          <div className="space-y-two">
+            <p className="text-foreground">{report.reason}</p>
+            <button
+              type="button"
+              aria-label="View report photo"
+              onClick={() => setEnlargedPhoto(report.photo_url)}
+              className="block h-24 w-24 overflow-hidden rounded-md border border-border"
+            >
+              <img src={report.photo_url} alt="Report evidence" className="h-full w-full object-cover" />
+            </button>
+            <p className="text-sm text-muted-foreground">{report.created_at}</p>
+          </div>
+        ) : reportSubmitted ? (
           <p className="text-foreground">Report submitted.</p>
         ) : (
           <form onSubmit={handleReportSubmit} className="space-y-two">
