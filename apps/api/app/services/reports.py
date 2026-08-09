@@ -12,7 +12,11 @@ from app.exceptions import AppError
 from app.models.report import Report
 from app.models.reservation import Transaction
 from app.schemas.report import CreateReportRequest
-from app.services.reservations import _assert_participant, _get_reservation_or_404
+from app.services.reservations import (
+    _assert_participant,
+    _get_reservation_or_404,
+    _get_reservation_or_404_readonly,
+)
 
 
 def report_problem(
@@ -66,4 +70,34 @@ def report_problem(
         db.rollback()
         raise AppError(409, "REPORT_EXISTS", "This reservation already has a report")
     db.refresh(report)
+    return report
+
+
+def get_report(db: Session, reservation_id: uuid.UUID, user_id: uuid.UUID) -> Report:
+    """Get the problem report filed against a reservation, if any.
+
+    Read-only — uses the non-locking reservation lookup, same reasoning
+    as get_transactions (a GET has no business blocking a concurrent
+    mutation on the same reservation).
+
+    Args:
+        db: Database session.
+        reservation_id: The reservation whose report is requested.
+        user_id: The authenticated caller's id — must be its renter or
+            the item's owner.
+
+    Returns:
+        The reservation's Report.
+
+    Raises:
+        AppError: 404 NOT_FOUND if the reservation doesn't exist, or no
+            report has been filed for it yet. 403 FORBIDDEN if the
+            caller is neither party.
+    """
+    reservation = _get_reservation_or_404_readonly(db, reservation_id)
+    _assert_participant(reservation, user_id)
+
+    report = db.scalar(select(Report).where(Report.reservation_id == reservation_id))
+    if report is None:
+        raise AppError(404, "NOT_FOUND", "No report has been filed for this reservation")
     return report

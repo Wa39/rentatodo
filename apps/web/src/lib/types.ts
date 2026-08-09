@@ -50,6 +50,8 @@ export interface Reservation {
   status: ReservationStatus
   deposit_amount: number
   deposit_status: DepositStatus
+  checkin_photo_url: string | null
+  checkout_photo_url: string | null
   created_at: string
   updated_at: string
 }

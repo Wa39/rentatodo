@@ -1,4 +1,4 @@
-"""Reports endpoint: file a problem report against a reservation."""
+"""Reports endpoints: file a problem report against a reservation, and read it back."""
 
 from uuid import UUID
 
@@ -9,7 +9,7 @@ from app.database import get_db
 from app.dependencies.auth import get_current_user
 from app.models.user import User
 from app.schemas.report import CreateReportRequest, ReportResponse
-from app.services.reports import report_problem
+from app.services.reports import get_report, report_problem
 
 router = APIRouter()
 
@@ -36,4 +36,25 @@ def report_problem_endpoint(
     report = report_problem(
         db, reservation_id=reservation_id, reporter_id=current_user.id, data=data
     )
+    return ReportResponse.model_validate(report)
+
+
+@router.get("/reservations/{reservation_id}/report")
+def get_report_endpoint(
+    reservation_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ReportResponse:
+    """Get the problem report filed against a reservation, if any.
+
+    Args:
+        reservation_id: The reservation whose report is requested.
+        current_user: Resolved by get_current_user — must be the
+            reservation's renter or the item's owner.
+        db: Database session injected by FastAPI.
+
+    Returns:
+        The report's public representation.
+    """
+    report = get_report(db, reservation_id=reservation_id, user_id=current_user.id)
     return ReportResponse.model_validate(report)

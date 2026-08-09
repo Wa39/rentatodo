@@ -742,6 +742,50 @@ def test_checkout_reservation_happy_path(db_session: Session, make_user, make_it
     assert checked_out.status == "returned"
 
 
+def test_create_reservation_allows_overlapping_dates_once_previous_one_is_returned(
+    db_session: Session, make_user, make_item
+) -> None:
+    """Edge case: once a reservation is checked out ("returned"), the item
+    is physically back with the owner — its dates must free up for a new
+    booking. Only "requested"/"approved"/"delivered" (the item is still out
+    or pending a decision) should keep blocking; "returned" is a deposit/
+    closing concern, not a physical-availability one (see BLOCKING_STATUSES).
+    """
+    from app.services.reservations import (
+        approve_reservation,
+        checkin_reservation,
+        checkout_reservation,
+        create_reservation,
+    )
+
+    owner = make_user(email="checkout-owner10@example.com")
+    renter1 = make_user(email="checkout-renter10a@example.com")
+    renter2 = make_user(email="checkout-renter10b@example.com")
+    item = make_item(owner_id=owner.id)
+    first = create_reservation(
+        db_session, item_id=item.id, renter_id=renter1.id, data=_dates(5, 3)
+    )
+    approve_reservation(db_session, reservation_id=first.id, owner_id=owner.id)
+    checkin_reservation(
+        db_session,
+        reservation_id=first.id,
+        renter_id=renter1.id,
+        data=CheckInOutRequest(photo_url="https://example.com/checkin.jpg"),
+    )
+    checkout_reservation(
+        db_session,
+        reservation_id=first.id,
+        renter_id=renter1.id,
+        data=CheckInOutRequest(photo_url="https://example.com/checkout.jpg"),
+    )
+
+    second = create_reservation(
+        db_session, item_id=item.id, renter_id=renter2.id, data=_dates(5, 3)
+    )
+
+    assert second.status == "requested"
+
+
 def test_checkout_reservation_requires_renter(db_session: Session, make_user, make_item) -> None:
     """Failure path: the item's owner can't check out on the renter's
     behalf, 403 FORBIDDEN.

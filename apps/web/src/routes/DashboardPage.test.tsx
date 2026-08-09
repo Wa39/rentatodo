@@ -84,6 +84,8 @@ const REQUESTED: Reservation = {
   status: 'requested',
   deposit_amount: 2000,
   deposit_status: 'none',
+  checkin_photo_url: null,
+  checkout_photo_url: null,
   created_at: '2026-07-14T12:00:00Z',
   updated_at: '2026-07-14T12:00:00Z',
 }

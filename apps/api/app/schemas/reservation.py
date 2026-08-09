@@ -55,6 +55,12 @@ class ReservationResponse(BaseModel):
     status: ReservationStatusEnum
     deposit_amount: int
     deposit_status: DepositStatusEnum
+    checkin_photo_url: str | None = Field(
+        default=None, description="Check-in evidence photo. Null until the renter checks in."
+    )
+    checkout_photo_url: str | None = Field(
+        default=None, description="Check-out evidence photo. Null until the renter checks out."
+    )
     created_at: datetime
     updated_at: datetime
 

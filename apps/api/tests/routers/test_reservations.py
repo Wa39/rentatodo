@@ -314,6 +314,8 @@ def test_checkin_endpoint_happy_path(client: TestClient) -> None:
 
     assert response.status_code == 201
     assert response.json()["status"] == "delivered"
+    assert response.json()["checkin_photo_url"] == "https://example.com/checkin.jpg"
+    assert response.json()["checkout_photo_url"] is None
 
 
 def test_checkin_endpoint_forbidden_for_owner(client: TestClient) -> None:
@@ -377,6 +379,8 @@ def test_checkout_endpoint_happy_path(client: TestClient) -> None:
 
     assert response.status_code == 201
     assert response.json()["status"] == "returned"
+    assert response.json()["checkin_photo_url"] == "https://example.com/checkin.jpg"
+    assert response.json()["checkout_photo_url"] == "https://example.com/checkout.jpg"
 
 
 def test_checkout_endpoint_requires_authentication(client: TestClient) -> None:

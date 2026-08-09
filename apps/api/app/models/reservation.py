@@ -20,14 +20,32 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+from app.models.check_evidence import CheckEvidence
 from app.models.item import Item
 from app.models.user import User
 
-BLOCKING_STATUSES = ("requested", "approved", "delivered", "returned")
+BLOCKING_STATUSES = ("requested", "approved", "delivered")
 """Reservation statuses that count as "active" for double-booking
-prevention and item-availability purposes — everything except
-rejected/cancelled/closed. Matches the WHERE clause on the
-no_double_booking EXCLUDE constraint and idx_reservations_item.
+prevention and item-availability purposes — the item is still out or a
+decision on it is still pending. "returned" is deliberately excluded:
+once the renter checks out, the item is physically back with the owner,
+so its dates must free up immediately for a new booking — "returned"
+only matters to the deposit/closing workflow (see close_reservation),
+not to physical availability. Single source of truth, used identically
+by the double-booking overlap check, `unavailable_dates`, and the
+`available_from`/`available_to` filter, to avoid the three ever
+drifting apart.
+
+Mirrored at the DB level by the `no_double_booking` EXCLUDE constraint's
+WHERE clause (`status NOT IN ('rejected', 'cancelled', 'closed', 'returned')`
+— see migration e51457c9bb90), which is the actual enforcement under
+concurrency; this tuple and that clause must always describe the same set
+of statuses, or a request that passes this app-level check can still fail
+commit with an unhandled IntegrityError. idx_reservations_item's own WHERE
+clause is intentionally broader (excludes only rejected/cancelled/closed,
+i.e. still includes "returned") — it is a lookup-performance index, not a
+correctness guarantee, and a query's stricter status filter can still use
+a broader partial index.
 """
 
 
@@ -94,6 +112,9 @@ class Reservation(Base):
     transactions: Mapped[list["Transaction"]] = relationship(
         order_by="Transaction.sequence", back_populates="reservation"
     )
+    check_evidence: Mapped[list["CheckEvidence"]] = relationship(
+        order_by="CheckEvidence.created_at"
+    )
 
     @property
     def item_name(self) -> str:
@@ -109,6 +130,31 @@ class Reservation(Base):
     def renter_name(self) -> str:
         """The renter's display name, via the renter relationship."""
         return self.renter.name
+
+    @property
+    def checkin_photo_url(self) -> str | None:
+        """The check-in evidence photo, or None if the renter hasn't
+        checked in yet.
+
+        Picks the oldest matching check_evidence row if more than one
+        exists for this type — safe today only because no DB constraint
+        prevents duplicates and the state machine has no re-check-in path
+        (checkin_reservation requires status "approved", and nothing
+        moves a reservation back to "approved"). A future re-check-in
+        feature must add a uniqueness guarantee or this will silently
+        pick the wrong photo.
+        """
+        return next(
+            (e.photo_url for e in self.check_evidence if e.type == "check_in"), None
+        )
+
+    @property
+    def checkout_photo_url(self) -> str | None:
+        """The check-out evidence photo, or None if the renter hasn't
+        checked out yet."""
+        return next(
+            (e.photo_url for e in self.check_evidence if e.type == "check_out"), None
+        )
 
     _DEPOSIT_STATUS_BY_TRANSACTION_TYPE = {
         "hold": "held",
