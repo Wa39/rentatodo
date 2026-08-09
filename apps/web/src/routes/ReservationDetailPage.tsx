@@ -101,6 +101,8 @@ export function ReservationDetailPage() {
     }
   }, [token, id, reservationStatus])
 
+  const blockedByReport = reportLoading || reportLoadError !== null || report !== undefined
+
   if (!reservation) {
     return <p className="text-muted-foreground">Reservation not found.</p>
   }
@@ -162,9 +164,22 @@ export function ReservationDetailPage() {
         <p className="text-muted-foreground">
           {reservation.start_date} → {reservation.end_date} · {reservation.status}
         </p>
-        <Button className="mt-two" onClick={handleClose} disabled={reservation.status !== 'returned' || closing}>
+        <Button
+          className="mt-two"
+          onClick={handleClose}
+          disabled={reservation.status !== 'returned' || closing || blockedByReport}
+        >
           Close reservation
         </Button>
+        {reservation.status === 'returned' && blockedByReport && (
+          <p className="mt-one text-sm text-muted-foreground">
+            {reportLoading
+              ? 'Checking for an open problem report…'
+              : reportLoadError
+                ? "Couldn't confirm report status. Refresh to try again."
+                : 'Deposit frozen — resolve the problem report before closing.'}
+          </p>
+        )}
         <AuthErrorBanner message={closeError} />
       </div>
 
