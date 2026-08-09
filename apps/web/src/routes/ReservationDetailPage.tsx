@@ -86,6 +86,8 @@ export function ReservationDetailPage() {
     if (!token || !id || (reservationStatus !== 'delivered' && reservationStatus !== 'returned')) return
     let cancelled = false
     setReportLoading(true)
+    setReportLoadError(null)
+    setReport(undefined)
     apiGetReport(token, id)
       .then((fetched) => {
         if (!cancelled) setReport(fetched)
@@ -101,7 +103,7 @@ export function ReservationDetailPage() {
     }
   }, [token, id, reservationStatus])
 
-  const blockedByReport = reportLoading || reportLoadError !== null || report !== undefined
+  const blockedByReport = reportLoading || reportLoadError !== null || report !== undefined || reportSubmitted
 
   if (!reservation) {
     return <p className="text-muted-foreground">Reservation not found.</p>
