@@ -128,6 +128,7 @@ describe('ReservationDetailPage', () => {
 
     renderPage()
     await waitFor(() => expect(screen.getByText(TRANSACTION.type)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByLabelText('What went wrong?')).toBeInTheDocument())
 
     await user.type(screen.getByLabelText('What went wrong?'), 'The drill bit was broken')
     await user.type(screen.getByLabelText('Photo URL'), 'https://storage.example.com/photos/broken.jpg')
@@ -151,6 +152,7 @@ describe('ReservationDetailPage', () => {
 
     renderPage()
     await waitFor(() => expect(screen.getByText(TRANSACTION.type)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByLabelText('What went wrong?')).toBeInTheDocument())
 
     await user.type(screen.getByLabelText('What went wrong?'), 'The drill bit was broken')
     await user.type(screen.getByLabelText('Photo URL'), 'https://storage.example.com/photos/broken.jpg')
@@ -188,6 +190,7 @@ describe('ReservationDetailPage', () => {
 
     renderPage()
     await waitFor(() => expect(screen.getByText(TRANSACTION.type)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByLabelText('What went wrong?')).toBeInTheDocument())
 
     await user.type(screen.getByLabelText('What went wrong?'), 'The drill bit was broken')
     await user.type(screen.getByLabelText('Photo URL'), 'https://storage.example.com/photos/broken.jpg')

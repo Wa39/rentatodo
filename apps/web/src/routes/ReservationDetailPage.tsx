@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { AuthErrorBanner } from '@/components/AuthErrorBanner'
 import type { Transaction } from '@/lib/types'
 
@@ -61,6 +61,7 @@ export function ReservationDetailPage() {
   const [enlargedPhoto, setEnlargedPhoto] = useState<string | null>(null)
   const [report, setReport] = useState<ReportResponse | undefined>(undefined)
   const [reportLoadError, setReportLoadError] = useState<string | null>(null)
+  const [reportLoading, setReportLoading] = useState(false)
 
   useEffect(() => {
     if (!token || !id) return
@@ -82,12 +83,16 @@ export function ReservationDetailPage() {
   useEffect(() => {
     if (!token || !id || (reservationStatus !== 'delivered' && reservationStatus !== 'returned')) return
     let cancelled = false
+    setReportLoading(true)
     apiGetReport(token, id)
       .then((fetched) => {
         if (!cancelled) setReport(fetched)
       })
       .catch((err) => {
         if (!cancelled) setReportLoadError(getErrorMessage(err, "Couldn't load the report. Try refreshing the page."))
+      })
+      .finally(() => {
+        if (!cancelled) setReportLoading(false)
       })
     return () => {
       cancelled = true
@@ -201,7 +206,9 @@ export function ReservationDetailPage() {
       <div>
         <h2 className="font-medium text-foreground">Report a problem</h2>
         <AuthErrorBanner message={reportLoadError} />
-        {report ? (
+        {reportLoading ? (
+          <p className="text-muted-foreground">Loading…</p>
+        ) : report ? (
           <div className="space-y-two">
             <p className="text-foreground">{report.reason}</p>
             <button
@@ -236,6 +243,7 @@ export function ReservationDetailPage() {
 
       <Dialog open={enlargedPhoto !== null} onOpenChange={(next) => !next && setEnlargedPhoto(null)}>
         <DialogContent className="max-w-2xl">
+          <DialogTitle className="sr-only">Enlarged photo</DialogTitle>
           {enlargedPhoto && <img src={enlargedPhoto} alt="Enlarged photo" className="max-h-[80vh] w-full object-contain" />}
         </DialogContent>
       </Dialog>
