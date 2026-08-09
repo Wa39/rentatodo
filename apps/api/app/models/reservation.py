@@ -24,11 +24,28 @@ from app.models.check_evidence import CheckEvidence
 from app.models.item import Item
 from app.models.user import User
 
-BLOCKING_STATUSES = ("requested", "approved", "delivered", "returned")
+BLOCKING_STATUSES = ("requested", "approved", "delivered")
 """Reservation statuses that count as "active" for double-booking
-prevention and item-availability purposes — everything except
-rejected/cancelled/closed. Matches the WHERE clause on the
-no_double_booking EXCLUDE constraint and idx_reservations_item.
+prevention and item-availability purposes — the item is still out or a
+decision on it is still pending. "returned" is deliberately excluded:
+once the renter checks out, the item is physically back with the owner,
+so its dates must free up immediately for a new booking — "returned"
+only matters to the deposit/closing workflow (see close_reservation),
+not to physical availability. Single source of truth, used identically
+by the double-booking overlap check, `unavailable_dates`, and the
+`available_from`/`available_to` filter, to avoid the three ever
+drifting apart.
+
+Mirrored at the DB level by the `no_double_booking` EXCLUDE constraint's
+WHERE clause (`status NOT IN ('rejected', 'cancelled', 'closed', 'returned')`
+— see migration e51457c9bb90), which is the actual enforcement under
+concurrency; this tuple and that clause must always describe the same set
+of statuses, or a request that passes this app-level check can still fail
+commit with an unhandled IntegrityError. idx_reservations_item's own WHERE
+clause is intentionally broader (excludes only rejected/cancelled/closed,
+i.e. still includes "returned") — it is a lookup-performance index, not a
+correctness guarantee, and a query's stricter status filter can still use
+a broader partial index.
 """
 
 

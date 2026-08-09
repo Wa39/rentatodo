@@ -14,7 +14,7 @@ describe('getItemDateStates', () => {
     })
   })
 
-  it('classifies approved/delivered/returned reservations as reserved', () => {
+  it('classifies approved/delivered reservations as reserved', () => {
     const itemId = mockItems[1].id
     const states = getItemDateStates(itemId, mockRequests)
     const reserved = mockRequests.find((r) => r.item_id === itemId && r.status === 'delivered')!
@@ -23,6 +23,15 @@ describe('getItemDateStates', () => {
       end_date: reserved.end_date,
       state: 'reserved',
     })
+  })
+
+  it('excludes a returned reservation — the item is physically back, so its dates are free again', () => {
+    const itemId = mockItems[0].id
+    const states = getItemDateStates(itemId, mockRequests)
+    const returned = mockRequests.find((r) => r.item_id === itemId && r.status === 'returned')!
+    expect(states).not.toContainEqual(
+      expect.objectContaining({ start_date: returned.start_date, end_date: returned.end_date }),
+    )
   })
 
   it('excludes closed, rejected, and cancelled reservations', () => {
