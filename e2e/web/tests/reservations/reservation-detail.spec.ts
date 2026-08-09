@@ -1,4 +1,11 @@
-import { test, expect, MOCK_RETURNED_RESERVATION, ALL_MOCK_RESERVATIONS } from '../fixtures'
+import {
+  test,
+  expect,
+  MOCK_RETURNED_RESERVATION,
+  ALL_MOCK_RESERVATIONS,
+  PNG_1x1,
+  mockPhotoUpload,
+} from '../fixtures'
 
 // IDs match fixtures in ../fixtures.ts — RequestsContext uses the mocked GET /users/me/requests
 // route and transaction history comes from the mocked GET /reservations/*/transactions route.
@@ -33,11 +40,18 @@ test('delivered reservation shows a hold transaction row in the deposit history'
 })
 
 test('report form shows confirmation after submit', async ({ page }) => {
+  await mockPhotoUpload(page)
+
   // Report form is only shown for delivered/returned reservations (API enforces this).
   await page.goto(`/reservations/${DELIVERED_ID}`)
   await expect(page.getByRole('heading', { name: 'Report a problem' })).toBeVisible()
   await page.getByLabel('What went wrong?').fill('Item was damaged on arrival')
-  await page.getByLabel('Photo URL').fill('https://example.com/evidence.jpg')
+  await page.locator('#report-photo').setInputFiles({
+    name: 'evidence.png',
+    mimeType: 'image/png',
+    buffer: PNG_1x1,
+  })
+  await expect(page.getByRole('img', { name: 'Photo' })).toBeVisible()
   await page.getByRole('button', { name: 'Submit report' }).click()
   await expect(page.getByText('Report submitted.')).toBeVisible()
 })

@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { JPEG_HEADER, makeFile } from '@/test/photoFixtures'
 import { PhotoUploadField } from './PhotoUploadField'
 
 function jsonResponse(body: unknown, status: number) {
@@ -10,12 +11,6 @@ function jsonResponse(body: unknown, status: number) {
     json: () => Promise.resolve(body),
   } as Response
 }
-
-function makeFile(bytes: number[], name: string, type: string): File {
-  return new File([new Uint8Array(bytes)], name, { type })
-}
-
-const JPEG_HEADER = [0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01]
 
 const PRESIGN_PAYLOAD = {
   upload_url: 'https://s3.example.com/upload?sig=abc',

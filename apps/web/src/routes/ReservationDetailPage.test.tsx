@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthProvider } from '@/lib/AuthContext'
 import { RequestsProvider } from '@/lib/RequestsContext'
+import { JPEG_HEADER, makeFile } from '@/test/photoFixtures'
 import { ReservationDetailPage } from './ReservationDetailPage'
 
 function jsonResponse(body: unknown, status: number) {
@@ -23,6 +24,22 @@ function mockFetchRoutes(routes: Record<string, Array<() => Response>>) {
     if (!next) throw new Error(`Unhandled fetch call: ${url}`)
     return Promise.resolve(next())
   })
+}
+
+// A fresh route map per call — mockFetchRoutes shifts responses off these
+// arrays as they're consumed, so a shared object would be exhausted after
+// the first test to spread it in.
+function presignRoutes() {
+  return {
+    '/uploads/presign': [
+      () =>
+        jsonResponse(
+          { upload_url: 'https://s3.example.com/upload-photo', public_url: 'https://storage.example.com/photos/broken.jpg', expires_in: 300 },
+          200,
+        ),
+    ],
+    '/upload-photo': [() => ({ ok: true, status: 200 }) as Response],
+  }
 }
 
 const PROFILE = { id: 'u1', name: 'María Vargas', email: 'maria@example.com', created_at: '2026-01-01T00:00:00Z' }
@@ -66,10 +83,12 @@ describe('ReservationDetailPage', () => {
     localStorage.clear()
     localStorage.setItem('rentatodo_token', 'tok123')
     vi.spyOn(global, 'fetch')
+    vi.stubGlobal('createImageBitmap', vi.fn().mockResolvedValue({} as ImageBitmap))
   })
 
   afterEach(() => {
     vi.restoreAllMocks()
+    vi.unstubAllGlobals()
   })
 
   it('renders the transaction history fetched from GET /reservations/{id}/transactions', async () => {
@@ -124,6 +143,7 @@ describe('ReservationDetailPage', () => {
             201,
           ),
       ],
+      ...presignRoutes(),
     })
 
     renderPage()
@@ -131,7 +151,8 @@ describe('ReservationDetailPage', () => {
     await waitFor(() => expect(screen.getByLabelText('What went wrong?')).toBeInTheDocument())
 
     await user.type(screen.getByLabelText('What went wrong?'), 'The drill bit was broken')
-    await user.type(screen.getByLabelText('Photo URL'), 'https://storage.example.com/photos/broken.jpg')
+    await user.upload(screen.getByLabelText('Photo'), makeFile(JPEG_HEADER, 'broken.jpg', 'image/jpeg'))
+    await waitFor(() => expect(screen.getByRole('img', { name: 'Photo' })).toBeInTheDocument())
     await user.click(screen.getByRole('button', { name: 'Submit report' }))
 
     await waitFor(() => expect(screen.getByText('Report submitted.')).toBeInTheDocument())
@@ -148,6 +169,7 @@ describe('ReservationDetailPage', () => {
         () => jsonResponse({ error: { code: 'NOT_FOUND', message: 'No report' } }, 404),
         () => jsonResponse({ error: { code: 'INVALID_TRANSITION', message: 'Report already exists for this reservation' } }, 409),
       ],
+      ...presignRoutes(),
     })
 
     renderPage()
@@ -155,7 +177,8 @@ describe('ReservationDetailPage', () => {
     await waitFor(() => expect(screen.getByLabelText('What went wrong?')).toBeInTheDocument())
 
     await user.type(screen.getByLabelText('What went wrong?'), 'The drill bit was broken')
-    await user.type(screen.getByLabelText('Photo URL'), 'https://storage.example.com/photos/broken.jpg')
+    await user.upload(screen.getByLabelText('Photo'), makeFile(JPEG_HEADER, 'broken.jpg', 'image/jpeg'))
+    await waitFor(() => expect(screen.getByRole('img', { name: 'Photo' })).toBeInTheDocument())
     await user.click(screen.getByRole('button', { name: 'Submit report' }))
 
     await waitFor(() => expect(screen.getByText('Report already exists for this reservation')).toBeInTheDocument())
@@ -186,6 +209,7 @@ describe('ReservationDetailPage', () => {
             201,
           ),
       ],
+      ...presignRoutes(),
     })
 
     renderPage()
@@ -193,7 +217,8 @@ describe('ReservationDetailPage', () => {
     await waitFor(() => expect(screen.getByLabelText('What went wrong?')).toBeInTheDocument())
 
     await user.type(screen.getByLabelText('What went wrong?'), 'The drill bit was broken')
-    await user.type(screen.getByLabelText('Photo URL'), 'https://storage.example.com/photos/broken.jpg')
+    await user.upload(screen.getByLabelText('Photo'), makeFile(JPEG_HEADER, 'broken.jpg', 'image/jpeg'))
+    await waitFor(() => expect(screen.getByRole('img', { name: 'Photo' })).toBeInTheDocument())
     await user.click(screen.getByRole('button', { name: 'Submit report' }))
 
     await waitFor(() => expect(screen.getByText('Report submitted.')).toBeInTheDocument())
