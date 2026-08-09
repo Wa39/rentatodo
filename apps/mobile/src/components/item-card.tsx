@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { Link } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -6,16 +7,24 @@ import { CATEGORY_LABELS } from '@/data/labels';
 import { formatUSD, type Item } from '@/data/types';
 
 /**
- * Item card for the listings.
- * The real photo arrives as photo_url from Wa's image service;
- * until seeds with photos exist, a placeholder with the initial is shown.
+ * Item card for the listings. Shows the item's photo_url, falling back to a
+ * placeholder with the name's initial when the item has no photo.
  */
 export function ItemCard({ item }: { item: Item }) {
   return (
     <Link href={{ pathname: '/item/[id]', params: { id: item.id } }} asChild>
       <Pressable testID={`item-card-${item.id}`} style={styles.card}>
         <View style={styles.thumb}>
-          <Text style={styles.initial}>{item.name.charAt(0)}</Text>
+          {item.photo_url ? (
+            <Image
+              source={{ uri: item.photo_url }}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+              transition={150}
+            />
+          ) : (
+            <Text style={styles.initial}>{item.name.charAt(0)}</Text>
+          )}
         </View>
         <View style={styles.info}>
           <Text style={styles.name} numberOfLines={2}>
