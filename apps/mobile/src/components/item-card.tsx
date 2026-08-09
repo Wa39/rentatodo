@@ -55,6 +55,7 @@ const styles = StyleSheet.create({
     backgroundColor: Brand.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   initial: {
     fontSize: 30,
