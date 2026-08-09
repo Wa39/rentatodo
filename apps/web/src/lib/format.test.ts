@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dollarsToCentavos, formatCentavos, getInitials } from './format'
+import { dollarsToCentavos, formatCentavos, formatDateTime, getInitials } from './format'
 
 describe('getInitials', () => {
   it('takes the first letter of the first two words', () => {
@@ -94,5 +94,30 @@ describe('formatCentavos', () => {
 
   it('formats zero', () => {
     expect(formatCentavos(0)).toBe('$0.00')
+  })
+})
+
+describe('formatDateTime', () => {
+  it('renders a readable date and time instead of the raw ISO string', () => {
+    // Not tied to a fixed calendar date/time string — that would drift with
+    // the runner's timezone, since toLocaleString renders in local time.
+    const formatted = formatDateTime('2026-08-08T18:13:26.148732Z')
+    expect(formatted).not.toBe('2026-08-08T18:13:26.148732Z')
+    expect(formatted).toMatch(/2026/)
+    expect(formatted).toMatch(/\d{1,2}:\d{2}/)
+  })
+
+  it('keeps same-day entries distinguishable by including the time', () => {
+    const hold = formatDateTime('2026-08-08T18:13:26.148732Z')
+    const freeze = formatDateTime('2026-08-08T18:29:57.401944Z')
+    expect(hold).not.toBe(freeze)
+  })
+
+  it('keeps entries less than a minute apart distinguishable', () => {
+    // reservation.py documents transactions landing in the same clock
+    // tick as an observed-live case, not a hypothetical one.
+    const hold = formatDateTime('2026-08-08T18:13:04Z')
+    const freeze = formatDateTime('2026-08-08T18:13:41Z')
+    expect(hold).not.toBe(freeze)
   })
 })

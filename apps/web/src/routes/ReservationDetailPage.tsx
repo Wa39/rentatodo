@@ -3,12 +3,13 @@ import { useParams } from 'react-router-dom'
 import { apiGetTransactions, apiReportProblem, getErrorMessage } from '@/lib/api'
 import { useAuth } from '@/lib/AuthContext'
 import { useRequests } from '@/lib/RequestsContext'
-import { formatCentavos } from '@/lib/format'
+import { formatCentavos, formatDateTime } from '@/lib/format'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { AuthErrorBanner } from '@/components/AuthErrorBanner'
+import { PhotoUploadField } from '@/components/PhotoUploadField'
 import type { Transaction } from '@/lib/types'
 
 export function ReservationDetailPage() {
@@ -20,6 +21,7 @@ export function ReservationDetailPage() {
   const [transactionsError, setTransactionsError] = useState<string | null>(null)
   const [reason, setReason] = useState('')
   const [photoUrl, setPhotoUrl] = useState('')
+  const [photoUploading, setPhotoUploading] = useState(false)
   const [reportSubmitted, setReportSubmitted] = useState(false)
   const [reportError, setReportError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -69,7 +71,11 @@ export function ReservationDetailPage() {
 
   async function handleReportSubmit(event: FormEvent) {
     event.preventDefault()
-    if (!token || !id) return
+    // Mirrors the submit button's own disabled expression exactly (see the
+    // Button below) — the old <input required> enforced !photoUrl at the
+    // DOM level regardless of call path; PhotoUploadField doesn't, so the
+    // handler has to assert it itself now.
+    if (!token || !id || !photoUrl || photoUploading || submitting) return
     setSubmitting(true)
     setReportError(null)
     try {
@@ -120,7 +126,7 @@ export function ReservationDetailPage() {
               <TableRow key={tx.id}>
                 <TableCell>{tx.type}</TableCell>
                 <TableCell>{formatCentavos(tx.amount)}</TableCell>
-                <TableCell>{tx.created_at}</TableCell>
+                <TableCell>{formatDateTime(tx.created_at)}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -138,11 +144,15 @@ export function ReservationDetailPage() {
               <Label htmlFor="report-reason">What went wrong?</Label>
               <Input id="report-reason" value={reason} onChange={(e) => setReason(e.target.value)} required />
             </div>
-            <div className="space-y-half">
-              <Label htmlFor="report-photo">Photo URL</Label>
-              <Input id="report-photo" type="url" value={photoUrl} onChange={(e) => setPhotoUrl(e.target.value)} required />
-            </div>
-            <Button type="submit" disabled={submitting}>
+            <PhotoUploadField
+              id="report-photo"
+              label="Photo"
+              value={photoUrl}
+              onChange={setPhotoUrl}
+              onUploadingChange={setPhotoUploading}
+              token={token ?? ''}
+            />
+            <Button type="submit" disabled={submitting || !photoUrl || photoUploading}>
               Submit report
             </Button>
           </form>

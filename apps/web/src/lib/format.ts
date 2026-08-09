@@ -2,6 +2,23 @@ export function formatCentavos(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`
 }
 
+// "Aug 8, 2026, 6:13:04 PM" — the deposit ledger can carry more than one
+// entry on the same calendar day, sometimes less than a minute apart
+// (reservation.py documents transactions landing in the same clock tick as
+// observed live, not hypothetical), so seconds are included to keep
+// entries distinguishable — unlike the plain YYYY-MM-DD reservation dates
+// shown elsewhere, which have no such collision risk.
+export function formatDateTime(iso: string): string {
+  return new Date(iso).toLocaleString('en-US', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    second: '2-digit',
+  })
+}
+
 // Expands scientific notation ('1.005e2') into plain decimal notation
 // ('100.5') using only string/integer manipulation — no float arithmetic —
 // so exponential input gets exactly as precise a result as plain-decimal
