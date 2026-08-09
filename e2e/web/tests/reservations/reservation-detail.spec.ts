@@ -4,8 +4,7 @@ import {
   MOCK_RETURNED_RESERVATION,
   ALL_MOCK_RESERVATIONS,
   PNG_1x1,
-  MOCK_UPLOAD_URL,
-  MOCK_PHOTO_PUBLIC_URL,
+  mockPhotoUpload,
 } from '../fixtures'
 
 // IDs match fixtures in ../fixtures.ts — RequestsContext uses the mocked GET /users/me/requests
@@ -41,12 +40,7 @@ test('delivered reservation shows a hold transaction row in the deposit history'
 })
 
 test('report form shows confirmation after submit', async ({ page }) => {
-  await page.route('**/uploads/presign', (route) =>
-    route.fulfill({
-      json: { upload_url: MOCK_UPLOAD_URL, public_url: MOCK_PHOTO_PUBLIC_URL, expires_in: 300 },
-    }),
-  )
-  await page.route(MOCK_UPLOAD_URL, (route) => route.fulfill({ status: 200, body: '' }))
+  await mockPhotoUpload(page)
 
   // Report form is only shown for delivered/returned reservations (API enforces this).
   await page.goto(`/reservations/${DELIVERED_ID}`)

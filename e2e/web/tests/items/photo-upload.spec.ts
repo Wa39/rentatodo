@@ -1,13 +1,8 @@
-import { test, expect, PNG_1x1, MOCK_UPLOAD_URL, MOCK_PHOTO_PUBLIC_URL } from '../fixtures'
+import { test, expect, PNG_1x1, MOCK_UPLOAD_URL, mockPhotoUpload } from '../fixtures'
 
 test.describe('PublishItemPage — photo upload', () => {
   test.beforeEach(async ({ page }) => {
-    await page.route('**/uploads/presign', (route) =>
-      route.fulfill({
-        json: { upload_url: MOCK_UPLOAD_URL, public_url: MOCK_PHOTO_PUBLIC_URL, expires_in: 300 },
-      }),
-    )
-    await page.route(MOCK_UPLOAD_URL, (route) => route.fulfill({ status: 200, body: '' }))
+    await mockPhotoUpload(page)
     await page.goto('/items/publish')
   })
 

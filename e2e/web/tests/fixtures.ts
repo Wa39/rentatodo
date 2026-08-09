@@ -1,4 +1,4 @@
-import { test as base, expect } from '@playwright/test'
+import { test as base, expect, type Page } from '@playwright/test'
 
 // Shared by every spec that drives PhotoUploadField (items/photo-upload.spec.ts,
 // reservations/reservation-detail.spec.ts) — was independently copy-pasted
@@ -11,6 +11,18 @@ export const PNG_1x1 = Buffer.from(
 )
 export const MOCK_UPLOAD_URL = 'https://s3.example.com/photos/upload-test'
 export const MOCK_PHOTO_PUBLIC_URL = 'https://cdn.rentatodo.com/photos/test.png'
+
+// Shared presign + S3-PUT mock for the PhotoUploadField flow — register before
+// setInputFiles() triggers the upload. Callers may override the MOCK_UPLOAD_URL
+// route afterward (last-registered-route-wins) to simulate an upload failure.
+export async function mockPhotoUpload(page: Page) {
+  await page.route('**/uploads/presign', (route) =>
+    route.fulfill({
+      json: { upload_url: MOCK_UPLOAD_URL, public_url: MOCK_PHOTO_PUBLIC_URL, expires_in: 300 },
+    }),
+  )
+  await page.route(MOCK_UPLOAD_URL, (route) => route.fulfill({ status: 200, body: '' }))
+}
 
 export const TEST_CREDENTIALS = {
   email: 'owner@rentatodo.dev',
