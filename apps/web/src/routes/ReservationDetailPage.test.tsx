@@ -315,7 +315,7 @@ describe('ReservationDetailPage', () => {
     renderPage()
     await waitFor(() => expect(screen.getByText(TRANSACTION.type)).toBeInTheDocument())
 
-    expect(screen.getByText(REPORT.reason)).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText(REPORT.reason)).toBeInTheDocument())
     expect(screen.getByText(REPORT.created_at)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Submit report' })).not.toBeInTheDocument()
 
@@ -366,7 +366,7 @@ describe('ReservationDetailPage', () => {
 
     expect(screen.getByRole('button', { name: 'View check-in photo' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'View check-out photo' })).toBeInTheDocument()
-    expect(screen.getByText(REPORT.reason)).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText(REPORT.reason)).toBeInTheDocument())
     expect(screen.queryByRole('button', { name: 'Submit report' })).not.toBeInTheDocument()
   })
 })
