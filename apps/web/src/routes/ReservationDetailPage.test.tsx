@@ -39,6 +39,8 @@ const RESERVATION = {
   status: 'delivered',
   deposit_amount: 4500,
   deposit_status: 'held',
+  checkin_photo_url: null,
+  checkout_photo_url: null,
   created_at: '2026-07-08T09:00:00Z',
   updated_at: '2026-07-10T08:00:00Z',
 }
@@ -238,5 +240,48 @@ describe('ReservationDetailPage', () => {
 
     await waitFor(() => expect(screen.getByText('Cannot close: an active problem report exists')).toBeInTheDocument())
     expect(screen.getByRole('button', { name: 'Close reservation' })).not.toBeDisabled()
+  })
+
+  it('shows a placeholder for check-in/check-out photos that have not happened yet', async () => {
+    mockFetchRoutes({
+      '/users/me': [() => jsonResponse(PROFILE, 200)],
+      '/users/me/requests?page=1&limit=50': [() => jsonResponse({ reservations: [RESERVATION], page: 1, limit: 50, total: 1 }, 200)],
+      [`/reservations/${RESERVATION.id}/transactions`]: [() => jsonResponse([TRANSACTION], 200)],
+      [`/reservations/${RESERVATION.id}/report`]: [() => jsonResponse({ error: { code: 'NOT_FOUND', message: 'No report' } }, 404)],
+    })
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText(TRANSACTION.type)).toBeInTheDocument())
+
+    expect(screen.getByText('Not checked in yet')).toBeInTheDocument()
+    expect(screen.getByText('Not checked out yet')).toBeInTheDocument()
+  })
+
+  it('shows check-in/check-out thumbnails and opens the lightbox on click', async () => {
+    const WITH_PHOTOS = {
+      ...RESERVATION,
+      checkin_photo_url: 'https://storage.example.com/photos/checkin.jpg',
+      checkout_photo_url: 'https://storage.example.com/photos/checkout.jpg',
+    }
+    const user = userEvent.setup({ delay: null })
+    mockFetchRoutes({
+      '/users/me': [() => jsonResponse(PROFILE, 200)],
+      '/users/me/requests?page=1&limit=50': [() => jsonResponse({ reservations: [WITH_PHOTOS], page: 1, limit: 50, total: 1 }, 200)],
+      [`/reservations/${RESERVATION.id}/transactions`]: [() => jsonResponse([TRANSACTION], 200)],
+      [`/reservations/${RESERVATION.id}/report`]: [() => jsonResponse({ error: { code: 'NOT_FOUND', message: 'No report' } }, 404)],
+    })
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText(TRANSACTION.type)).toBeInTheDocument())
+
+    expect(screen.queryByText('Not checked in yet')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'View check-in photo' }))
+    expect(screen.getByRole('img', { name: 'Enlarged photo' })).toHaveAttribute('src', WITH_PHOTOS.checkin_photo_url)
+
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('img', { name: 'Enlarged photo' })).not.toBeInTheDocument())
+
+    await user.click(screen.getByRole('button', { name: 'View check-out photo' }))
+    expect(screen.getByRole('img', { name: 'Enlarged photo' })).toHaveAttribute('src', WITH_PHOTOS.checkout_photo_url)
   })
 })
