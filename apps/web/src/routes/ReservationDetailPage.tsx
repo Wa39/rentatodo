@@ -15,12 +15,12 @@ import type { Transaction } from '@/lib/types'
 function PhotoThumbnail({
   label,
   url,
-  placeholder,
+  placeholder = '',
   onEnlarge,
 }: {
   label: string
   url: string | null
-  placeholder: string
+  placeholder?: string
   onEnlarge: (url: string) => void
 }) {
   return (
@@ -211,14 +211,9 @@ export function ReservationDetailPage() {
         ) : report ? (
           <div className="space-y-two">
             <p className="text-foreground">{report.reason}</p>
-            <button
-              type="button"
-              aria-label="View report photo"
-              onClick={() => setEnlargedPhoto(report.photo_url)}
-              className="block h-24 w-24 overflow-hidden rounded-md border border-border"
-            >
-              <img src={report.photo_url} alt="Report evidence" className="h-full w-full object-cover" />
-            </button>
+            <div className="w-24">
+              <PhotoThumbnail label="Report" url={report.photo_url} onEnlarge={setEnlargedPhoto} />
+            </div>
             <p className="text-sm text-muted-foreground">{report.created_at}</p>
           </div>
         ) : reportSubmitted ? (
