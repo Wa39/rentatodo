@@ -249,6 +249,7 @@ describe('ReservationDetailPage', () => {
     renderPage()
     await waitFor(() => expect(screen.getByText(TRANSACTION.type)).toBeInTheDocument())
 
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Close reservation' })).not.toBeDisabled())
     await user.click(screen.getByRole('button', { name: 'Close reservation' }))
 
     await waitFor(() => expect(screen.getByText(`${RESERVATION.start_date} → ${RESERVATION.end_date} · closed`)).toBeInTheDocument())
@@ -271,6 +272,7 @@ describe('ReservationDetailPage', () => {
     renderPage()
     await waitFor(() => expect(screen.getByText(TRANSACTION.type)).toBeInTheDocument())
 
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Close reservation' })).not.toBeDisabled())
     await user.click(screen.getByRole('button', { name: 'Close reservation' }))
 
     await waitFor(() => expect(screen.getByText('Cannot close: an active problem report exists')).toBeInTheDocument())
@@ -365,6 +367,67 @@ describe('ReservationDetailPage', () => {
     expect(screen.getByRole('button', { name: 'Submit report' })).toBeInTheDocument()
   })
 
+  it('disables the Close button and shows a frozen-deposit message when a report exists', async () => {
+    const RETURNED = { ...RESERVATION, status: 'returned' }
+    const REPORT = {
+      id: 'rep1',
+      reservation_id: RESERVATION.id,
+      reported_by: '88888888-8888-4888-8888-888888888888',
+      reason: 'The drill bit was broken',
+      photo_url: 'https://storage.example.com/photos/broken.jpg',
+      created_at: '2026-07-27T10:00:00Z',
+    }
+    mockFetchRoutes({
+      '/users/me': [() => jsonResponse(PROFILE, 200)],
+      '/users/me/requests?page=1&limit=50': [() => jsonResponse({ reservations: [RETURNED], page: 1, limit: 50, total: 1 }, 200)],
+      [`/reservations/${RESERVATION.id}/transactions`]: [() => jsonResponse([TRANSACTION], 200)],
+      [`/reservations/${RESERVATION.id}/report`]: [() => jsonResponse(REPORT, 200)],
+    })
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText(REPORT.reason)).toBeInTheDocument())
+
+    expect(screen.getByRole('button', { name: 'Close reservation' })).toBeDisabled()
+    expect(screen.getByText('Deposit frozen — resolve the problem report before closing.')).toBeInTheDocument()
+  })
+
+  it('disables the Close button while the report is still loading', async () => {
+    const RETURNED = { ...RESERVATION, status: 'returned' }
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.endsWith('/users/me')) return Promise.resolve(jsonResponse(PROFILE, 200))
+      if (url.includes('/users/me/requests'))
+        return Promise.resolve(jsonResponse({ reservations: [RETURNED], page: 1, limit: 50, total: 1 }, 200))
+      if (url.endsWith(`/reservations/${RESERVATION.id}/transactions`)) return Promise.resolve(jsonResponse([TRANSACTION], 200))
+      if (url.endsWith(`/reservations/${RESERVATION.id}/report`)) return new Promise<Response>(() => {})
+      throw new Error(`Unhandled fetch call: ${url}`)
+    })
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText(TRANSACTION.type)).toBeInTheDocument())
+
+    expect(screen.getByRole('button', { name: 'Close reservation' })).toBeDisabled()
+    expect(screen.getByText('Checking for an open problem report…')).toBeInTheDocument()
+  })
+
+  it('disables the Close button and shows a retry hint when the report fetch fails', async () => {
+    const RETURNED = { ...RESERVATION, status: 'returned' }
+    mockFetchRoutes({
+      '/users/me': [() => jsonResponse(PROFILE, 200)],
+      '/users/me/requests?page=1&limit=50': [() => jsonResponse({ reservations: [RETURNED], page: 1, limit: 50, total: 1 }, 200)],
+      [`/reservations/${RESERVATION.id}/transactions`]: [() => jsonResponse([TRANSACTION], 200)],
+      [`/reservations/${RESERVATION.id}/report`]: [
+        () => jsonResponse({ error: { code: 'SERVER_ERROR', message: 'Report server exploded' } }, 500),
+      ],
+    })
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Report server exploded')).toBeInTheDocument())
+
+    expect(screen.getByRole('button', { name: 'Close reservation' })).toBeDisabled()
+    expect(screen.getByText("Couldn't confirm report status. Refresh to try again.")).toBeInTheDocument()
+  })
+
   it('shows both check-in/check-out photos and an existing report at the same time', async () => {
     const WITH_PHOTOS = {
       ...RESERVATION,
@@ -393,5 +456,48 @@ describe('ReservationDetailPage', () => {
     expect(screen.getByRole('button', { name: 'View check-out photo' })).toBeInTheDocument()
     await waitFor(() => expect(screen.getByText(REPORT.reason)).toBeInTheDocument())
     expect(screen.queryByRole('button', { name: 'Submit report' })).not.toBeInTheDocument()
+  })
+
+  it('disables the Close button after filing a report from this page, even without a report refetch', async () => {
+    const user = userEvent.setup({ delay: null })
+    const RETURNED = { ...RESERVATION, status: 'returned' }
+    mockFetchRoutes({
+      '/users/me': [() => jsonResponse(PROFILE, 200)],
+      '/users/me/requests?page=1&limit=50': [() => jsonResponse({ reservations: [RETURNED], page: 1, limit: 50, total: 1 }, 200)],
+      [`/reservations/${RESERVATION.id}/transactions`]: [
+        () => jsonResponse([TRANSACTION], 200),
+        () => jsonResponse([TRANSACTION, { id: 't2', reservation_id: RESERVATION.id, type: 'freeze', amount: 4500, created_at: '2026-07-27T10:00:00Z' }], 200),
+      ],
+      [`/reservations/${RESERVATION.id}/report`]: [
+        () => jsonResponse({ error: { code: 'NOT_FOUND', message: 'No report' } }, 404),
+        () =>
+          jsonResponse(
+            {
+              id: 'rep1',
+              reservation_id: RESERVATION.id,
+              reported_by: PROFILE.id,
+              reason: 'The drill bit was broken',
+              photo_url: 'https://storage.example.com/photos/broken.jpg',
+              created_at: '2026-07-27T10:00:00Z',
+            },
+            201,
+          ),
+      ],
+      ...presignRoutes(),
+    })
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText(TRANSACTION.type)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Close reservation' })).not.toBeDisabled())
+    await waitFor(() => expect(screen.getByLabelText('What went wrong?')).toBeInTheDocument())
+
+    await user.type(screen.getByLabelText('What went wrong?'), 'The drill bit was broken')
+    await user.upload(screen.getByLabelText('Photo'), makeFile(JPEG_HEADER, 'broken.jpg', 'image/jpeg'))
+    await waitFor(() => expect(screen.getByRole('img', { name: 'Photo' })).toBeInTheDocument())
+    await user.click(screen.getByRole('button', { name: 'Submit report' }))
+
+    await waitFor(() => expect(screen.getByText('Report submitted.')).toBeInTheDocument())
+    expect(screen.getByRole('button', { name: 'Close reservation' })).toBeDisabled()
+    expect(screen.getByText('Deposit frozen — resolve the problem report before closing.')).toBeInTheDocument()
   })
 })
