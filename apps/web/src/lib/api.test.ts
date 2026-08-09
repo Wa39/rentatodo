@@ -7,6 +7,7 @@ import {
   apiDeleteItem,
   apiGetEarnings,
   apiGetMe,
+  apiGetReport,
   apiGetTransactions,
   apiListMyItems,
   apiListMyRequests,
@@ -636,6 +637,49 @@ describe('api', () => {
       ).rejects.toMatchObject({
         code: 'INVALID_TRANSITION',
         message: 'Report already exists for this reservation',
+      })
+    })
+  })
+
+  describe('apiGetReport', () => {
+    it('GETs /reservations/{id}/report with a Bearer token and resolves with the report', async () => {
+      const payload = {
+        id: 'rep1',
+        reservation_id: 'r1',
+        reported_by: 'u1',
+        reason: 'The drill bit was broken',
+        photo_url: 'https://storage.example.com/photos/broken.jpg',
+        created_at: '2026-07-27T10:00:00Z',
+      }
+      vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(payload, 200))
+
+      const result = await apiGetReport('tok123', 'r1')
+
+      expect(result).toEqual(payload)
+      expect(fetch).toHaveBeenCalledWith(
+        'http://localhost:8000/reservations/r1/report',
+        expect.objectContaining({ method: 'GET', headers: expect.objectContaining({ Authorization: 'Bearer tok123' }) }),
+      )
+    })
+
+    it('resolves undefined (not a rejection) when no report has been filed (404)', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(
+        jsonResponse({ error: { code: 'NOT_FOUND', message: 'No report has been filed for this reservation' } }, 404),
+      )
+
+      const result = await apiGetReport('tok123', 'r1')
+
+      expect(result).toBeUndefined()
+    })
+
+    it('rejects with ApiError for a non-404 error response', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(
+        jsonResponse({ error: { code: 'FORBIDDEN', message: 'Not the owner or renter of this reservation' } }, 403),
+      )
+
+      await expect(apiGetReport('tok123', 'r1')).rejects.toMatchObject({
+        code: 'FORBIDDEN',
+        message: 'Not the owner or renter of this reservation',
       })
     })
   })

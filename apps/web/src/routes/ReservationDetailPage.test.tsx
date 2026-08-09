@@ -39,6 +39,8 @@ const RESERVATION = {
   status: 'delivered',
   deposit_amount: 4500,
   deposit_status: 'held',
+  checkin_photo_url: null,
+  checkout_photo_url: null,
   created_at: '2026-07-08T09:00:00Z',
   updated_at: '2026-07-10T08:00:00Z',
 }
@@ -75,6 +77,7 @@ describe('ReservationDetailPage', () => {
       '/users/me': [() => jsonResponse(PROFILE, 200)],
       '/users/me/requests?page=1&limit=50': [() => jsonResponse({ reservations: [RESERVATION], page: 1, limit: 50, total: 1 }, 200)],
       [`/reservations/${RESERVATION.id}/transactions`]: [() => jsonResponse([TRANSACTION], 200)],
+      [`/reservations/${RESERVATION.id}/report`]: [() => jsonResponse({ error: { code: 'NOT_FOUND', message: 'No report' } }, 404)],
     })
 
     renderPage()
@@ -89,6 +92,7 @@ describe('ReservationDetailPage', () => {
       [`/reservations/${RESERVATION.id}/transactions`]: [
         () => jsonResponse({ error: { code: 'SERVER_ERROR', message: 'Transactions server exploded' } }, 500),
       ],
+      [`/reservations/${RESERVATION.id}/report`]: [() => jsonResponse({ error: { code: 'NOT_FOUND', message: 'No report' } }, 404)],
     })
 
     renderPage()
@@ -106,6 +110,7 @@ describe('ReservationDetailPage', () => {
         () => jsonResponse([TRANSACTION, { id: 't2', reservation_id: RESERVATION.id, type: 'freeze', amount: 4500, created_at: '2026-07-27T10:00:00Z' }], 200),
       ],
       [`/reservations/${RESERVATION.id}/report`]: [
+        () => jsonResponse({ error: { code: 'NOT_FOUND', message: 'No report' } }, 404),
         () =>
           jsonResponse(
             {
@@ -123,6 +128,7 @@ describe('ReservationDetailPage', () => {
 
     renderPage()
     await waitFor(() => expect(screen.getByText(TRANSACTION.type)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByLabelText('What went wrong?')).toBeInTheDocument())
 
     await user.type(screen.getByLabelText('What went wrong?'), 'The drill bit was broken')
     await user.type(screen.getByLabelText('Photo URL'), 'https://storage.example.com/photos/broken.jpg')
@@ -139,12 +145,14 @@ describe('ReservationDetailPage', () => {
       '/users/me/requests?page=1&limit=50': [() => jsonResponse({ reservations: [RESERVATION], page: 1, limit: 50, total: 1 }, 200)],
       [`/reservations/${RESERVATION.id}/transactions`]: [() => jsonResponse([TRANSACTION], 200)],
       [`/reservations/${RESERVATION.id}/report`]: [
+        () => jsonResponse({ error: { code: 'NOT_FOUND', message: 'No report' } }, 404),
         () => jsonResponse({ error: { code: 'INVALID_TRANSITION', message: 'Report already exists for this reservation' } }, 409),
       ],
     })
 
     renderPage()
     await waitFor(() => expect(screen.getByText(TRANSACTION.type)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByLabelText('What went wrong?')).toBeInTheDocument())
 
     await user.type(screen.getByLabelText('What went wrong?'), 'The drill bit was broken')
     await user.type(screen.getByLabelText('Photo URL'), 'https://storage.example.com/photos/broken.jpg')
@@ -164,6 +172,7 @@ describe('ReservationDetailPage', () => {
         () => jsonResponse({ error: { code: 'SERVER_ERROR', message: 'Transactions server exploded' } }, 500),
       ],
       [`/reservations/${RESERVATION.id}/report`]: [
+        () => jsonResponse({ error: { code: 'NOT_FOUND', message: 'No report' } }, 404),
         () =>
           jsonResponse(
             {
@@ -181,6 +190,7 @@ describe('ReservationDetailPage', () => {
 
     renderPage()
     await waitFor(() => expect(screen.getByText(TRANSACTION.type)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByLabelText('What went wrong?')).toBeInTheDocument())
 
     await user.type(screen.getByLabelText('What went wrong?'), 'The drill bit was broken')
     await user.type(screen.getByLabelText('Photo URL'), 'https://storage.example.com/photos/broken.jpg')
@@ -208,6 +218,7 @@ describe('ReservationDetailPage', () => {
           ),
       ],
       [`/reservations/${RESERVATION.id}/close`]: [() => jsonResponse({ ...RETURNED, status: 'closed' }, 200)],
+      [`/reservations/${RESERVATION.id}/report`]: [() => jsonResponse({ error: { code: 'NOT_FOUND', message: 'No report' } }, 404)],
     })
 
     renderPage()
@@ -229,6 +240,7 @@ describe('ReservationDetailPage', () => {
       [`/reservations/${RESERVATION.id}/close`]: [
         () => jsonResponse({ error: { code: 'FREEZE_ACTIVE', message: 'Cannot close: an active problem report exists' } }, 409),
       ],
+      [`/reservations/${RESERVATION.id}/report`]: [() => jsonResponse({ error: { code: 'NOT_FOUND', message: 'No report' } }, 404)],
     })
 
     renderPage()
@@ -238,5 +250,123 @@ describe('ReservationDetailPage', () => {
 
     await waitFor(() => expect(screen.getByText('Cannot close: an active problem report exists')).toBeInTheDocument())
     expect(screen.getByRole('button', { name: 'Close reservation' })).not.toBeDisabled()
+  })
+
+  it('shows a placeholder for check-in/check-out photos that have not happened yet', async () => {
+    mockFetchRoutes({
+      '/users/me': [() => jsonResponse(PROFILE, 200)],
+      '/users/me/requests?page=1&limit=50': [() => jsonResponse({ reservations: [RESERVATION], page: 1, limit: 50, total: 1 }, 200)],
+      [`/reservations/${RESERVATION.id}/transactions`]: [() => jsonResponse([TRANSACTION], 200)],
+      [`/reservations/${RESERVATION.id}/report`]: [() => jsonResponse({ error: { code: 'NOT_FOUND', message: 'No report' } }, 404)],
+    })
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText(TRANSACTION.type)).toBeInTheDocument())
+
+    expect(screen.getByText('Not checked in yet')).toBeInTheDocument()
+    expect(screen.getByText('Not checked out yet')).toBeInTheDocument()
+  })
+
+  it('shows check-in/check-out thumbnails and opens the lightbox on click', async () => {
+    const WITH_PHOTOS = {
+      ...RESERVATION,
+      checkin_photo_url: 'https://storage.example.com/photos/checkin.jpg',
+      checkout_photo_url: 'https://storage.example.com/photos/checkout.jpg',
+    }
+    const user = userEvent.setup({ delay: null })
+    mockFetchRoutes({
+      '/users/me': [() => jsonResponse(PROFILE, 200)],
+      '/users/me/requests?page=1&limit=50': [() => jsonResponse({ reservations: [WITH_PHOTOS], page: 1, limit: 50, total: 1 }, 200)],
+      [`/reservations/${RESERVATION.id}/transactions`]: [() => jsonResponse([TRANSACTION], 200)],
+      [`/reservations/${RESERVATION.id}/report`]: [() => jsonResponse({ error: { code: 'NOT_FOUND', message: 'No report' } }, 404)],
+    })
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText(TRANSACTION.type)).toBeInTheDocument())
+
+    expect(screen.queryByText('Not checked in yet')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'View check-in photo' }))
+    expect(screen.getByRole('img', { name: 'Enlarged photo' })).toHaveAttribute('src', WITH_PHOTOS.checkin_photo_url)
+
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('img', { name: 'Enlarged photo' })).not.toBeInTheDocument())
+
+    await user.click(screen.getByRole('button', { name: 'View check-out photo' }))
+    expect(screen.getByRole('img', { name: 'Enlarged photo' })).toHaveAttribute('src', WITH_PHOTOS.checkout_photo_url)
+  })
+
+  it('shows the read-only report card instead of the form once a report has been filed', async () => {
+    const REPORT = {
+      id: 'rep1',
+      reservation_id: RESERVATION.id,
+      reported_by: '88888888-8888-4888-8888-888888888888',
+      reason: 'The drill bit was broken',
+      photo_url: 'https://storage.example.com/photos/broken.jpg',
+      created_at: '2026-07-27T10:00:00Z',
+    }
+    const user = userEvent.setup({ delay: null })
+    mockFetchRoutes({
+      '/users/me': [() => jsonResponse(PROFILE, 200)],
+      '/users/me/requests?page=1&limit=50': [() => jsonResponse({ reservations: [RESERVATION], page: 1, limit: 50, total: 1 }, 200)],
+      [`/reservations/${RESERVATION.id}/transactions`]: [() => jsonResponse([TRANSACTION], 200)],
+      [`/reservations/${RESERVATION.id}/report`]: [() => jsonResponse(REPORT, 200)],
+    })
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText(TRANSACTION.type)).toBeInTheDocument())
+
+    await waitFor(() => expect(screen.getByText(REPORT.reason)).toBeInTheDocument())
+    expect(screen.getByText(REPORT.created_at)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Submit report' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'View report photo' }))
+    expect(screen.getByRole('img', { name: 'Enlarged photo' })).toHaveAttribute('src', REPORT.photo_url)
+  })
+
+  it('shows a report-load error banner without hiding the rest of the page', async () => {
+    mockFetchRoutes({
+      '/users/me': [() => jsonResponse(PROFILE, 200)],
+      '/users/me/requests?page=1&limit=50': [() => jsonResponse({ reservations: [RESERVATION], page: 1, limit: 50, total: 1 }, 200)],
+      [`/reservations/${RESERVATION.id}/transactions`]: [() => jsonResponse([TRANSACTION], 200)],
+      [`/reservations/${RESERVATION.id}/report`]: [
+        () => jsonResponse({ error: { code: 'SERVER_ERROR', message: 'Report server exploded' } }, 500),
+      ],
+    })
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText(TRANSACTION.type)).toBeInTheDocument())
+
+    await waitFor(() => expect(screen.getByText('Report server exploded')).toBeInTheDocument())
+    expect(screen.getByRole('button', { name: 'Submit report' })).toBeInTheDocument()
+  })
+
+  it('shows both check-in/check-out photos and an existing report at the same time', async () => {
+    const WITH_PHOTOS = {
+      ...RESERVATION,
+      checkin_photo_url: 'https://storage.example.com/photos/checkin.jpg',
+      checkout_photo_url: 'https://storage.example.com/photos/checkout.jpg',
+    }
+    const REPORT = {
+      id: 'rep1',
+      reservation_id: RESERVATION.id,
+      reported_by: '88888888-8888-4888-8888-888888888888',
+      reason: 'The drill bit was broken',
+      photo_url: 'https://storage.example.com/photos/broken.jpg',
+      created_at: '2026-07-27T10:00:00Z',
+    }
+    mockFetchRoutes({
+      '/users/me': [() => jsonResponse(PROFILE, 200)],
+      '/users/me/requests?page=1&limit=50': [() => jsonResponse({ reservations: [WITH_PHOTOS], page: 1, limit: 50, total: 1 }, 200)],
+      [`/reservations/${RESERVATION.id}/transactions`]: [() => jsonResponse([TRANSACTION], 200)],
+      [`/reservations/${RESERVATION.id}/report`]: [() => jsonResponse(REPORT, 200)],
+    })
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText(TRANSACTION.type)).toBeInTheDocument())
+
+    expect(screen.getByRole('button', { name: 'View check-in photo' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'View check-out photo' })).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText(REPORT.reason)).toBeInTheDocument())
+    expect(screen.queryByRole('button', { name: 'Submit report' })).not.toBeInTheDocument()
   })
 })
