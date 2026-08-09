@@ -89,25 +89,45 @@ class PresignedUrlUploader implements PhotoUploader {
     //    fetch(uri).blob() which fails on Android standalone builds. Web keeps
     //    the fetch/blob path (blob: URIs work in the browser).
     let status: number;
-    try {
-      if (Platform.OS === 'web') {
-        const body = await (await fetch(photo.uri)).blob();
+    if (Platform.OS === 'web') {
+      // Read the local file as a blob first (its own error, distinct from the
+      // network PUT), then PUT it. blob: URIs work in the browser.
+      let body: Blob;
+      try {
+        const read = await fetch(photo.uri);
+        if (!read.ok) throw new Error(`local read HTTP ${read.status}`);
+        body = await read.blob();
+      } catch (e) {
+        console.warn('[photo-uploader] could not read the photo', e);
+        throw new ApiRequestError(0, 'NETWORK_ERROR', 'Could not read the photo from the device.');
+      }
+      try {
         const response = await fetch(presign.upload_url, {
           method: 'PUT',
           headers: { 'Content-Type': contentType },
           body,
         });
         status = response.status;
-      } else {
+      } catch (e) {
+        console.warn('[photo-uploader] S3 upload failed', e);
+        throw new ApiRequestError(0, 'NETWORK_ERROR', 'The photo upload failed. Please try again.');
+      }
+    } else {
+      // Native: File.upload reads and PUTs the file natively — reliable in
+      // release APKs, unlike fetch(uri).blob(). mimeType is set alongside the
+      // header so the request Content-Type matches what S3 signed (else 403).
+      try {
         const result = await new File(photo.uri).upload(presign.upload_url, {
           uploadType: UploadType.BINARY_CONTENT,
           httpMethod: 'PUT',
+          mimeType: contentType,
           headers: { 'Content-Type': contentType },
         });
         status = result.status;
+      } catch (e) {
+        console.warn('[photo-uploader] S3 upload failed', e);
+        throw new ApiRequestError(0, 'NETWORK_ERROR', 'The photo upload failed. Please try again.');
       }
-    } catch {
-      throw new ApiRequestError(0, 'NETWORK_ERROR', 'The photo upload failed. Please try again.');
     }
     if (status < 200 || status >= 300) {
       // S3 answers with XML, not the contract's Error shape.

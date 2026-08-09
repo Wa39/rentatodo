@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { Link } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -14,7 +15,16 @@ export function ReservationRow({ reservation }: { reservation: Reservation }) {
       asChild>
       <Pressable testID={`reservation-row-${reservation.id}`} style={styles.row}>
         <View style={styles.thumb}>
-          <Text style={styles.initial}>{reservation.item_name.charAt(0)}</Text>
+          {reservation.item_photo_url ? (
+            <Image
+              source={{ uri: reservation.item_photo_url }}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+              transition={150}
+            />
+          ) : (
+            <Text style={styles.initial}>{reservation.item_name.charAt(0)}</Text>
+          )}
         </View>
         <View style={styles.info}>
           <Text style={styles.name} numberOfLines={1}>
@@ -49,6 +59,7 @@ const styles = StyleSheet.create({
     backgroundColor: Brand.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   initial: {
     fontSize: 18,

@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { Image } from 'expo-image';
 import { Link, router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -102,7 +103,16 @@ export default function ReservationDetailScreen() {
 
         <View style={styles.header}>
           <View style={styles.thumb}>
-            <Text style={styles.initial}>{reservation.item_name.charAt(0)}</Text>
+            {reservation.item_photo_url ? (
+              <Image
+                source={{ uri: reservation.item_photo_url }}
+                style={StyleSheet.absoluteFill}
+                contentFit="cover"
+                transition={150}
+              />
+            ) : (
+              <Text style={styles.initial}>{reservation.item_name.charAt(0)}</Text>
+            )}
           </View>
           <View style={styles.headerInfo}>
             <Text testID="reservation-item-name" style={styles.name}>{reservation.item_name}</Text>
@@ -278,6 +288,7 @@ const styles = StyleSheet.create({
     backgroundColor: Brand.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   initial: { fontSize: 20, fontWeight: '800', color: Brand.primary, opacity: 0.55 },
   headerInfo: { flex: 1, minWidth: 0 },

@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -106,7 +107,16 @@ export default function ItemDetailScreen() {
         <ScreenHeader title="Details" />
 
         <View style={styles.hero}>
-          <Text style={styles.heroInitial}>{item.name.charAt(0)}</Text>
+          {item.photo_url ? (
+            <Image
+              source={{ uri: item.photo_url }}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+              transition={150}
+            />
+          ) : (
+            <Text style={styles.heroInitial}>{item.name.charAt(0)}</Text>
+          )}
         </View>
 
         <Text style={styles.name}>{item.name}</Text>
@@ -202,6 +212,7 @@ const styles = StyleSheet.create({
     backgroundColor: Brand.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   heroInitial: { fontSize: 56, fontWeight: '800', color: Brand.primary, opacity: 0.45 },
   name: { fontSize: 18, fontWeight: '800', color: Brand.ink, marginTop: 14 },
